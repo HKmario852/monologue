@@ -37,7 +37,7 @@ val settingsKeywords=listOf(
     val q=query.trim().lowercase()
     val matches=settingsGroups.indices.filter {q.isEmpty() || settingsGroups[it].lowercase().contains(q) || q.split(' ').filter {w->w.isNotBlank()}.all {w->settingsKeywords[it].lowercase().contains(w) || settingsGroups[it].lowercase().contains(w)}}
     LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(20.dp)) {
-        item {Text("把 monologue 調成你的節奏。",style=MaterialTheme.typography.bodyLarge,modifier=Modifier.padding(bottom=12.dp))}
+        item {Text("把 Monologue 調成你的節奏。",style=MaterialTheme.typography.bodyLarge,modifier=Modifier.padding(bottom=12.dp))}
         item {OutlinedTextField(query,{query=it},Modifier.fillMaxWidth().padding(bottom=12.dp),placeholder={Text("搜尋設定，例如：Token、快取、音質")},leadingIcon={Icon(Icons.Outlined.Search,null)},trailingIcon={if(query.isNotEmpty()) ActionIcon(Icons.Outlined.Close,"清除設定搜尋") {query=""}},singleLine=true,shape=androidx.compose.foundation.shape.RoundedCornerShape(28.dp))}
         items(matches,key={it}) { i -> ListItem(headlineContent={Text(settingsGroups[i])},leadingContent={Text("%02d".format(i+1),color=MaterialTheme.colorScheme.primary)},trailingContent={Icon(Icons.Outlined.ChevronRight,null)},modifier=Modifier.clickable {open(i)},colors=ListItemDefaults.colors(containerColor=Color.Transparent));HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)}
         if(matches.isEmpty()) item {Info("找不到「$query」相關設定。")}
@@ -158,12 +158,12 @@ val settingsKeywords=listOf(
                 Info("若裝置實際限制背景工作，可在系統設定檢查。App 不會主動要求忽略電池最佳化。")
             }
             9 -> {
-                Text("monologue",style=MaterialTheme.typography.displaySmall)
+                Text("Monologue",style=MaterialTheme.typography.displaySmall)
                 Info("版本 ${BuildConfig.VERSION_NAME} · build ${BuildConfig.VERSION_CODE}")
                 SectionTitle("私隱")
                 Info("本機掃描、播放清單與統計保存在裝置。Drive 僅在授權後存取；ListenBrainz 上傳預設關閉。憑證用 Android Keystore 加密，排除備份、設定匯出與診斷。")
                 SectionTitle("開源及素材")
-                Info("monologue：GPL-3.0-or-later\nNewPipe Extractor：GPL-3.0-or-later\nAndroidX／Media3／Room／WorkManager：Apache-2.0\nKotlin／Coroutines／Immutable collections：Apache-2.0\nOkHttp／Coil：Apache-2.0\n字體：Android 系統 Serif／Sans Serif fallback。\n黑膠與唱臂：程式繪製。正式 App 不附帶示範音樂或參考圖封面。完整授權見專案 THIRD_PARTY_NOTICES.md。")
+                Info("Monologue：GPL-3.0-or-later\nNewPipe Extractor：GPL-3.0-or-later\nAndroidX／Media3／Room／WorkManager：Apache-2.0\nKotlin／Coroutines／Immutable collections：Apache-2.0\nOkHttp／Coil：Apache-2.0\n字體：Android 系統 Serif／Sans Serif fallback。\n黑膠與唱臂：程式繪製。正式 App 不附帶示範音樂或參考圖封面。完整授權見專案 THIRD_PARTY_NOTICES.md。")
                 SettingAction("匯出診斷資料","預覽：版本、Android API、曲目數、播放狀態與下載計數；已排除 Token、帳號、曲名及私人路徑。") {confirm="診斷只包括 App／Android 版本、曲目總數、播放狀態、下載成功及失敗數。沒有 Token、帳號、歌曲名稱、URI 或私人路徑。是否匯出？" to UiEvent.Export("diagnostics")}
                 SettingAction("匯出設定及播放清單","不包含憑證；播放清單含本機媒體 ID，請妥善保管") {onEvent(UiEvent.Export("settings"))}
                 SettingAction("匯入設定及播放清單","只匯入可配對的曲目；不匯入憑證或啟用同步") {onEvent(UiEvent.ImportSettings)}

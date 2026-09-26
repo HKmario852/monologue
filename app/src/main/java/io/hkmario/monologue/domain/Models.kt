@@ -39,9 +39,9 @@ data class DownloadManagerUiState(val phase: DownloadPhase = DownloadPhase.Idle,
 data class RankedTrack(val track: Track, val count: Int, val listenedMs: Long)
 data class LeaderboardUiState(val phase: Phase = Phase.Empty, val period: Period = Period.Week, val offset: Int = 0, val startMs: Long = 0, val endExclusiveMs: Long = 0, val zone: String = "Asia/Hong_Kong", val sortByTime: Boolean = false, val rows: PersistentList<RankedTrack> = persistentListOf(), val hours: Double = 0.0, val count: Int = 0)
 data class ListenBrainzUiState(val connection: Connection = Connection.Unconfigured, val username: String? = null, val pending: Int = 0, val syncEnabled: Boolean = false, val lastSuccess: Long? = null, val error: String? = null)
-data class Recommendation(val id: String, val title: String, val artist: String, val match: Track? = null)
+data class Recommendation(val id: String, val title: String, val artist: String, val match: Track? = null, val artwork: String? = null, val recordingMbid: String? = null)
 data class ListeningStatsUiState(val all: PersistentList<RankedTrack> = persistentListOf(), val month: PersistentList<RankedTrack> = persistentListOf(), val detail: PersistentList<RankedTrack> = persistentListOf(), val period: Period = Period.All, val offset: Int = 0, val startMs: Long = 0, val endMs: Long = 0, val zone: String = "Asia/Hong_Kong")
-data class DiscoverUiState(val phase: Phase = Phase.Unconfigured, val title: String = "每週探索", val generated: String? = null, val tracks: PersistentList<Recommendation> = persistentListOf(), val error: String? = null)
+data class DiscoverUiState(val phase: Phase = Phase.Unconfigured, val title: String = "每週探索", val generated: String? = null, val tracks: PersistentList<Recommendation> = persistentListOf(), val error: String? = null, val resolving: String? = null)
 data class StorageUiState(val cacheBytes: Long = 0, val limitBytes: Long = 1_000_000_000, val offlineBytes: Long = 0, val freeBytes: Long = 0, val lyricsBytes: Long = 0, val artBytes: Long = 0, val deferredClear: Boolean = false)
 data class AppSettingsUiState(val values: PersistentMap<String, String> = persistentMapOf()) {
     fun text(key: String, default: String = "") = values[key] ?: default
@@ -106,6 +106,7 @@ sealed interface UiEvent {
     data class DisconnectListenBrainz(val discardPending: Boolean) : UiEvent
     data object SyncNow : UiEvent
     data object Recommendations : UiEvent
+    data class PlayRecommendation(val item: Recommendation) : UiEvent
     data object ClearStreamCache : UiEvent
     data object RefreshStorage : UiEvent
     data class DeleteOffline(val trackId: String) : UiEvent

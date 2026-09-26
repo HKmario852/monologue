@@ -233,8 +233,12 @@ private fun displayPath(folder: String): String { val (label,prefix)=displayRoot
 }
 @Composable fun LibraryTrackRow(t: Track,playing: Boolean,play: ()->Unit,more: ()->Unit) {
     Column {
-        Row(Modifier.fillMaxWidth().heightIn(min=60.dp).clickable(enabled=t.uri.isNotBlank(),onClick=play).padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
+        Row(Modifier.fillMaxWidth().heightIn(min=64.dp).clickable(enabled=t.uri.isNotBlank(),onClick=play).padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
+            Box(Modifier.size(48.dp)) {
+                GeneratedCover(t.album+t.artist,t.album,Modifier.fillMaxSize())
+                t.artwork?.let { AsyncImage(it,null,Modifier.fillMaxSize().clip(RoundedCornerShape(2.dp)),contentScale=ContentScale.Crop) }
+            }
+            Column(Modifier.weight(1f).padding(start=14.dp)) {
                 Text(t.title,style=SerifTitle,color=if(playing) Accent else Ink,maxLines=1,overflow=TextOverflow.Ellipsis)
                 Text(listOfNotNull(t.artist,if(t.durationMs>0) formatTime(t.durationMs) else null,if(t.source==Source.Drive && t.offlinePath==null) "雲端" else null).joinToString(" · "),style=SerifItalic.copy(fontSize=12.sp),color=if(playing) Accent else Muted,maxLines=1,overflow=TextOverflow.Ellipsis)
             }
@@ -255,8 +259,12 @@ private fun displayPath(folder: String): String { val (label,prefix)=displayRoot
 }
 @Composable private fun ArtistRow(g: GroupItem,click: ()->Unit) {
     Column {
-        Row(Modifier.fillMaxWidth().heightIn(min=60.dp).clickable(onClick=click).padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
+        Row(Modifier.fillMaxWidth().heightIn(min=64.dp).clickable(onClick=click).padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
+            Box(Modifier.size(48.dp).clip(CircleShape)) {
+                GeneratedCover(g.title,g.title,Modifier.fillMaxSize())
+                g.tracks.firstOrNull {it.artwork!=null}?.artwork?.let { AsyncImage(it,null,Modifier.fillMaxSize(),contentScale=ContentScale.Crop) }
+            }
+            Column(Modifier.weight(1f).padding(start=14.dp)) {
                 Text(g.title,style=SerifTitle,color=Ink,maxLines=1,overflow=TextOverflow.Ellipsis)
                 Text("${g.tracks.map {it.album}.distinct().size} 張專輯 · ${g.tracks.size} 首",style=SerifItalic.copy(fontSize=12.sp),color=Muted)
             }
@@ -355,4 +363,25 @@ private fun displayPath(folder: String): String { val (label,prefix)=displayRoot
         }
     }
     exclude?.let { path -> AlertDialog(onDismissRequest={exclude=null},title={Text("不計入媒體庫？")},text={Text("「${path.substringAfterLast('/')}」內的歌曲會從媒體庫移除，檔案本身不會被刪除。之後可在此頁「加回」。")},confirmButton={TextButton(onClick={ onEvent(UiEvent.Setting("hiddenFolders",(hidden+absolute(path)).joinToString("\n"))); onEvent(UiEvent.Scan); exclude=null }) {Text("排除")}},dismissButton={TextButton(onClick={exclude=null}) {Text("取消")}}) }
+}
+
+/** A weekly recommendation: release cover, what will actually play, and a way to pick another version. */
+@Composable fun RecommendationRow(r: Recommendation,resolving: Boolean,busy: Boolean,play: ()->Unit,chooseVersion: ()->Unit) {
+    Column {
+        Row(Modifier.fillMaxWidth().heightIn(min=72.dp).clickable(enabled=!busy,onClick=play).padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
+            Box(Modifier.size(56.dp)) {
+                GeneratedCover(r.title+r.artist,r.title,Modifier.fillMaxSize())
+                (r.artwork ?: r.match?.artwork)?.let { AsyncImage(it,null,Modifier.fillMaxSize().clip(RoundedCornerShape(2.dp)),contentScale=ContentScale.Crop) }
+            }
+            Column(Modifier.weight(1f).padding(horizontal=14.dp)) {
+                Text(r.title,style=SerifTitle,color=Ink,maxLines=1,overflow=TextOverflow.Ellipsis)
+                Text(r.artist,style=SerifItalic.copy(fontSize=12.sp),color=Muted,maxLines=1,overflow=TextOverflow.Ellipsis)
+                Text(if(r.match!=null) "● 媒體庫已有此歌曲" else "○ 由 YouTube 播放・自動配對，版本可能不同",style=MaterialTheme.typography.labelSmall,color=if(r.match!=null) Ink else MaterialTheme.colorScheme.tertiary,maxLines=1,overflow=TextOverflow.Ellipsis)
+            }
+            if(r.match==null) Text("選版本",Modifier.clickable(onClick=chooseVersion).padding(8.dp),style=MaterialTheme.typography.labelMedium,color=Accent)
+            if(resolving) CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp),strokeWidth=2.dp,color=Accent)
+            else ActionIcon(Icons.Outlined.PlayArrow,"播放 ${r.title}",!busy,play)
+        }
+        HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
+    }
 }

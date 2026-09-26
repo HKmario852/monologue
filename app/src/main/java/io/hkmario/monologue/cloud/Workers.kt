@@ -22,8 +22,8 @@ class DownloadWorker(context: Context, parameters: WorkerParameters): CoroutineW
     private val graph=(context.applicationContext as MonologueApp).graph
     override suspend fun getForegroundInfo(): ForegroundInfo {
         val nm=applicationContext.getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(NotificationChannel("downloads","monologue 下載",NotificationManager.IMPORTANCE_LOW))
-        val notification=NotificationCompat.Builder(applicationContext,"downloads").setSmallIcon(R.drawable.ic_monologue).setContentTitle("monologue").setContentText("正在下載音樂").setOngoing(true).build()
+        nm.createNotificationChannel(NotificationChannel("downloads","Monologue 下載",NotificationManager.IMPORTANCE_LOW))
+        val notification=NotificationCompat.Builder(applicationContext,"downloads").setSmallIcon(R.drawable.ic_monologue).setContentTitle("Monologue").setContentText("正在下載音樂").setOngoing(true).build()
         return if(Build.VERSION.SDK_INT>=29) ForegroundInfo(42,notification,ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC) else ForegroundInfo(42,notification)
     }
     private suspend fun notifyCompletion() {
@@ -31,7 +31,7 @@ class DownloadWorker(context: Context, parameters: WorkerParameters): CoroutineW
         val rows=graph.db.dao().downloads();val failed=rows.count {it.status=="Failed"};val success=rows.count {it.status=="Complete"}
         val nm=applicationContext.getSystemService(NotificationManager::class.java)
         if(!nm.areNotificationsEnabled()) return
-        nm.notify(43,NotificationCompat.Builder(applicationContext,"downloads").setSmallIcon(R.drawable.ic_monologue).setContentTitle("monologue").setContentText("下載完成：$success 首成功，$failed 首失敗").setAutoCancel(true).build())
+        nm.notify(43,NotificationCompat.Builder(applicationContext,"downloads").setSmallIcon(R.drawable.ic_monologue).setContentTitle("Monologue").setContentText("下載完成：$success 首成功，$failed 首失敗").setAutoCancel(true).build())
     }
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val dao=graph.db.dao()

@@ -100,7 +100,7 @@ import coil.compose.AsyncImage
 
 @Composable fun UpdatesSettings(state: UpdateUiState,settings: AppSettingsUiState,onEvent: (UiEvent)->Unit) {
     fun act(a: OnlineAction)=onEvent(UiEvent.Online(a))
-    Text("monologue ${BuildConfig.VERSION_NAME}",style=MaterialTheme.typography.headlineSmall)
+    Text("Monologue ${BuildConfig.VERSION_NAME}",style=MaterialTheme.typography.headlineSmall)
     EditSetting("GitHub 發布專案",settings.text("updateRepository").ifBlank {BuildConfig.UPDATE_REPOSITORY},"預設為官方專案 ${BuildConfig.UPDATE_REPOSITORY}；留空即使用預設。") {onEvent(UiEvent.Setting("updateRepository",it.trim()))}
     Info("正式更新需要較高版本號、相同套件及相同簽署。APK 下載後仍由你在 Android 確認安裝。")
     Button(onClick={act(OnlineAction.CheckUpdate)},enabled=state.phase!=Phase.Loading && !state.downloading) {Text("檢查更新")}

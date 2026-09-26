@@ -195,7 +195,7 @@ import java.time.format.DateTimeFormatter
         if(account.connection!=Connection.Connected) item {SettingAction("連接 ListenBrainz","到設定管理帳號，取得個人推薦",openAccount)}
         if(state.phase==Phase.Loading) item {LinearProgressIndicator(Modifier.fillMaxWidth())}
         state.generated?.let {item {Text("生成日期：$it",style=MaterialTheme.typography.bodySmall)}}
-        if(state.tracks.isEmpty()) item {EmptyPanel("等候新的發現",state.error ?: "推薦需配對可播放音源；尚未有推薦時不會加入示範歌曲。")}
-        items(state.tracks,key={it.id}) { r -> ListItem(headlineContent={Text(r.title)},supportingContent={Text("${r.artist}\n${if(r.match==null) "媒體庫未有此歌曲" else "已配對媒體庫"}")},trailingContent={ActionIcon(Icons.Outlined.PlayArrow,"播放 ${r.title}",r.match!=null) {r.match?.let {onEvent(UiEvent.Play(it))}}},colors=ListItemDefaults.colors(containerColor=Color.Transparent)) }
+        if(state.tracks.isEmpty()) item {EmptyPanel("等候新的發現",state.error ?: "尚未有推薦時不會加入示範歌曲。")}
+        items(state.tracks,key={it.id}) { r -> RecommendationRow(r,state.resolving==r.id,state.resolving!=null,{onEvent(UiEvent.PlayRecommendation(r))}) { onEvent(UiEvent.Online(OnlineAction.SearchFor("${r.title} ${r.artist}")));openOnline() } }
     }
 }

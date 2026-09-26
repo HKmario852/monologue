@@ -20,6 +20,7 @@ import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.*
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavDestination.Companion.hierarchy
 import io.hkmario.monologue.domain.*
 import kotlinx.collections.immutable.*
 import kotlinx.coroutines.launch
@@ -49,7 +50,16 @@ import kotlinx.coroutines.launch
     }
     val destinations=listOf("library" to "媒體庫","drive" to "雲端","rank" to "排行榜","discover" to "探索","settings" to "設定")
     val icons=listOf(Icons.Outlined.Home,Icons.Outlined.Cloud,Icons.Outlined.BarChart,Icons.Outlined.Explore,Icons.Outlined.Settings)
-    fun navigate(target: String) { nav.navigate(target) {launchSingleTop=true;restoreState=true;popUpTo(nav.graph.findStartDestination().id) {saveState=true}} }
+    // Each bottom tab is its own nested graph. Switching tabs always opens the tab's first page (設定 › 歌詞 → 排行榜 → 設定 shows 設定),
+    // so nothing opened inside a tab is saved or restored.
+    fun inTab(id: String)=stack?.destination?.hierarchy?.any {it.route=="tab/$id"}==true
+    fun navigate(tab: String) {
+        if(tab=="library") nav.popBackStack("library",false)
+        else nav.navigate("tab/$tab") {launchSingleTop=true;popUpTo("library")}
+    }
+    fun onTab(tab: String)=navigate(tab)
+    /** Links that lead into another tab switch to it first, so the page lands on that tab's own stack. */
+    fun openIn(tab: String,route: String) { if(!inTab(tab)) navigate(tab); nav.navigate(route) {launchSingleTop=true} }
     fun more(track: Track) {selected=track;sheet="more"}
     LaunchedEffect(message) {
         when(val m=message) {
@@ -62,8 +72,8 @@ import kotlinx.coroutines.launch
     BackHandler(sheet!=null) {sheet=null}
     BackHandler(route=="drive" && state.drive.breadcrumbs.size>1 && sheet==null && !drawer.isOpen) {onEvent(UiEvent.DriveBreadcrumb(state.drive.breadcrumbs.lastIndex-1))}
     ModalNavigationDrawer(drawerState=drawer,gesturesEnabled=drawerMode && !now,drawerContent={ModalDrawerSheet {
-        Text("monologue",style=MaterialTheme.typography.headlineLarge,modifier=Modifier.padding(24.dp))
-        destinations.forEachIndexed {i,(id,label)->NavigationDrawerItem(label={Text(label)},selected=route==id || (id=="settings" && route.startsWith("settings/")),icon={Icon(icons[i],null)},onClick={scope.launch {drawer.close()};navigate(id)},modifier=Modifier.padding(horizontal=12.dp))}
+        Text("Monologue",style=MaterialTheme.typography.headlineLarge,modifier=Modifier.padding(24.dp))
+        destinations.forEachIndexed {i,(id,label)->NavigationDrawerItem(label={Text(label)},selected=inTab(id),icon={Icon(icons[i],null)},onClick={scope.launch {drawer.close()};onTab(id)},modifier=Modifier.padding(horizontal=12.dp))}
     }}) {
         Scaffold(containerColor=MaterialTheme.colorScheme.background,contentWindowInsets=WindowInsets(0,0,0,0),snackbarHost={SnackbarHost(snackbar)},topBar={
             // The Drive tab draws its own compact wordmark header.
@@ -71,27 +81,37 @@ import kotlinx.coroutines.launch
         },bottomBar={
             if(!now) Column(Modifier.background(MaterialTheme.colorScheme.background)) {
                 MiniPlayer(state.player,progress,onEvent,{nav.navigate("playing") {launchSingleTop=true}},{sheet="queue"})
-                if(!drawerMode) NavigationBar(modifier=Modifier.heightIn(min=80.dp * androidx.compose.ui.platform.LocalDensity.current.fontScale.coerceAtLeast(1f)),containerColor=MaterialTheme.colorScheme.background,tonalElevation=0.dp) {destinations.forEachIndexed {i,(id,label)->NavigationBarItem(modifier=Modifier.testTag("nav-$id"),selected=route==id || (id=="settings" && route.startsWith("settings/")),onClick={navigate(id)},icon={Icon(icons[i],label)},label={Text(label)},colors=NavigationBarItemDefaults.colors(indicatorColor=MaterialTheme.colorScheme.primaryContainer))}}
+                if(!drawerMode) NavigationBar(modifier=Modifier.heightIn(min=80.dp * androidx.compose.ui.platform.LocalDensity.current.fontScale.coerceAtLeast(1f)),containerColor=MaterialTheme.colorScheme.background,tonalElevation=0.dp) {destinations.forEachIndexed {i,(id,label)->NavigationBarItem(modifier=Modifier.testTag("nav-$id"),selected=inTab(id),onClick={onTab(id)},icon={Icon(icons[i],label)},label={Text(label)},colors=NavigationBarItemDefaults.colors(indicatorColor=MaterialTheme.colorScheme.primaryContainer))}}
                 else Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
             }
         }) {padding->
-            NavHost(nav,"library",modifier=Modifier.fillMaxSize().padding(padding)) {
-                composable("library") {Box(if(drawerMode) Modifier else Modifier.statusBarsPadding()) {LibraryScreen(state.library,state.settings,onEvent,{groupId=it.id;nav.navigate("group")},{nav.navigate("playlist/${Uri.encode(it)}")},::more,{navigate("discover")},
-                    openDrive={navigate("drive")},
-                    searchOnline={query->if(query.isNotBlank()) onEvent(UiEvent.Online(OnlineAction.SearchFor(query)));nav.navigate("online")},
-                    playingId=state.player.entry?.track?.id,openSettings={nav.navigate("settings/2")})}}
-                composable("drive") {Box(if(drawerMode) Modifier else Modifier.statusBarsPadding()) {DriveScreen(state.drive,state.settings,state.downloads,onEvent,{sheet="downloads"},::more,{nav.navigate("settings/3")},{navigate("library")})}}
-                composable("rank") {RankScreen(state.leaderboard,onEvent,::more)}
-                composable("discover") {DiscoverScreen(state.listenBrainz,state.discover,onEvent,state.stats,{nav.navigate("settings/7")},{onEvent(UiEvent.Statistics(Period.All));nav.navigate("listening")},{onEvent(UiEvent.Statistics(Period.Month));nav.navigate("support")},{nav.navigate("online")},{navigate("rank")})}
-                composable("online") {OnlineScreen(state.online,state.plugins,state.settings,onEvent,{nav.navigate("settings/10")})}
-                composable("listening") {StatisticsScreen(state.stats,false,onEvent)}
-                composable("support") {StatisticsScreen(state.stats,true,onEvent)}
+            NavHost(nav,"tab/library",modifier=Modifier.fillMaxSize().padding(padding)) {
+                navigation(startDestination="library",route="tab/library") {
+                    composable("library") {Box(if(drawerMode) Modifier else Modifier.statusBarsPadding()) {LibraryScreen(state.library,state.settings,onEvent,{groupId=it.id;nav.navigate("group")},{nav.navigate("playlist/${Uri.encode(it)}")},::more,{navigate("discover")},
+                        openDrive={navigate("drive")},
+                        searchOnline={query->if(query.isNotBlank()) onEvent(UiEvent.Online(OnlineAction.SearchFor(query)));openIn("discover","online")},
+                        playingId=state.player.entry?.track?.id,openSettings={openIn("settings","settings/2")})}}
+                    composable("group") {DetailScreen(groupTracks?.title ?: "歌曲",groupTracks?.tracks ?: persistentListOf(),null,onEvent,::more,{})}
+                    composable("playlist/{id}") {b -> val id=b.arguments?.getString("id");val playlist=state.library.playlists.find {it.id==id};val tracks=if(id=="favorites") state.library.tracks.filter {it.favorite}.toPersistentList() else playlist?.tracks ?: persistentListOf();DetailScreen(if(id=="favorites") "收藏歌曲" else playlist?.name ?: "播放清單",tracks,playlist,onEvent,::more,{nav.popBackStack()})}
+                }
+                navigation(startDestination="drive",route="tab/drive") {
+                    composable("drive") {Box(if(drawerMode) Modifier else Modifier.statusBarsPadding()) {DriveScreen(state.drive,state.settings,state.downloads,onEvent,{sheet="downloads"},::more,{openIn("settings","settings/3")},{navigate("library")})}}
+                }
+                navigation(startDestination="rank",route="tab/rank") {
+                    composable("rank") {RankScreen(state.leaderboard,onEvent,::more)}
+                }
+                navigation(startDestination="discover",route="tab/discover") {
+                    composable("discover") {DiscoverScreen(state.listenBrainz,state.discover,onEvent,state.stats,{openIn("settings","settings/7")},{onEvent(UiEvent.Statistics(Period.All));nav.navigate("listening")},{onEvent(UiEvent.Statistics(Period.Month));nav.navigate("support")},{nav.navigate("online")},{navigate("rank")})}
+                    composable("online") {OnlineScreen(state.online,state.plugins,state.settings,onEvent,{openIn("settings","settings/10")})}
+                    composable("listening") {StatisticsScreen(state.stats,false,onEvent)}
+                    composable("support") {StatisticsScreen(state.stats,true,onEvent)}
+                }
+                navigation(startDestination="settings",route="tab/settings") {
+                    composable("settings") {SettingsHome {nav.navigate("settings/$it")}}
+                    composable("settings/{group}") {backStack->SettingsDetail(backStack.arguments?.getString("group")?.toIntOrNull() ?: 0,state,onEvent,{sheet="equalizer"},{sheet="sleep"},{sheet="downloads"},{if(backStack.arguments?.getString("group")=="10") nav.navigate("settings/7") else navigate("discover")},{nav.navigate("offline")},systemSettings,importLyrics)}
+                    composable("offline") {OfflineScreen(state.library.tracks.filter {it.offlinePath!=null}.toPersistentList(),onEvent)}
+                }
                 composable("playing") {NowPlayingScreen(state,progress,clock,foreground,onEvent,{nav.popBackStack()},{sheet="queue"},{sheet="equalizer"},{sheet="sleep"},{state.player.entry?.track?.let(::more)},importLyrics)}
-                composable("settings") {SettingsHome {nav.navigate("settings/$it")}}
-                composable("settings/{group}") {backStack->SettingsDetail(backStack.arguments?.getString("group")?.toIntOrNull() ?: 0,state,onEvent,{sheet="equalizer"},{sheet="sleep"},{sheet="downloads"},{if(backStack.arguments?.getString("group")=="10") nav.navigate("settings/7") else navigate("discover")},{nav.navigate("offline")},systemSettings,importLyrics)}
-                composable("group") {DetailScreen(groupTracks?.title ?: "歌曲",groupTracks?.tracks ?: persistentListOf(),null,onEvent,::more,{})}
-                composable("playlist/{id}") {b -> val id=b.arguments?.getString("id");val playlist=state.library.playlists.find {it.id==id};val tracks=if(id=="favorites") state.library.tracks.filter {it.favorite}.toPersistentList() else playlist?.tracks ?: persistentListOf();DetailScreen(if(id=="favorites") "收藏歌曲" else playlist?.name ?: "播放清單",tracks,playlist,onEvent,::more,{nav.popBackStack()})}
-                composable("offline") {OfflineScreen(state.library.tracks.filter {it.offlinePath!=null}.toPersistentList(),onEvent)}
             }
         }
     }

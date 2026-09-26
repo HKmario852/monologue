@@ -36,7 +36,7 @@ internal val SerifItalic=androidx.compose.ui.text.TextStyle(fontFamily=androidx.
 @Composable fun Wordmark(actions: @Composable RowScope.()->Unit={}) {
     Column(Modifier.fillMaxWidth().padding(top=8.dp)) {
         Row(Modifier.fillMaxWidth().heightIn(min=48.dp),verticalAlignment=Alignment.CenterVertically) {
-            Text("monologue",Modifier.weight(1f),style=MaterialTheme.typography.titleMedium.copy(fontFamily=androidx.compose.ui.text.font.FontFamily.Serif,fontWeight=FontWeight.Bold,letterSpacing=4.sp),color=Ink)
+            Text("Monologue",Modifier.weight(1f),style=MaterialTheme.typography.titleMedium.copy(fontFamily=androidx.compose.ui.text.font.FontFamily.Serif,fontWeight=FontWeight.Bold,letterSpacing=4.sp),color=Ink)
             actions()
         }
         HorizontalDivider(color=Ink,thickness=1.dp)
@@ -69,7 +69,7 @@ internal val SerifItalic=androidx.compose.ui.text.TextStyle(fontFamily=androidx.
         Wordmark()
         Spacer(Modifier.height(28.dp)); Eyebrow("雲端")
         Text("把你的唱片櫃\n接上雲端。",Modifier.padding(top=8.dp),style=MaterialTheme.typography.displaySmall.copy(fontWeight=FontWeight.Bold,lineHeight=44.sp),color=Ink)
-        Text("登入 Google 帳戶後，monologue 會讀取你雲端硬碟中的音樂資料夾，可即時串流，也可逐首下載離線收聽。",Modifier.padding(top=16.dp),style=MaterialTheme.typography.bodyLarge.copy(fontFamily=androidx.compose.ui.text.font.FontFamily.Serif),color=Muted)
+        Text("登入 Google 帳戶後，Monologue 會讀取你雲端硬碟中的音樂資料夾，可即時串流，也可逐首下載離線收聽。",Modifier.padding(top=16.dp),style=MaterialTheme.typography.bodyLarge.copy(fontFamily=androidx.compose.ui.text.font.FontFamily.Serif),color=Muted)
         HorizontalDivider(Modifier.padding(top=24.dp),color=Ink)
         listOf("只讀取音訊檔案" to "MP3、FLAC、M4A、OGG、OPUS、WAV 等格式","絕不修改或刪除" to "你的雲端檔案維持原狀","隨時可中斷連接" to "已下載的歌曲仍保留在本機").forEachIndexed { i,(title,detail) ->
             Row(Modifier.fillMaxWidth().padding(vertical=14.dp)) {
@@ -92,7 +92,7 @@ internal val SerifItalic=androidx.compose.ui.text.TextStyle(fontFamily=androidx.
             Column(Modifier.padding(24.dp),horizontalAlignment=Alignment.CenterHorizontally) {
                 Box(Modifier.size(64.dp).border(1.dp,Accent.copy(alpha=.4f),CircleShape),contentAlignment=Alignment.Center) { Box(Modifier.size(20.dp).clip(CircleShape).background(Accent)) }
                 Text("正在連接雲端硬碟",Modifier.padding(top=20.dp),style=MaterialTheme.typography.titleLarge.copy(fontWeight=FontWeight.Bold),color=Ink)
-                Text("請在 Google 的登入視窗中選擇帳戶，並允許 monologue 讀取你的音樂檔案。",Modifier.padding(top=12.dp),style=MaterialTheme.typography.bodyMedium,color=Muted,textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+                Text("請在 Google 的登入視窗中選擇帳戶，並允許 Monologue 讀取你的音樂檔案。",Modifier.padding(top=12.dp),style=MaterialTheme.typography.bodyMedium,color=Muted,textAlign=androidx.compose.ui.text.style.TextAlign.Center)
                 HorizontalDivider(Modifier.padding(vertical=16.dp),color=MaterialTheme.colorScheme.outlineVariant)
                 listOf("帳戶選擇","權限確認","讀取資料夾").forEachIndexed { i,label ->
                     val (status,color)=when { i<step -> "完成" to Muted; i==step -> "進行中…" to Accent; else -> "等待" to Muted.copy(alpha=.6f) }
