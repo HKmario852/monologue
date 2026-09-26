@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuite name="io.hkmario.monologue.PersistenceDeviceTest" tests="17" failures="0" errors="0" skipped="0" time="23.113" timestamp="2026-09-24T23:44:48" hostname="localhost">
+  <properties>
+    <property name="device" value="MonologueQA2(AVD) - 11" />
+    <property name="flavor" value="" />
+    <property name="project" value=":app" />
+  </properties>
+  <testcase name="outboxSurvivesDatabaseReopenAndDuplicateInsertion" classname="io.hkmario.monologue.PersistenceDeviceTest" time="0.066" />
+  <testcase name="retryOnlyRequeuesFailedRowsAfterReopen" classname="io.hkmario.monologue.PersistenceDeviceTest" time="0.003" />
+  <testcase name="realAudioPauseQueueNavigationAndPersistence" classname="io.hkmario.monologue.PlaybackDeviceTest" time="11.12" />
+  <testcase name="rapidTypingAndTabChangesCannotPublishOldResults" classname="io.hkmario.monologue.SearchViewModelTest" time="1.147" />
+  <testcase name="cacheAdmissionProtectsCurrentTrackAndOfflineFiles" classname="io.hkmario.monologue.StorageDeviceTest" time="0.056" />
+  <testcase name="driveNeverClaimsConnectedWhenUnconfigured" classname="io.hkmario.monologue.UiAcceptanceTest" time="0.703" />
+  <testcase name="largeTextPlayerKeepsControlsReachable" classname="io.hkmario.monologue.UiAcceptanceTest" time="1.234" />
+  <testcase name="downwardCoverGestureCollapsesButCancelledGestureDoesNot" classname="io.hkmario.monologue.UiAcceptanceTest" time="0.717" />
+  <testcase name="navigationStyleSwitchKeepsDestination" classname="io.hkmario.monologue.UiAcceptanceTest" time="1.033" />
+  <testcase name="staleTabResultsAreNeverRenderedInUiState" classname="io.hkmario.monologue.UiAcceptanceTest" time="0.319" />
+  <testcase name="darkThemeRetainsVinylStructure" classname="io.hkmario.monologue.UiAcceptanceTest" time="0.716" />
+  <testcase name="libraryAndSettingsRender" classname="io.hkmario.monologue.UiAcceptanceTest" time="0.984" />
+  <testcase name="rankingEmptyStateAndSettingsDetail" classname="io.hkmario.monologue.UiAcceptanceTest" time="0.688" />
+  <testcase name="playerHasVinylAndCollapsibleControls" classname="io.hkmario.monologue.UiAcceptanceTest" time="0.605" />
+  <testcase name="downloadWaitingDoesNotResumeOnToggle" classname="io.hkmario.monologue.UiAcceptanceTest" time="0.649" />
+  <testcase name="scrubberDragNeverCollapsesPlayer" classname="io.hkmario.monologue.UiAcceptanceTest" time="1.572" />
+  <testcase name="miniPlayerButtonsDoNotExpand" classname="io.hkmario.monologue.UiAcceptanceTest" time="0.567" />
+</testsuite>

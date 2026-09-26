@@ -1,0 +1,11 @@
+{
+  "environment": "isolated Android 11 emulator-5582",
+  "apk": "monologue-debug.apk",
+  "beforePid": "10048",
+  "afterPid": "10275",
+  "differentProcess": true,
+  "drawerRestored": true,
+  "queueRestored": true,
+  "autoplayDisabled": true,
+  "localScanAndPlay": "Published generated 3-second WAV into test MediaStore; real UI scan/play; real leaderboard displayed 1 play. No fixture in shipped media library."
+}

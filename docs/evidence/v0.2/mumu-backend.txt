@@ -1,0 +1,10 @@
+
+io.hkmario.monologue.PlaybackDeviceTest:.
+io.hkmario.monologue.SearchViewModelTest:.
+io.hkmario.monologue.StorageDeviceTest:.
+
+Time: 8.609
+
+OK (3 tests)
+
+

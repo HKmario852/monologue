@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuite name="io.hkmario.monologue.UiAcceptanceTest" tests="4" failures="0" errors="0" skipped="0" time="5.656" timestamp="2026-09-24T23:39:34" hostname="localhost">
+  <properties>
+    <property name="device" value="MonologueQA2(AVD) - 11" />
+    <property name="flavor" value="" />
+    <property name="project" value=":app" />
+  </properties>
+  <testcase name="largeTextPlayerKeepsControlsReachable" classname="io.hkmario.monologue.UiAcceptanceTest" time="1.466" />
+  <testcase name="libraryAndSettingsRender" classname="io.hkmario.monologue.UiAcceptanceTest" time="1.364" />
+  <testcase name="playerHasVinylAndCollapsibleControls" classname="io.hkmario.monologue.UiAcceptanceTest" time="1.19" />
+  <testcase name="scrubberDragNeverCollapsesPlayer" classname="io.hkmario.monologue.UiAcceptanceTest" time="0.777" />
+</testsuite>

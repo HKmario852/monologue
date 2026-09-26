@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.hkmario.monologue.CoreTest" tests="17" skipped="0" failures="0" errors="0" timestamp="2026-09-25T16:47:06" hostname="test-host" time="0.1">
+  <properties/>
+  <testcase name="vinylCrossTrackBufferingAndReducedMotion" classname="io.hkmario.monologue.CoreTest" time="0.019"/>
+  <testcase name="mondayAndMonthAreEndExclusiveAndHistorySurvives" classname="io.hkmario.monologue.CoreTest" time="0.011"/>
+  <testcase name="tracksSearchMatchesArtistAndAlbumButReturnsOnlyTracks" classname="io.hkmario.monologue.CoreTest" time="0.029"/>
+  <testcase name="artistSearchDoesNotReturnSongOrAlbumMatches" classname="io.hkmario.monologue.CoreTest" time="0.003"/>
+  <testcase name="duplicateSongsHaveIndependentQueueIds" classname="io.hkmario.monologue.CoreTest" time="0.001"/>
+  <testcase name="unicodeNormalizationAndHistoryDeduplication" classname="io.hkmario.monologue.CoreTest" time="0.006"/>
+  <testcase name="slicesSplitAtPeriodBoundary" classname="io.hkmario.monologue.CoreTest" time="0.0"/>
+  <testcase name="dstWeekUsesCalendarBoundaries" classname="io.hkmario.monologue.CoreTest" time="0.002"/>
+  <testcase name="translationsNeverUseIndexOrAmbiguousTimestamp" classname="io.hkmario.monologue.CoreTest" time="0.021"/>
+  <testcase name="vinylInvisibleTimeIsNeverReplayed" classname="io.hkmario.monologue.CoreTest" time="0.0"/>
+  <testcase name="countThresholdAndNoPauseBufferSeekInflation" classname="io.hkmario.monologue.CoreTest" time="0.001"/>
+  <testcase name="albumAndFolderSearchRemainSeparate" classname="io.hkmario.monologue.CoreTest" time="0.002"/>
+  <testcase name="downloadPauseIsOnlyBetweenItemsAndFinalItemFinishes" classname="io.hkmario.monologue.CoreTest" time="0.001"/>
+  <testcase name="retryOnlyFailedItems" classname="io.hkmario.monologue.CoreTest" time="0.0"/>
+  <testcase name="vinylMonotonicClockHasNoFrameAccumulationDrift" classname="io.hkmario.monologue.CoreTest" time="0.0"/>
+  <testcase name="lrcHandlesMultipleTagsOffsetAndRepeatedLines" classname="io.hkmario.monologue.CoreTest" time="0.001"/>
+  <testcase name="vinylPausesAndResumesWithoutReset" classname="io.hkmario.monologue.CoreTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

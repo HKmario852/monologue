@@ -1,0 +1,6 @@
+package: name='io.hkmario.monologue' versionCode='2' versionName='0.2.0' platformBuildVersionName='15' platformBuildVersionCode='35' compileSdkVersion='35' compileSdkVersionCodename='15'
+sdkVersion:'26'
+targetSdkVersion:'35'
+application-label:'monologue'
+Signer #1 certificate SHA-256 digest: 0ccfb3f2d2245bb084c2339997fa96110a0574eb7b295235126cc10c6c21ce19
+Signer #1 certificate SHA-1 digest: bdb763155500116eec1bf4dd1d987e59142f8a07

@@ -1,0 +1,11 @@
+
+io.hkmario.monologue.UiAcceptanceTest:............
+io.hkmario.monologue.ExpansionTest:.....
+io.hkmario.monologue.StatisticsViewModelTest:.
+io.hkmario.monologue.PersistenceDeviceTest:..
+
+Time: 8.128
+
+OK (20 tests)
+
+

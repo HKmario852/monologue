@@ -1,0 +1,1222 @@
+[
+  {
+    "theme": "PaperColors",
+    "foreground": "onPrimary",
+    "background": "primary",
+    "hex_foreground": "FFFFFF",
+    "hex_background": "9F412C",
+    "ratio": 6.429,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onPrimaryContainer",
+    "background": "primaryContainer",
+    "hex_foreground": "542718",
+    "hex_background": "F3DDD1",
+    "ratio": 9.566,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSecondary",
+    "background": "secondary",
+    "hex_foreground": "FFFFFF",
+    "hex_background": "655A50",
+    "ratio": 6.706,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSecondaryContainer",
+    "background": "secondaryContainer",
+    "hex_foreground": "30271F",
+    "hex_background": "EADFD2",
+    "ratio": 11.134,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onTertiary",
+    "background": "tertiary",
+    "hex_foreground": "FFFFFF",
+    "hex_background": "4B6551",
+    "ratio": 6.403,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onTertiaryContainer",
+    "background": "tertiaryContainer",
+    "hex_foreground": "233C29",
+    "hex_background": "DCE8D8",
+    "ratio": 9.474,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onError",
+    "background": "error",
+    "hex_foreground": "FFFFFF",
+    "hex_background": "9C2039",
+    "ratio": 7.838,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onErrorContainer",
+    "background": "errorContainer",
+    "hex_foreground": "590018",
+    "hex_background": "FFDADF",
+    "ratio": 11.368,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSurface",
+    "background": "surface",
+    "hex_foreground": "2E2722",
+    "hex_background": "FBF7EF",
+    "ratio": 13.748,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceVariant",
+    "hex_foreground": "655A50",
+    "hex_background": "EEE5D9",
+    "ratio": 5.379,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onBackground",
+    "background": "background",
+    "hex_foreground": "2E2722",
+    "hex_background": "F5EFE4",
+    "ratio": 12.836,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "inverseOnSurface",
+    "background": "inverseSurface",
+    "hex_foreground": "F8F0E5",
+    "hex_background": "332D28",
+    "ratio": 12.017,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "inversePrimary",
+    "background": "inverseSurface",
+    "hex_foreground": "FFB59E",
+    "hex_background": "332D28",
+    "ratio": 7.988,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSurface",
+    "background": "background",
+    "hex_foreground": "2E2722",
+    "hex_background": "F5EFE4",
+    "ratio": 12.836,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSurface",
+    "background": "surface",
+    "hex_foreground": "2E2722",
+    "hex_background": "FBF7EF",
+    "ratio": 13.748,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSurface",
+    "background": "surfaceBright",
+    "hex_foreground": "2E2722",
+    "hex_background": "FBF7EF",
+    "ratio": 13.748,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSurface",
+    "background": "surfaceDim",
+    "hex_foreground": "2E2722",
+    "hex_background": "E0D8CC",
+    "ratio": 10.398,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSurface",
+    "background": "surfaceContainerLowest",
+    "hex_foreground": "2E2722",
+    "hex_background": "FFFFFF",
+    "ratio": 14.691,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSurface",
+    "background": "surfaceContainerLow",
+    "hex_foreground": "2E2722",
+    "hex_background": "F8F1E8",
+    "ratio": 13.109,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSurface",
+    "background": "surfaceContainer",
+    "hex_foreground": "2E2722",
+    "hex_background": "EEE5D9",
+    "ratio": 11.784,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSurface",
+    "background": "surfaceContainerHigh",
+    "hex_foreground": "2E2722",
+    "hex_background": "E9DFD2",
+    "ratio": 11.158,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSurface",
+    "background": "surfaceContainerHighest",
+    "hex_foreground": "2E2722",
+    "hex_background": "E2D7CA",
+    "ratio": 10.358,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSurfaceVariant",
+    "background": "background",
+    "hex_foreground": "655A50",
+    "hex_background": "F5EFE4",
+    "ratio": 5.859,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSurfaceVariant",
+    "background": "surface",
+    "hex_foreground": "655A50",
+    "hex_background": "FBF7EF",
+    "ratio": 6.275,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceBright",
+    "hex_foreground": "655A50",
+    "hex_background": "FBF7EF",
+    "ratio": 6.275,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceDim",
+    "hex_foreground": "655A50",
+    "hex_background": "E0D8CC",
+    "ratio": 4.746,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceContainerLowest",
+    "hex_foreground": "655A50",
+    "hex_background": "FFFFFF",
+    "ratio": 6.706,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceContainerLow",
+    "hex_foreground": "655A50",
+    "hex_background": "F8F1E8",
+    "ratio": 5.984,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceContainer",
+    "hex_foreground": "655A50",
+    "hex_background": "EEE5D9",
+    "ratio": 5.379,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceContainerHigh",
+    "hex_foreground": "655A50",
+    "hex_background": "E9DFD2",
+    "ratio": 5.093,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceContainerHighest",
+    "hex_foreground": "655A50",
+    "hex_background": "E2D7CA",
+    "ratio": 4.728,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "primary",
+    "background": "background",
+    "hex_foreground": "9F412C",
+    "hex_background": "F5EFE4",
+    "ratio": 5.617,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "primary",
+    "background": "surface",
+    "hex_foreground": "9F412C",
+    "hex_background": "FBF7EF",
+    "ratio": 6.016,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "primary",
+    "background": "surfaceBright",
+    "hex_foreground": "9F412C",
+    "hex_background": "FBF7EF",
+    "ratio": 6.016,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "primary",
+    "background": "surfaceDim",
+    "hex_foreground": "9F412C",
+    "hex_background": "E0D8CC",
+    "ratio": 4.55,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "primary",
+    "background": "surfaceContainerLowest",
+    "hex_foreground": "9F412C",
+    "hex_background": "FFFFFF",
+    "ratio": 6.429,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "primary",
+    "background": "surfaceContainerLow",
+    "hex_foreground": "9F412C",
+    "hex_background": "F8F1E8",
+    "ratio": 5.736,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "primary",
+    "background": "surfaceContainer",
+    "hex_foreground": "9F412C",
+    "hex_background": "EEE5D9",
+    "ratio": 5.157,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "primary",
+    "background": "surfaceContainerHigh",
+    "hex_foreground": "9F412C",
+    "hex_background": "E9DFD2",
+    "ratio": 4.883,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "primary",
+    "background": "surfaceContainerHighest",
+    "hex_foreground": "9F412C",
+    "hex_background": "E2D7CA",
+    "ratio": 4.533,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "error",
+    "background": "background",
+    "hex_foreground": "9C2039",
+    "hex_background": "F5EFE4",
+    "ratio": 6.849,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "error",
+    "background": "surface",
+    "hex_foreground": "9C2039",
+    "hex_background": "FBF7EF",
+    "ratio": 7.335,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "error",
+    "background": "surfaceBright",
+    "hex_foreground": "9C2039",
+    "hex_background": "FBF7EF",
+    "ratio": 7.335,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "error",
+    "background": "surfaceDim",
+    "hex_foreground": "9C2039",
+    "hex_background": "E0D8CC",
+    "ratio": 5.548,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "error",
+    "background": "surfaceContainerLowest",
+    "hex_foreground": "9C2039",
+    "hex_background": "FFFFFF",
+    "ratio": 7.838,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "error",
+    "background": "surfaceContainerLow",
+    "hex_foreground": "9C2039",
+    "hex_background": "F8F1E8",
+    "ratio": 6.994,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "error",
+    "background": "surfaceContainer",
+    "hex_foreground": "9C2039",
+    "hex_background": "EEE5D9",
+    "ratio": 6.287,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "error",
+    "background": "surfaceContainerHigh",
+    "hex_foreground": "9C2039",
+    "hex_background": "E9DFD2",
+    "ratio": 5.953,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "error",
+    "background": "surfaceContainerHighest",
+    "hex_foreground": "9C2039",
+    "hex_background": "E2D7CA",
+    "ratio": 5.526,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "tertiary",
+    "background": "background",
+    "hex_foreground": "4B6551",
+    "hex_background": "F5EFE4",
+    "ratio": 5.595,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "tertiary",
+    "background": "surface",
+    "hex_foreground": "4B6551",
+    "hex_background": "FBF7EF",
+    "ratio": 5.993,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "tertiary",
+    "background": "surfaceBright",
+    "hex_foreground": "4B6551",
+    "hex_background": "FBF7EF",
+    "ratio": 5.993,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "tertiary",
+    "background": "surfaceDim",
+    "hex_foreground": "4B6551",
+    "hex_background": "E0D8CC",
+    "ratio": 4.532,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "tertiary",
+    "background": "surfaceContainerLowest",
+    "hex_foreground": "4B6551",
+    "hex_background": "FFFFFF",
+    "ratio": 6.403,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "tertiary",
+    "background": "surfaceContainerLow",
+    "hex_foreground": "4B6551",
+    "hex_background": "F8F1E8",
+    "ratio": 5.714,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "tertiary",
+    "background": "surfaceContainer",
+    "hex_foreground": "4B6551",
+    "hex_background": "EEE5D9",
+    "ratio": 5.137,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "tertiary",
+    "background": "surfaceContainerHigh",
+    "hex_foreground": "4B6551",
+    "hex_background": "E9DFD2",
+    "ratio": 4.864,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "tertiary",
+    "background": "surfaceContainerHighest",
+    "hex_foreground": "4B6551",
+    "hex_background": "E2D7CA",
+    "ratio": 4.515,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "outline",
+    "background": "surface",
+    "hex_foreground": "8A7C6E",
+    "hex_background": "FBF7EF",
+    "ratio": 3.787,
+    "required": 3,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "outline",
+    "background": "background",
+    "hex_foreground": "8A7C6E",
+    "hex_background": "F5EFE4",
+    "ratio": 3.536,
+    "required": 3,
+    "pass_": true
+  },
+  {
+    "theme": "PaperColors",
+    "foreground": "outline",
+    "background": "surfaceContainer",
+    "hex_foreground": "8A7C6E",
+    "hex_background": "EEE5D9",
+    "ratio": 3.246,
+    "required": 3,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onPrimary",
+    "background": "primary",
+    "hex_foreground": "542718",
+    "hex_background": "FFB59E",
+    "ratio": 7.353,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onPrimaryContainer",
+    "background": "primaryContainer",
+    "hex_foreground": "F3DDD1",
+    "hex_background": "713420",
+    "ratio": 7.26,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSecondary",
+    "background": "secondary",
+    "hex_foreground": "372D24",
+    "hex_background": "D1C2B3",
+    "ratio": 7.727,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSecondaryContainer",
+    "background": "secondaryContainer",
+    "hex_foreground": "EADFD2",
+    "hex_background": "504438",
+    "ratio": 7.184,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onTertiary",
+    "background": "tertiary",
+    "hex_foreground": "233C29",
+    "hex_background": "B7CFB8",
+    "ratio": 7.218,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onTertiaryContainer",
+    "background": "tertiaryContainer",
+    "hex_foreground": "DCE8D8",
+    "hex_background": "384F3C",
+    "ratio": 7.049,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onError",
+    "background": "error",
+    "hex_foreground": "590018",
+    "hex_background": "FFB1C0",
+    "ratio": 8.555,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onErrorContainer",
+    "background": "errorContainer",
+    "hex_foreground": "FFDADF",
+    "hex_background": "7B1730",
+    "ratio": 8.143,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSurface",
+    "background": "surface",
+    "hex_foreground": "F0E7DC",
+    "hex_background": "211D19",
+    "ratio": 13.686,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceVariant",
+    "hex_foreground": "D1C2B3",
+    "hex_background": "443C34",
+    "ratio": 6.221,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onBackground",
+    "background": "background",
+    "hex_foreground": "F0E7DC",
+    "hex_background": "1A1714",
+    "ratio": 14.592,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "inverseOnSurface",
+    "background": "inverseSurface",
+    "hex_foreground": "332D28",
+    "hex_background": "F0E7DC",
+    "ratio": 11.1,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "inversePrimary",
+    "background": "inverseSurface",
+    "hex_foreground": "A74932",
+    "hex_background": "F0E7DC",
+    "ratio": 4.714,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSurface",
+    "background": "background",
+    "hex_foreground": "F0E7DC",
+    "hex_background": "1A1714",
+    "ratio": 14.592,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSurface",
+    "background": "surface",
+    "hex_foreground": "F0E7DC",
+    "hex_background": "211D19",
+    "ratio": 13.686,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSurface",
+    "background": "surfaceBright",
+    "hex_foreground": "F0E7DC",
+    "hex_background": "403832",
+    "ratio": 9.383,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSurface",
+    "background": "surfaceDim",
+    "hex_foreground": "F0E7DC",
+    "hex_background": "191512",
+    "ratio": 14.835,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSurface",
+    "background": "surfaceContainerLowest",
+    "hex_foreground": "F0E7DC",
+    "hex_background": "140F0C",
+    "ratio": 15.56,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSurface",
+    "background": "surfaceContainerLow",
+    "hex_foreground": "F0E7DC",
+    "hex_background": "211D19",
+    "ratio": 13.686,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSurface",
+    "background": "surfaceContainer",
+    "hex_foreground": "F0E7DC",
+    "hex_background": "29231E",
+    "ratio": 12.685,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSurface",
+    "background": "surfaceContainerHigh",
+    "hex_foreground": "F0E7DC",
+    "hex_background": "342C25",
+    "ratio": 11.2,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSurface",
+    "background": "surfaceContainerHighest",
+    "hex_foreground": "F0E7DC",
+    "hex_background": "3D342C",
+    "ratio": 9.947,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSurfaceVariant",
+    "background": "background",
+    "hex_foreground": "D1C2B3",
+    "hex_background": "1A1714",
+    "ratio": 10.266,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSurfaceVariant",
+    "background": "surface",
+    "hex_foreground": "D1C2B3",
+    "hex_background": "211D19",
+    "ratio": 9.629,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceBright",
+    "hex_foreground": "D1C2B3",
+    "hex_background": "403832",
+    "ratio": 6.601,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceDim",
+    "hex_foreground": "D1C2B3",
+    "hex_background": "191512",
+    "ratio": 10.437,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceContainerLowest",
+    "hex_foreground": "D1C2B3",
+    "hex_background": "140F0C",
+    "ratio": 10.947,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceContainerLow",
+    "hex_foreground": "D1C2B3",
+    "hex_background": "211D19",
+    "ratio": 9.629,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceContainer",
+    "hex_foreground": "D1C2B3",
+    "hex_background": "29231E",
+    "ratio": 8.924,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceContainerHigh",
+    "hex_foreground": "D1C2B3",
+    "hex_background": "342C25",
+    "ratio": 7.879,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceContainerHighest",
+    "hex_foreground": "D1C2B3",
+    "hex_background": "3D342C",
+    "ratio": 6.998,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "primary",
+    "background": "background",
+    "hex_foreground": "FFB59E",
+    "hex_background": "1A1714",
+    "ratio": 10.501,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "primary",
+    "background": "surface",
+    "hex_foreground": "FFB59E",
+    "hex_background": "211D19",
+    "ratio": 9.849,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "primary",
+    "background": "surfaceBright",
+    "hex_foreground": "FFB59E",
+    "hex_background": "403832",
+    "ratio": 6.753,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "primary",
+    "background": "surfaceDim",
+    "hex_foreground": "FFB59E",
+    "hex_background": "191512",
+    "ratio": 10.676,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "primary",
+    "background": "surfaceContainerLowest",
+    "hex_foreground": "FFB59E",
+    "hex_background": "140F0C",
+    "ratio": 11.198,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "primary",
+    "background": "surfaceContainerLow",
+    "hex_foreground": "FFB59E",
+    "hex_background": "211D19",
+    "ratio": 9.849,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "primary",
+    "background": "surfaceContainer",
+    "hex_foreground": "FFB59E",
+    "hex_background": "29231E",
+    "ratio": 9.129,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "primary",
+    "background": "surfaceContainerHigh",
+    "hex_foreground": "FFB59E",
+    "hex_background": "342C25",
+    "ratio": 8.06,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "primary",
+    "background": "surfaceContainerHighest",
+    "hex_foreground": "FFB59E",
+    "hex_background": "3D342C",
+    "ratio": 7.158,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "error",
+    "background": "background",
+    "hex_foreground": "FFB1C0",
+    "hex_background": "1A1714",
+    "ratio": 10.456,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "error",
+    "background": "surface",
+    "hex_foreground": "FFB1C0",
+    "hex_background": "211D19",
+    "ratio": 9.807,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "error",
+    "background": "surfaceBright",
+    "hex_foreground": "FFB1C0",
+    "hex_background": "403832",
+    "ratio": 6.723,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "error",
+    "background": "surfaceDim",
+    "hex_foreground": "FFB1C0",
+    "hex_background": "191512",
+    "ratio": 10.63,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "error",
+    "background": "surfaceContainerLowest",
+    "hex_foreground": "FFB1C0",
+    "hex_background": "140F0C",
+    "ratio": 11.149,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "error",
+    "background": "surfaceContainerLow",
+    "hex_foreground": "FFB1C0",
+    "hex_background": "211D19",
+    "ratio": 9.807,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "error",
+    "background": "surfaceContainer",
+    "hex_foreground": "FFB1C0",
+    "hex_background": "29231E",
+    "ratio": 9.089,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "error",
+    "background": "surfaceContainerHigh",
+    "hex_foreground": "FFB1C0",
+    "hex_background": "342C25",
+    "ratio": 8.025,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "error",
+    "background": "surfaceContainerHighest",
+    "hex_foreground": "FFB1C0",
+    "hex_background": "3D342C",
+    "ratio": 7.128,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "tertiary",
+    "background": "background",
+    "hex_foreground": "B7CFB8",
+    "hex_background": "1A1714",
+    "ratio": 10.735,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "tertiary",
+    "background": "surface",
+    "hex_foreground": "B7CFB8",
+    "hex_background": "211D19",
+    "ratio": 10.069,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "tertiary",
+    "background": "surfaceBright",
+    "hex_foreground": "B7CFB8",
+    "hex_background": "403832",
+    "ratio": 6.903,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "tertiary",
+    "background": "surfaceDim",
+    "hex_foreground": "B7CFB8",
+    "hex_background": "191512",
+    "ratio": 10.914,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "tertiary",
+    "background": "surfaceContainerLowest",
+    "hex_foreground": "B7CFB8",
+    "hex_background": "140F0C",
+    "ratio": 11.447,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "tertiary",
+    "background": "surfaceContainerLow",
+    "hex_foreground": "B7CFB8",
+    "hex_background": "211D19",
+    "ratio": 10.069,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "tertiary",
+    "background": "surfaceContainer",
+    "hex_foreground": "B7CFB8",
+    "hex_background": "29231E",
+    "ratio": 9.332,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "tertiary",
+    "background": "surfaceContainerHigh",
+    "hex_foreground": "B7CFB8",
+    "hex_background": "342C25",
+    "ratio": 8.239,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "tertiary",
+    "background": "surfaceContainerHighest",
+    "hex_foreground": "B7CFB8",
+    "hex_background": "3D342C",
+    "ratio": 7.318,
+    "required": 4.5,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "outline",
+    "background": "surface",
+    "hex_foreground": "A69687",
+    "hex_background": "211D19",
+    "ratio": 5.846,
+    "required": 3,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "outline",
+    "background": "background",
+    "hex_foreground": "A69687",
+    "hex_background": "1A1714",
+    "ratio": 6.233,
+    "required": 3,
+    "pass_": true
+  },
+  {
+    "theme": "NightColors",
+    "foreground": "outline",
+    "background": "surfaceContainer",
+    "hex_foreground": "A69687",
+    "hex_background": "29231E",
+    "ratio": 5.419,
+    "required": 3,
+    "pass_": true
+  }
+]
