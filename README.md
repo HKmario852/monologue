@@ -1,8 +1,8 @@
-# monologue
+# Monologue
 
 暖白黑膠 Android 音樂播放器。單一 Activity、Kotlin、Compose Material 3、Media3 背景播放、Room、DataStore、WorkManager。
 
-目前版本 **0.3.0（build 4）**：Google Drive 雲端音樂庫（整個雲端硬碟搜尋、資料夾選擇、內嵌標籤與封面讀取）、雲端歌曲併入媒體庫、重新設計的媒體庫與雲端頁、YouTube 音訊、MusicBrainz 歌曲資料、HTTP 音源外掛與 App 內更新。0.2 的範圍及限制見 [0.2 功能說明](docs/EXPANSION-0.2.md)。
+目前版本 **0.3.1（build 5）**：Google Drive 雲端音樂庫（整個雲端硬碟搜尋、資料夾選擇、內嵌標籤與封面讀取）、雲端歌曲併入媒體庫、重新設計的媒體庫與雲端頁、YouTube 音訊、MusicBrainz 歌曲資料、HTTP 音源外掛與 App 內更新。0.2 的範圍及限制見 [0.2 功能說明](docs/EXPANSION-0.2.md)。
 
 ## 安裝與更新
 
@@ -12,7 +12,7 @@
 
 ## 視覺及資訊架構
 
-採用參考②的媒體庫列表、水平播放清單、Mini Player、大型圓形黑膠及右側固定唱臂；使用參考③的暖白、赤陶色、深啡文字與編輯式襯線字體。所有正式品牌只使用 `monologue`。沒有把概念編號、年份、標語或概念稿封套帶入 App。
+採用參考②的媒體庫列表、水平播放清單、Mini Player、大型圓形黑膠及右側固定唱臂；使用參考③的暖白、赤陶色、深啡文字與編輯式襯線字體。App 名稱為 `Monologue`。沒有把概念編號、年份、標語或概念稿封套帶入 App。
 
 ```mermaid
 flowchart TD

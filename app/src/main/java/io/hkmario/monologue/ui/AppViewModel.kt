@@ -170,6 +170,7 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             is UiEvent.VerifyToken -> verifyToken(event.token)
             is UiEvent.DisconnectListenBrainz -> launch { graph.listenBrainz.disconnect(event.discardPending); mutable.update { it.copy(listenBrainz=ListenBrainzUiState(),discover=DiscoverUiState()) } }
             UiEvent.SyncNow -> { WorkScheduler.sync(getApplication()) }
+            is UiEvent.PlayRecommendation -> playRecommendation(event.item)
             UiEvent.Recommendations -> launch { mutable.update { it.copy(discover=it.discover.copy(phase=Phase.Loading)) }; try { val d=graph.listenBrainz.recommendations(allTracks); mutable.update { it.copy(discover=d) } } catch(e: Exception) { mutable.update { it.copy(discover=it.discover.copy(phase=Phase.Error,error=e.message)) } } }
             UiEvent.ClearStreamCache -> launch { val deferred=withContext(Dispatchers.IO) { graph.cache.clear() }; storage(); effectsChannel.send(UiEffect.Message(if(deferred) "已清理未使用快取；播放中的部分會在釋放後清理" else "已清除串流快取")) }
             UiEvent.RefreshStorage -> launch { storage() }
@@ -241,6 +242,22 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
                 val results=graph.online.search(requested.provider,requested.query);ensureActive()
                 if(state.value.online.provider==requested.provider && state.value.online.query==requested.query) mutable.update {it.copy(online=it.online.copy(searched=true,results=results,phase=if(results.isEmpty()) Phase.Empty else Phase.Ready))}
             } catch(e: CancellationException) {throw e} catch(e: Exception) {mutable.update {it.copy(online=it.online.copy(phase=Phase.Error,error=e.message ?: "音源服務無法連線"))}}
+        }
+    }
+    /** Library match plays directly; otherwise the first YouTube result for "artist title" is streamed, labelled as YouTube audio. */
+    private fun playRecommendation(item: Recommendation) {
+        item.match?.let { play(listOf(it)); return }
+        onlinePlayJob?.cancel()
+        onlinePlayJob=viewModelScope.launch {
+            mutable.update {it.copy(discover=it.discover.copy(resolving=item.id))}
+            try {
+                val song=graph.online.search("youtube","${item.artist} ${item.title}").firstOrNull {it.audio} ?: error("YouTube 找不到「${item.title}」的音源")
+                rememberQuality(song,graph.online.resolve(song));ensureActive()
+                val track=graph.online.track(song);val old=dao.track(track.id)
+                dao.putTrack(track.copy(favorite=old?.favorite ?: false,offlinePath=old?.offlinePath,downloadedVersion=old?.downloadedVersion).row())
+                play(listOf(dao.track(track.id)!!.model()))
+            } catch(e: CancellationException) {throw e} catch(e: Exception) {effectsChannel.send(UiEffect.Message(e.message ?: "未能播放推薦歌曲"))}
+            finally {mutable.update {it.copy(discover=it.discover.copy(resolving=null))}}
         }
     }
     private fun onlinePlay(song: OnlineSong,download: Boolean) {

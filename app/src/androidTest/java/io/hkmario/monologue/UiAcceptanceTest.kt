@@ -35,7 +35,7 @@ class UiAcceptanceTest {
     }
     @Test fun libraryAndSettingsRender() {
         compose.setContent {MonologueTheme {AppHost(PreviewFixtures.app,remember {mutableStateOf(PlaybackProgress(positionMs=102000))},remember {VinylClock()},false,{},null,{}, {_,_->},{},{})}}
-        Assert.assertTrue(compose.onAllNodesWithText("monologue").fetchSemanticsNodes().indices.any {compose.onAllNodesWithText("monologue")[it].isDisplayed()})
+        Assert.assertTrue(compose.onAllNodesWithText("Monologue").fetchSemanticsNodes().indices.any {compose.onAllNodesWithText("Monologue")[it].isDisplayed()})
         compose.onAllNodesWithText("Afterglow").onFirst().assertExists()
         screenshot("01-library-demo")
         compose.onAllNodesWithText("設定").onLast().performClick()
@@ -80,6 +80,21 @@ class UiAcceptanceTest {
         compose.onNodeWithContentDescription("開啟選單").assertIsDisplayed()
         compose.runOnIdle {state.value=state.value.copy(settings=AppSettingsUiState())}
         compose.onNodeWithText("聆聽排行").assertIsDisplayed()
+    }
+    @Test fun switchingTabsAlwaysOpensTheTabFirstPage() {
+        compose.setContent {MonologueTheme {AppHost(PreviewFixtures.app,remember {mutableStateOf(PlaybackProgress())},remember {VinylClock()},false,{},null,{}, {_,_->},{},{})}}
+        compose.onNodeWithTag("nav-settings").performClick()
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("歌詞"))
+        compose.onNodeWithText("歌詞").performClick()
+        compose.onNodeWithText("歌詞文字大小").assertExists()
+        compose.onNodeWithTag("nav-rank").performClick()
+        compose.onNodeWithText("聆聽排行").assertIsDisplayed()
+        compose.onNodeWithTag("nav-settings").performClick()
+        compose.onNodeWithText("歌詞文字大小").assertDoesNotExist()
+        compose.onNodeWithText("把 Monologue 調成你的節奏。").assertExists()
+        // Same for 媒體庫: an opened album is not shown again after visiting another tab.
+        compose.onNodeWithTag("nav-library").performClick()
+        compose.onNodeWithText("你的歌單").assertExists()
     }
     @Test fun darkThemeRetainsVinylStructure() {
         var foreground=androidx.compose.ui.graphics.Color.Unspecified

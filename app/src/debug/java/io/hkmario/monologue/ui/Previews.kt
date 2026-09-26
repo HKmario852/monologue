@@ -16,7 +16,7 @@ object PreviewFixtures {
     val app=AppUiState(library=LocalLibraryUiState(Phase.Ready,tracks,persistentListOf(Playlist("preview-list","晚霞時分",tracks)),tracks,search(tracks,SearchRequest(LibraryTab.Tracks,"",0))),player=NowPlayingUiState(Phase.Ready,entry,isPlaying=false,seekable=true,durationMs=238000),queue=PlaybackQueueUiState(persistentListOf(entry),entry.id))
 }
 @Preview(name="媒體庫 · 示範資料",widthDp=390,heightDp=844,showBackground=true)
-@Composable fun LibraryPreview() {MonologueTheme {Column {Text("monologue",style=MaterialTheme.typography.headlineLarge,modifier=Modifier.padding(24.dp));Text("設計預覽 · 示範資料",modifier=Modifier.padding(horizontal=24.dp));LibraryScreen(PreviewFixtures.app.library,AppSettingsUiState(),{},{},{},{},{})}}}
+@Composable fun LibraryPreview() {MonologueTheme {Column {Text("Monologue",style=MaterialTheme.typography.headlineLarge,modifier=Modifier.padding(24.dp));Text("設計預覽 · 示範資料",modifier=Modifier.padding(horizontal=24.dp));LibraryScreen(PreviewFixtures.app.library,AppSettingsUiState(),{},{},{},{},{})}}}
 @Preview(name="暖白黑膠 · 示範資料",widthDp=390,heightDp=844,showBackground=true)
 @Composable fun PlayerPreview() {MonologueTheme {NowPlayingScreen(PreviewFixtures.app,remember {mutableStateOf(PlaybackProgress(positionMs=102000))},remember {VinylClock(24.0)},false,{},{},{},{},{},{},{})}}
 @Preview(name="Drive · 真實未設定狀態",widthDp=390,heightDp=844,showBackground=true)

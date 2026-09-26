@@ -88,8 +88,8 @@ fun newerVersion(remote: String,current: String): Boolean {
 class UpdateDownloadWorker(context: Context,parameters: WorkerParameters): CoroutineWorker(context,parameters) {
     override suspend fun getForegroundInfo(): ForegroundInfo {
         val manager=applicationContext.getSystemService(android.app.NotificationManager::class.java)
-        manager.createNotificationChannel(android.app.NotificationChannel("updates","monologue 更新",android.app.NotificationManager.IMPORTANCE_LOW))
-        val n=androidx.core.app.NotificationCompat.Builder(applicationContext,"updates").setSmallIcon(R.drawable.ic_monologue).setContentTitle("monologue").setContentText("正在下載 App 更新").setOngoing(true).build()
+        manager.createNotificationChannel(android.app.NotificationChannel("updates","Monologue 更新",android.app.NotificationManager.IMPORTANCE_LOW))
+        val n=androidx.core.app.NotificationCompat.Builder(applicationContext,"updates").setSmallIcon(R.drawable.ic_monologue).setContentTitle("Monologue").setContentText("正在下載 App 更新").setOngoing(true).build()
         return if(Build.VERSION.SDK_INT>=29) ForegroundInfo(47,n,android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC) else ForegroundInfo(47,n)
     }
     override suspend fun doWork(): Result {

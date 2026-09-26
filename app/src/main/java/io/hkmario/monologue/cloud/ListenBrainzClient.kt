@@ -12,6 +12,10 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.*
 import java.net.URLEncoder
 
+/** Cover Art Archive thumbnail for a release, when ListenBrainz knows one. */
+private fun coverUrl(release: String?, image: Long?): String? =
+    if(release.isNullOrBlank() || !release.matches(Regex("[0-9a-fA-F-]{36}")) || image==null || image<=0) null else "https://coverartarchive.org/release/$release/$image-250.jpg"
+
 class ListenBrainzClient(private val secrets: SecretStore, private val dao: MusicDao, private val settings: SettingsRepository) {
     private val client=OkHttpClient.Builder().callTimeout(45,java.util.concurrent.TimeUnit.SECONDS).build()
     private val gate=Mutex()
@@ -76,11 +80,21 @@ class ListenBrainzClient(private val secrets: SecretStore, private val dao: Musi
         if(!identifier.matches(Regex("[0-9a-fA-F-]{36}"))) return@withLock DiscoverUiState(phase=Phase.Error,error="服務未提供可讀取的歌單 ID")
         val playlist=request("playlist/$identifier",null).getJSONObject("playlist")
         val songs=playlist.optJSONArray("track") ?: JSONArray()
-        val result=(0 until songs.length()).map { i ->
+        val parsed=(0 until songs.length()).map { i ->
             val t=songs.getJSONObject(i); val title=t.optString("title"); val artist=t.optString("creator")
             val candidates=tracks.filter { normalize(it.title)==normalize(title) && normalize(it.artist)==normalize(artist) }
-            Recommendation("$identifier:$i",title,artist,candidates.singleOrNull())
-        }.toPersistentList()
+            val ids=t.optJSONArray("identifier")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: listOf(t.optString("identifier"))
+            val mbid=ids.firstNotNullOfOrNull { Regex("recording/([0-9a-fA-F-]{36})").find(it)?.groupValues?.get(1) }
+            val extra=t.optJSONObject("extension")?.optJSONObject("https://musicbrainz.org/doc/jspf#track")?.optJSONObject("additional_metadata")
+            Recommendation("$identifier:$i",title,artist,candidates.singleOrNull(),coverUrl(extra?.optString("caa_release_mbid"),extra?.optLong("caa_id")),mbid)
+        }
+        // Older playlists carry no cover fields; one metadata call fills them in for every recording at once.
+        val missing=parsed.filter { it.artwork==null && it.recordingMbid!=null }.map { it.recordingMbid!! }.distinct()
+        val covers=if(missing.isEmpty()) emptyMap() else runCatching {
+            val meta=request("metadata/recording/?recording_mbids=${missing.joinToString(",")}&inc=release",null)
+            missing.associateWith { id -> meta.optJSONObject(id)?.optJSONObject("release")?.let { r -> coverUrl(r.optString("caa_release_mbid"),r.optLong("caa_id")) } }
+        }.getOrDefault(emptyMap())
+        val result=parsed.map { r -> if(r.artwork==null) r.copy(artwork=covers[r.recordingMbid]) else r }.toPersistentList()
         DiscoverUiState(if(result.isEmpty()) Phase.Empty else Phase.Ready,playlist.optString("title","每週探索"),playlist.optString("date",selected.optString("date")),result)
     }
 }
