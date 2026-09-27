@@ -25,6 +25,11 @@ class UiAcceptanceTest {
     private fun screenshot(name: String) {
         compose.waitForIdle()
         val context=InstrumentationRegistry.getInstrumentation().targetContext
+        // Replace this screenshot from earlier runs ("name.png" and MediaStore's "name (n).png" copies) so repeated runs
+        // never run out of unique file names. Only this suite's QA folder is touched.
+        context.contentResolver.delete(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            "${android.provider.MediaStore.Images.Media.RELATIVE_PATH}=? AND (${android.provider.MediaStore.Images.Media.DISPLAY_NAME}=? OR ${android.provider.MediaStore.Images.Media.DISPLAY_NAME} LIKE ?)",
+            arrayOf("Pictures/monologue-qa/","$name.png","$name (%).png"))
         val values=android.content.ContentValues().apply {
             put(android.provider.MediaStore.Images.Media.DISPLAY_NAME,"$name.png")
             put(android.provider.MediaStore.Images.Media.MIME_TYPE,"image/png")
