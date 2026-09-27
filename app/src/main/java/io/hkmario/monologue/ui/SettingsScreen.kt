@@ -186,7 +186,7 @@ val timeZones=listOf("Asia/Hong_Kong" to "香港","Asia/Taipei" to "台北","Asi
 @Composable fun Choice(title: String,value: String,options: List<Pair<String,String>>,change: (String)->Unit) {
     var open by remember {mutableStateOf(false)}
     SettingAction(title,options.find {it.first==value}?.second ?: value) {open=true}
-    if(open) AlertDialog(onDismissRequest={open=false},title={Text(title)},text={Column {options.forEach { (id,label) -> Row(Modifier.fillMaxWidth().clickable {change(id);open=false}.padding(vertical=4.dp),verticalAlignment=Alignment.CenterVertically) {RadioButton(id==value,{change(id);open=false});Text(label)}}}},confirmButton={TextButton(onClick={open=false}) {Text("關閉")}})
+    if(open) AlertDialog(onDismissRequest={open=false},title={Text(title)},text={Column(Modifier.verticalScroll(rememberScrollState())) {options.forEach { (id,label) -> Row(Modifier.fillMaxWidth().clickable {change(id);open=false}.padding(vertical=4.dp),verticalAlignment=Alignment.CenterVertically) {RadioButton(id==value,{change(id);open=false});Text(label)}}}},confirmButton={TextButton(onClick={open=false}) {Text("關閉")}})
 }
 @Composable fun EditSetting(title: String,value: String,hint: String,numeric: Boolean=false,save: (String)->Unit) {
     var open by remember {mutableStateOf(false)};var draft by remember(value) {mutableStateOf(value)}
