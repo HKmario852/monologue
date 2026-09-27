@@ -493,7 +493,7 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             fun build(r: LyricsRow?): PersistentList<LyricLine> {
                 var lines=r?.let { Lrc.parse(it.original) } ?: persistentListOf()
                 if(r?.translation!=null && settings.bool("translations") && r.translationSource?.endsWith(language)==true) lines=Lrc.align(lines,Lrc.parse(r.translation))
-                if(r?.romaji!=null && settings.bool("showRomaji")) lines=Lrc.alignRomaji(lines,Lrc.parse(r.romaji))
+                if(r?.romaji!=null) lines=Lrc.alignRomaji(lines,Lrc.parse(r.romaji))
                 return lines
             }
             val lines=build(row)

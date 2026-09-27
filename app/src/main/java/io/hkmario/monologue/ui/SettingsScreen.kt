@@ -121,10 +121,10 @@ val timeZones=listOf("Asia/Hong_Kong" to "香港","Asia/Taipei" to "台北","Asi
             5 -> {
                 Choice("歌詞文字大小",s.text("lyricSize","22"),listOf("18" to "18 sp","22" to "22 sp","26" to "26 sp","30" to "30 sp")) {setting("lyricSize",it)}
                 Toggle("顯示翻譯歌詞","只有時間戳可可靠配對才顯示",s.bool("translations")) {setting("translations",it.toString())}
-                Choice("翻譯顯示方式",s.text("lyricsDisplay","both"),listOf("both" to "原文＋翻譯","translation" to "只顯示翻譯")) {setting("lyricsDisplay",it)}
+                Choice("翻譯顯示方式",s.text("lyricsDisplay","both"),listOf("both" to "原文＋翻譯","translation" to "只顯示翻譯","romaji" to "原文＋羅馬拼音")) {setting("lyricsDisplay",it)}
                 Choice("翻譯目標語言",s.text("translationLanguage","繁體中文"),listOf("繁體中文" to "繁體中文","English" to "English","日本語" to "日本語")) {setting("translationLanguage",it)}
                 Toggle("沒有翻譯時在裝置上翻譯","使用 ML Kit 離線翻譯；第一次使用會下載約 30 MB 的語言模型，歌詞不會傳送到翻譯伺服器",s.bool("autoTranslate",true)) {setting("autoTranslate",it.toString())}
-                Toggle("顯示羅馬拼音","歌詞來源有提供時（例如網易雲音樂的日文歌）顯示在每行上方",s.bool("showRomaji")) {setting("showRomaji",it.toString())}
+                Toggle("在其他顯示方式也顯示羅馬拼音","歌詞來源有提供時（例如網易雲音樂、うたてん的日文歌），在「原文」「原文＋翻譯」「翻譯」的每行上方顯示；「原文＋羅馬拼音」總是顯示",s.bool("showRomaji")) {setting("showRomaji",it.toString())}
                 Toggle("自動捲動歌詞","手動捲動後可按返回目前歌詞",s.bool("autoLyrics",true)) {setting("autoLyrics",it.toString())}
                 EditSetting("全域時間偏移（毫秒）",s.text("lyricOffset","0"),"正數延後高亮；負數提早",true) {if(it.toLongOrNull()!=null) setting("lyricOffset",it)}
                 state.player.entry?.track?.let { t ->
