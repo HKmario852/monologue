@@ -40,7 +40,7 @@ fun withoutBracketNotes(text: String): String {
     return current.trim()
 }
 private fun nameKey(name: String) = normalize(name).replace(Regex("""[\s\p{Punct}・。、]"""), "")
-private fun titleKey(title: String) = withoutBracketNotes(normalize(title)).replace(Regex("""[\s\p{Punct}。、！？「」♪☆★]"""), "")
+private fun titleKey(title: String) = withoutBracketNotes(normalize(title)).replace(Regex("""[\s\p{Punct}。、！？「」♪☆★♡♥❤]"""), "")
 
 /** Same name, or close enough (≥85% similar) for names long enough that a near miss is a spelling variant. */
 fun sameName(a: String, b: String): Boolean {

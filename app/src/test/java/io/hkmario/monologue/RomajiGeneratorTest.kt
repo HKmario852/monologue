@@ -29,6 +29,9 @@ class RomajiGeneratorTest {
     @Test fun commonReadingsAreFixed() = runBlocking {
         assertEquals("hitori de aruita\nfutari nara", RomajiGenerator().generate("一人で歩いた\n二人なら"))
         assertEquals("te wo nobaseba", RomajiGenerator().generate("手を伸ばせば"))
+        // Chinese forms typed into Japanese lyrics still read: 奧 → 奥 (oku), 墮 → 堕 (ochi).
+        assertEquals("yami no oku", RomajiGenerator().generate("闇の奧"))
+        assertEquals("ochite mo", RomajiGenerator().generate("墮ちても"))
     }
 
     @Test fun latinWordsAndPunctuationStay() = runBlocking {
