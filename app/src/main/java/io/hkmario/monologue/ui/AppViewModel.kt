@@ -130,12 +130,21 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             is UiEvent.QueuePlay -> graph.playback.playEntry(event.id)
             is UiEvent.QueueMove -> graph.playback.move(event.id,event.index)
             is UiEvent.QueueRemove -> graph.playback.remove(event.id)?.let { (entry,index) -> launch { effectsChannel.send(UiEffect.UndoQueue(entry,index)) } }
-            UiEvent.QueueClear -> graph.playback.clearUpcoming()
-            is UiEvent.PlaylistCreate -> if(event.name.isNotBlank()) launch { dao.putPlaylist(PlaylistRow(UUID.randomUUID().toString(),event.name.trim())) }
+            UiEvent.QueueClear -> graph.playback.clearUpcoming().takeIf { it.isNotEmpty() }?.let { removed -> launch { effectsChannel.send(UiEffect.Undo("已清除 ${removed.size} 首待播",UiEvent.QueueRestore(removed))) } }
+            is UiEvent.QueueRestore -> graph.playback.restore(event.removed)
+            is UiEvent.PlaylistCreate -> if(event.name.isNotBlank()) launch {
+                val id=UUID.randomUUID().toString(); dao.putPlaylist(PlaylistRow(id,event.name.trim()))
+                event.track?.let { dao.putPlaylistEntries(listOf(PlaylistEntryRow(UUID.randomUUID().toString(),id,it.id,0))); effectsChannel.send(UiEffect.Message("已加入「${event.name.trim()}」")) }
+            }
             is UiEvent.PlaylistRename -> if(event.name.isNotBlank()) launch { dao.putPlaylist(PlaylistRow(event.id,event.name.trim())) }
             is UiEvent.PlaylistDelete -> launch { dao.deletePlaylist(event.id) }
             is UiEvent.PlaylistAdd -> launch { val rows=dao.playlistEntries(event.id); dao.putPlaylistEntries(listOf(PlaylistEntryRow(UUID.randomUUID().toString(),event.id,event.track.id,rows.size))) }
-            is UiEvent.PlaylistRemove -> launch { rewritePlaylist(event.id) { rows -> rows.filterIndexed { i,_ -> i!=event.position } } }
+            is UiEvent.PlaylistRemove -> launch {
+                val removed=dao.playlistEntries(event.id).getOrNull(event.position) ?: return@launch
+                rewritePlaylist(event.id) { rows -> rows.filterIndexed { i,_ -> i!=event.position } }
+                effectsChannel.send(UiEffect.Undo("已從播放清單移除",UiEvent.PlaylistRestore(event.id,event.position,removed.trackId)))
+            }
+            is UiEvent.PlaylistRestore -> launch { rewritePlaylist(event.id) { rows -> rows.toMutableList().apply { add(event.position.coerceIn(0,size),PlaylistEntryRow(UUID.randomUUID().toString(),event.id,event.trackId,event.position)) } } }
             is UiEvent.PlaylistMove -> launch { rewritePlaylist(event.id) { rows -> rows.toMutableList().apply { if(event.from in indices) add(event.to.coerceIn(0,lastIndex),removeAt(event.from)) } } }
             is UiEvent.Setting -> launch {
                 if(event.key=="timezone") ZoneId.of(event.value)
