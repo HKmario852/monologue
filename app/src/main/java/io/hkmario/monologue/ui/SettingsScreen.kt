@@ -130,7 +130,7 @@ val timeZones=listOf("Asia/Hong_Kong" to "香港","Asia/Taipei" to "台北","Asi
                     SettingAction("匯入本曲翻譯歌詞","以時間戳配對，不按列表順序") {importLyrics(true)}
                 }
                 Info("目前來源：${state.lyrics.source}")
-                Toggle("線上歌詞搜尋（LRCLIB）","本機歌詞優先，然後快取；只查詢目前歌曲",s.bool("onlineLyrics")) { enabled -> if(enabled) confirm="啟用 LRCLIB 查詢？會傳送目前歌曲的歌名和歌手到歌詞服務，不上傳音訊或完整媒體庫。歌詞版權屬原權利人。" to UiEvent.Setting("onlineLyrics","true") else setting("onlineLyrics","false") }
+                Toggle("線上歌詞搜尋（LRCLIB）","本機歌詞優先，然後快取；只查詢目前歌曲",s.bool("onlineLyrics")) { enabled -> if(enabled) confirm="啟用 LRCLIB 查詢？會傳送目前歌曲的歌名和歌手到歌詞服務，必要時向 MusicBrainz 查詢歌手的其他寫法，不上傳音訊或完整媒體庫。歌詞版權屬原權利人。" to UiEvent.Setting("onlineLyrics","true") else setting("onlineLyrics","false") }
                 EditSetting("歌詞服務網址",s.text("lyricsBase","https://lrclib.net"),"LRCLIB 或相容的 HTTPS 自行託管服務。") {if(it.startsWith("https://")) setting("lyricsBase",it)}
                 Info("線上服務未提供可靠翻譯時只顯示原文。翻譯可獨立匯入帶時間戳的 LRC。")
             }

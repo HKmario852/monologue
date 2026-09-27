@@ -120,7 +120,7 @@ import java.time.format.DateTimeFormatter
         }
     }
     if(askOnlineLyrics) AlertDialog(onDismissRequest={askOnlineLyrics=false},title={Text("搜尋線上歌詞？")},
-        text={Text("會把目前歌曲的歌名和歌手傳送到歌詞服務（LRCLIB），不會上傳音訊或整個媒體庫。之後可在「設定 › 歌詞」關閉。")},
+        text={Text("會把目前歌曲的歌名和歌手傳送到歌詞服務（LRCLIB）；歌手名稱寫法不同時，也會向 MusicBrainz 查詢歌手的其他寫法。不會上傳音訊或整個媒體庫。之後可在「設定 › 歌詞」關閉。")},
         confirmButton={TextButton(onClick={askOnlineLyrics=false;onEvent(UiEvent.Setting("onlineLyrics","true"))}) {Text("開始搜尋")}},
         dismissButton={TextButton(onClick={askOnlineLyrics=false}) {Text("取消")}})
 }
