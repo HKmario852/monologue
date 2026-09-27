@@ -37,12 +37,12 @@ class LyricsImprovementsTest {
 
     @Test fun providerListMigratesOldSettingsAndAddsNewSourcesOff() {
         val old = lyricsProviders(AppSettingsUiState(persistentMapOf("neteaseLyrics" to "true", "lyricsOrder" to "netease")))
-        assertEquals(listOf("netease", "lrclib", "jlyric", "utaten"), old.map { it.info.id })
-        assertEquals(listOf(true, true, false, false), old.map { it.enabled })
+        assertEquals(listOf("netease", "lrclib", "jlyric", "utaten", "bahamut"), old.map { it.info.id })
+        assertEquals(listOf(true, true, false, false, false), old.map { it.enabled })
         val fresh = lyricsProviders(AppSettingsUiState())
-        assertEquals(listOf(true, false, false, false), fresh.map { it.enabled })
-        assertEquals("lrclib:1,netease:0,jlyric:0,utaten:0", encodeLyricsProviders(fresh))
+        assertEquals(listOf(true, false, false, false, false), fresh.map { it.enabled })
+        assertEquals("lrclib:1,netease:0,jlyric:0,utaten:0,bahamut:0", encodeLyricsProviders(fresh))
         val stored = lyricsProviders(AppSettingsUiState(persistentMapOf("lyricsProviders" to "utaten:1,lrclib:1")))
-        assertEquals(listOf("utaten", "lrclib", "netease", "jlyric"), stored.map { it.info.id })
+        assertEquals(listOf("utaten", "lrclib", "netease", "jlyric", "bahamut"), stored.map { it.info.id })
     }
 }
