@@ -5,27 +5,32 @@ import io.hkmario.monologue.domain.*
 import kotlinx.coroutines.CancellationException
 
 /**
- * Tries the enabled lyric sources in the chosen order and returns the first match.
- * LRCLIB is always available; NetEase only after the user turns it on in 設定 › 歌詞.
+ * Tries the enabled lyric sources in the order set in 設定 › 歌詞 and returns the first match.
+ * LRCLIB is on by default; the unofficial sources only after the user turns them on.
  */
-class LyricsSources(private val lrclib: LyricsClient,private val netEase: NetEaseLyrics) {
+class LyricsSources(private val lrclib: LyricsClient,private val netEase: NetEaseLyrics,private val jLyric: JLyricProvider,private val utaTen: UtaTenProvider) {
+    fun enabledNames(settings: AppSettingsUiState)=lyricsProviders(settings).filter { it.enabled }.map { it.info.name }
+
     suspend fun find(track: Track,settings: AppSettingsUiState): LyricsRow? {
-        val order=if(!settings.bool("neteaseLyrics")) listOf("lrclib") else if(settings.text("lyricsOrder","netease")=="lrclib") listOf("lrclib","netease") else listOf("netease","lrclib")
-        val language=settings.text("translationLanguage","繁體中文")
+        val language=settings.text("translationLanguage","繁體中文"); val chinese=language=="繁體中文"
+        val artists=creditedArtists(track.artist)
         var failure: Exception?=null; var answered=false
-        for(source in order) {
+        for(provider in lyricsProviders(settings).filter { it.enabled }) {
             try {
-                val row=when(source) {
-                    "netease" -> netEase.find(track,creditedArtists(track.artist))?.let { found ->
-                        // NetEase translations are Chinese; shown as 繁體中文 after conversion, otherwise kept for reference.
-                        val chinese=language=="繁體中文"
-                        LyricsRow(track.id,found.original,found.translation?.let { if(chinese) toTraditional(it) else it },found.source,
-                            found.translation?.let { if(chinese) "網易雲音樂中文翻譯：繁體中文" else "網易雲音樂中文翻譯：简体中文" },found.romaji)
-                    }
-                    else -> lrclib.find(track,settings.text("lyricsBase","https://lrclib.net"))
+                val found: FoundLyrics?=when(provider.info.id) {
+                    "lrclib" -> lrclib.find(track,settings.text("lyricsBase","https://lrclib.net"))
+                    "netease" -> netEase.find(track,artists)
+                    "jlyric" -> jLyric.find(track,artists)
+                    "utaten" -> utaTen.find(track,artists)
+                    else -> null
                 }
                 answered=true
-                if(row!=null) return row
+                if(found!=null) {
+                    // Chinese translations (NetEase, or embedded in LRCLIB uploads) show as 繁體中文 after conversion.
+                    val translation=found.translation?.let { if(chinese) toTraditional(it) else it }
+                    val label=found.translation?.let { "${found.source.substringBefore(" · ")}中文翻譯：${if(chinese) "繁體中文" else "简体中文"}" }
+                    return LyricsRow(track.id,found.original,translation,found.source,label,found.romaji)
+                }
             } catch(e: CancellationException) { throw e } catch(e: Exception) { failure=e }
         }
         // Report a connection problem only when no source gave a real answer.

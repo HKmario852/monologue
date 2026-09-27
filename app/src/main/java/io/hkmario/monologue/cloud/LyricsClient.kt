@@ -18,10 +18,12 @@ import java.util.concurrent.TimeUnit
  * the artist's aliases are looked up on MusicBrainz and matching is retried with them.
  * Every request gives up after 8 seconds so a slow service never stalls the lyrics view.
  */
-class LyricsClient {
+class LyricsClient(context: android.content.Context) {
     private val client=OkHttpClient.Builder().callTimeout(8,TimeUnit.SECONDS).build()
     private val userAgent="Monologue/${BuildConfig.VERSION_NAME} ( https://github.com/HKmario852/monologue )"
-    private val aliases=java.util.concurrent.ConcurrentHashMap<String,List<String>>()
+    /** Aliases survive restarts (empty lists too), so each artist is asked on MusicBrainz at most once. */
+    private val aliasStore=context.getSharedPreferences("lyrics-aliases",android.content.Context.MODE_PRIVATE)
+    private val aliases=java.util.concurrent.ConcurrentHashMap<String,List<String>>(aliasStore.all.mapNotNull { (k,v) -> (v as? String)?.let { k to it.split('\u001f').filter { s -> s.isNotBlank() } } }.toMap())
     private val musicBrainzGate=Mutex(); private var musicBrainzLast=0L
 
     private fun get(url: HttpUrl): String = client.newCall(Request.Builder().url(url).header("User-Agent",userAgent).build()).execute().use { response ->
@@ -59,28 +61,44 @@ class LyricsClient {
             } finally { musicBrainzLast=System.currentTimeMillis() }
         }
         aliases[name]=found
+        aliasStore.edit().putString(name,found.joinToString("\u001f")).apply()
         return found
     }
 
-    suspend fun find(track: Track,base: String="https://lrclib.net"): LyricsRow?=withContext(Dispatchers.IO) {
+    suspend fun find(track: Track,base: String="https://lrclib.net"): FoundLyrics?=withContext(Dispatchers.IO) {
         val origin=base.toHttpUrl();require(origin.isHttps) {"歌詞服務必須使用 HTTPS"}
         val seconds=(track.durationMs/1000).toInt()
         val artists=creditedArtists(track.artist)
-        fun row(pick: LyricsPick,via: String="") = LyricsRow(track.id,pick.text,source="LRCLIB · ${pick.candidate.artist} · ${pick.candidate.track}$via"+
-            if(pick.offsetSec>3) " · 長度相差 ${pick.offsetSec} 秒，時間可能略有偏差" else "")
-
-        // 1. Title + main artist. 2. Title only (catalogues credit artists differently).
-        val first=artists.firstOrNull()?.let { search(origin,mapOf("track_name" to track.title,"artist_name" to it)) } ?: emptyList()
-        pickLyrics(track.title,artists,seconds,first)?.let { return@withContext row(it) }
-        ensureActive()
-        // A failed fallback after a real answer means "not found" rather than "service down".
-        val byTitle=try { search(origin,mapOf("track_name" to track.title)) } catch(e: java.io.IOException) { if(artists.isEmpty()) throw e else emptyList() }
-        val all=(first+byTitle).distinctBy { it.id }
-        pickLyrics(track.title,artists,seconds,all)?.let { return@withContext row(it) }
+        fun found(pick: LyricsPick,via: String=""): FoundLyrics {
+            val source="LRCLIB · ${pick.candidate.artist} · ${pick.candidate.track}$via"+if(pick.offsetSec>3) " · 長度相差 ${pick.offsetSec} 秒，時間可能略有偏差" else ""
+            // Uploads with a second line per timestamp: a Latin second line under Japanese is romaji, a Chinese one a translation.
+            val split=splitEmbeddedTranslation(pick.text) ?: return FoundLyrics(pick.text,null,null,source)
+            val second=Lrc.parse(split.second).map { it.text }
+            val first=Lrc.parse(split.first).map { it.text }
+            return when(lyricsLanguage(second)) {
+                com.google.mlkit.nl.translate.TranslateLanguage.CHINESE -> FoundLyrics(split.first,split.second,null,source)
+                com.google.mlkit.nl.translate.TranslateLanguage.ENGLISH -> if(lyricsLanguage(first)==com.google.mlkit.nl.translate.TranslateLanguage.JAPANESE) FoundLyrics(split.first,null,split.second,source) else FoundLyrics(pick.text,null,null,source)
+                else -> FoundLyrics(pick.text,null,null,source)
+            }
+        }
+        // Search with the title as tagged, then without bracketed notes such as (Single Ver.) or (feat. X).
+        val titles=listOfNotNull(track.title,searchTitleWithoutNotes(track.title))
+        val all=mutableListOf<LyricsCandidate>()
+        for(title in titles) {
+            ensureActive()
+            // 1. Title + main artist. 2. Title only (catalogues credit artists differently).
+            val first=artists.firstOrNull()?.let { search(origin,mapOf("track_name" to title,"artist_name" to it)) } ?: emptyList()
+            all+=first
+            pickLyrics(track.title,artists,seconds,all.distinctBy { it.id })?.let { return@withContext found(it) }
+            // A failed fallback after a real answer means "not found" rather than "service down".
+            all+=try { search(origin,mapOf("track_name" to title)) } catch(e: java.io.IOException) { if(artists.isEmpty()) throw e else emptyList() }
+            pickLyrics(track.title,artists,seconds,all.distinctBy { it.id })?.let { return@withContext found(it) }
+        }
         // 3. The title exists under another spelling of the artist: ask MusicBrainz for aliases, only when it could help.
-        if(artists.isEmpty() || all.none { sameTitle(it.track,track.title) }) return@withContext null
+        val candidates=all.distinctBy { it.id }
+        if(artists.isEmpty() || candidates.none { sameTitle(it.track,track.title) }) return@withContext null
         val expanded=artists+artists.take(3).flatMap { name -> try { aliasesOf(name) } catch(e: CancellationException) { throw e } catch(e: Exception) { emptyList() } }
-        pickLyrics(track.title,expanded,seconds,all)?.let { return@withContext row(it," · 以 MusicBrainz 別名配對") }
+        pickLyrics(track.title,expanded,seconds,candidates)?.let { return@withContext found(it," · 以 MusicBrainz 別名配對") }
         null
     }
 }

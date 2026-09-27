@@ -32,8 +32,15 @@ fun similarity(a: String, b: String): Double {
     return 1.0-prev[b.length].toDouble()/max(a.length,b.length)
 }
 
+private val innermostBracket=Regex("""\s*[(（\[【〈《][^(（\[【〈《)）\]】〉》]*[)）\]】〉》]\s*""")
+/** Removes bracketed notes from the innermost outwards, so nested ones such as "(劇場版 …[新編]… OP)" go completely. */
+fun withoutBracketNotes(text: String): String {
+    var current=text
+    repeat(5) { val next=current.replace(innermostBracket," "); if(next==current) return current.trim(); current=next }
+    return current.trim()
+}
 private fun nameKey(name: String) = normalize(name).replace(Regex("""[\s\p{Punct}・。、]"""), "")
-private fun titleKey(title: String) = normalize(title).replace(Regex("""\s*[(（\[【].*?[)）\]】]\s*"""), " ").replace(Regex("""[\s\p{Punct}。、！？「」♪☆★]"""), "")
+private fun titleKey(title: String) = withoutBracketNotes(normalize(title)).replace(Regex("""[\s\p{Punct}。、！？「」♪☆★]"""), "")
 
 /** Same name, or close enough (≥85% similar) for names long enough that a near miss is a spelling variant. */
 fun sameName(a: String, b: String): Boolean {
@@ -63,8 +70,50 @@ fun pickLyrics(title: String, artists: Collection<String>, durationSec: Int, can
             val text=c.synced?.takeIf { it.isNotBlank() } ?: c.plain?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
             LyricsPick(c,text,if(durationSec>0 && c.durationSec>0) abs(c.durationSec-durationSec).toInt() else 0)
         }
-        .sortedWith(compareBy<LyricsPick> { if(it.candidate.synced.isNullOrBlank()) 1 else 0 }.thenBy { it.offsetSec })
-        .firstOrNull()
+        .maxByOrNull { lyricsScore(it,title,ours,durationSec) }
+}
+
+/**
+ * Ranks acceptable results: title similarity counts double, then artist similarity, a bonus for a length within
+ * 2 s (5 s for half), and synced lyrics; a small penalty grows with the length difference so the closest version wins ties.
+ */
+fun lyricsScore(pick: LyricsPick, title: String, ours: List<String>, durationSec: Int): Double {
+    val c=pick.candidate
+    val titleScore=similarity(titleKey(c.track),titleKey(title))
+    val artistScore=if(ours.isEmpty()) 0.5 else creditedArtists(c.artist).ifEmpty { listOf(c.artist) }.maxOf { t -> ours.maxOf { o -> if(sameName(o,t)) 1.0 else similarity(nameKey(o),nameKey(t)) } }
+    val known=durationSec>0 && c.durationSec>0
+    val lengthBonus=if(!known) 0.0 else if(pick.offsetSec<=2) 1.0 else if(pick.offsetSec<=5) 0.5 else 0.0
+    val lengthPenalty=if(known) minOf(pick.offsetSec,120)/240.0 else 0.0
+    return 2*titleScore+artistScore+lengthBonus+(if(c.synced.isNullOrBlank()) 0.0 else 1.5)-lengthPenalty
+}
+
+/** Search text without bracketed notes: "夜に駆ける (Single Ver.)" → "夜に駆ける", "Song (feat. X)" → "Song". Null when nothing changes. */
+fun searchTitleWithoutNotes(title: String): String? {
+    val stripped=withoutBracketNotes(title)
+        .replace(Regex("""(?i)\s+(feat\.?|ft\.?)\s+.*$"""), "")
+        .replace(Regex("""\s+-\s+.*(ver\.?|version|mix|edit|size|remaster(ed)?)\s*$""",RegexOption.IGNORE_CASE), "")
+        .trim().replace(Regex("""\s+"""), " ")
+    return stripped.takeIf { it.isNotBlank() && it!=title.trim() }
+}
+
+/**
+ * Some LRCLIB uploads put a translation on a second line with the same timestamp. When most timestamps carry
+ * exactly two differing lines, the first becomes the original and the second the translation.
+ * Returns the cleaned original and the translation, or null when the lyrics are not laid out that way.
+ */
+fun splitEmbeddedTranslation(lrc: String): Pair<String,String>? {
+    val tag=Regex("""^((?:\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?])+)(.*)$""")
+    val timed=lrc.lineSequence().mapNotNull { line -> tag.find(line.trim())?.let { it.groupValues[1] to it.groupValues[2].trim() } }.filter { it.second.isNotEmpty() }.toList()
+    if(timed.size<8) return null
+    val groups=timed.groupBy({ it.first },{ it.second })
+    val pairs=groups.values.count { it.size==2 && normalize(it[0])!=normalize(it[1]) }
+    if(pairs<groups.size*0.6) return null
+    val original=StringBuilder(); val translation=StringBuilder()
+    for((time,texts) in groups) {
+        original.append(time).append(texts[0]).append('\n')
+        if(texts.size>=2) translation.append(time).append(texts[1]).append('\n')
+    }
+    return original.toString() to translation.toString()
 }
 
 /** "Minase, Inori" (a MusicBrainz sort name) → both "Inori Minase" and "Minase Inori". */

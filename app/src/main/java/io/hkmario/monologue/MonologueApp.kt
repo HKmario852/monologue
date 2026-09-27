@@ -27,8 +27,8 @@ class AppGraph(val context: Context) {
     val scanner=MediaScanner(context,db.dao(),settings)
     val playback=PlaybackRepository(this)
     val downloads=DownloadCoordinator(this)
-    val lyrics=LyricsClient()
-    val lyricsSources=LyricsSources(lyrics,NetEaseLyrics())
+    val lyrics=LyricsClient(context)
+    val lyricsSources=LyricsSources(lyrics,NetEaseLyrics(),JLyricProvider(),UtaTenProvider())
     val translator=LyricsTranslator()
     val indexObserver=IndexObserver(this)
 }

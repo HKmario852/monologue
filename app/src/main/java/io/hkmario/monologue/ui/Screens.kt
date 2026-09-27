@@ -111,7 +111,7 @@ import java.time.format.DateTimeFormatter
                     if(lyrics && state.lyrics.lines.isEmpty()) Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
                         if(!state.settings.bool("onlineLyrics")) Button(onClick={askOnlineLyrics=true},modifier=Modifier.fillMaxWidth()) {Text("搜尋線上歌詞")}
                         else if(state.lyrics.phase!=Phase.Loading) Button(onClick={onEvent(UiEvent.RetryLyrics)},modifier=Modifier.fillMaxWidth()) {Text("再搜尋一次")}
-                        if(state.settings.bool("onlineLyrics") && !state.settings.bool("neteaseLyrics") && state.lyrics.phase!=Phase.Loading) OutlinedButton(onClick={askNetEase=true},modifier=Modifier.fillMaxWidth()) {Text("也搜尋網易雲音樂（非官方）")}
+                        if(state.settings.bool("onlineLyrics") && lyricsProviders(state.settings).none { it.info.id=="netease" && it.enabled } && state.lyrics.phase!=Phase.Loading) OutlinedButton(onClick={askNetEase=true},modifier=Modifier.fillMaxWidth()) {Text("也搜尋網易雲音樂（非官方）")}
                         OutlinedButton(onClick={importLyrics(false)},modifier=Modifier.fillMaxWidth()) {Text("匯入 LRC 歌詞檔")}
                     }
                 }
@@ -122,7 +122,7 @@ import java.time.format.DateTimeFormatter
     }
     if(askNetEase) AlertDialog(onDismissRequest={askNetEase=false},title={Text("開啟網易雲音樂歌詞？")},
         text={Text("網易雲音樂沒有公開的官方 API，這裡用的是它網頁播放器使用的非官方介面：可能隨時失效，也不符合網易雲的服務條款。開啟後會把目前歌曲的歌名和歌手傳送到網易雲音樂（中國大陸的服務）。它通常有中文翻譯和羅馬拼音。要開啟嗎？")},
-        confirmButton={TextButton(onClick={askNetEase=false;onEvent(UiEvent.Setting("neteaseLyrics","true"))}) {Text("開啟並搜尋")}},
+        confirmButton={TextButton(onClick={askNetEase=false;onEvent(UiEvent.SetLyricsProvider("netease",true))}) {Text("開啟並搜尋")}},
         dismissButton={TextButton(onClick={askNetEase=false}) {Text("取消")}})
     if(askOnlineLyrics) AlertDialog(onDismissRequest={askOnlineLyrics=false},title={Text("搜尋線上歌詞？")},
         text={Text("會把目前歌曲的歌名和歌手傳送到歌詞服務（LRCLIB）；歌手名稱寫法不同時，也會向 MusicBrainz 查詢歌手的其他寫法。不會上傳音訊或整個媒體庫。之後可在「設定 › 歌詞」關閉。")},
