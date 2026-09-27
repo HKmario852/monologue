@@ -115,6 +115,7 @@ sealed interface UiEvent {
     data object RefreshStorage : UiEvent
     data class DeleteOffline(val trackId: String) : UiEvent
     data object ClearLyricsCache : UiEvent
+    data object RetryLyrics : UiEvent
     data object ClearArtworkCache : UiEvent
     data object ClearIndex : UiEvent
     data class ClearStatistics(val start: Long, val end: Long) : UiEvent

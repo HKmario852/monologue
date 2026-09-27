@@ -192,6 +192,7 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
                 dao.offline(event.trackId,null,null); storage()
             }
             UiEvent.ClearArtworkCache -> launch {withContext(Dispatchers.IO) {coil.Coil.imageLoader(getApplication()).diskCache?.clear();coil.Coil.imageLoader(getApplication()).memoryCache?.clear()};storage()}
+            UiEvent.RetryLyrics -> lastTrack?.let(::loadLyrics)
             UiEvent.ClearLyricsCache -> launch { dao.clearLyrics(); lastTrack?.let(::loadLyrics); storage() }
             UiEvent.ClearIndex -> launch { dao.clearLocalIndex() }
             is UiEvent.ClearStatistics -> launch { clearStatistics(event.start,event.end) }
@@ -445,7 +446,9 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
                 mutable.update { it.copy(lyrics=LyricsUiState(phase=Phase.Loading,trackId=trackId,source="正在查詢 LRCLIB")) }
                 try {
                     allTracks.find {it.id==trackId}?.let {track -> graph.lyrics.find(track,state.value.settings.text("lyricsBase","https://lrclib.net"))?.let {found -> dao.lyrics(found);row=found} }
-                } catch(e: CancellationException) {throw e} catch(e: Exception) { mutable.update {it.copy(lyrics=LyricsUiState(Phase.Error,trackId,source="LRCLIB",error=e.message))};return@launch }
+                } catch(e: CancellationException) {throw e} catch(e: Exception) { mutable.update {it.copy(lyrics=LyricsUiState(Phase.Error,trackId,source="LRCLIB",error="歌詞服務暫時無法連線（${e.message ?: "網絡錯誤"}）"))};return@launch }
+                // Say so plainly instead of the generic empty text, so it is clear the search ran.
+                if(row==null) { mutable.update {it.copy(lyrics=LyricsUiState(Phase.Empty,trackId,source="LRCLIB",error="LRCLIB 找不到這首歌的歌詞"))};return@launch }
             }
             var lines=row?.let { Lrc.parse(it.original) } ?: persistentListOf()
             if(row?.translation!=null && state.value.settings.bool("translations") && row?.translationSource?.endsWith(state.value.settings.text("translationLanguage","繁體中文"))==true) lines=Lrc.align(lines,Lrc.parse(row!!.translation!!))
