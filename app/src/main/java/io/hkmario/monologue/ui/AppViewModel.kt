@@ -463,6 +463,8 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
     private val lyricsRechecked=mutableSetOf<String>()
     /** Tracks whose machine translation already failed in this session, so it is not retried on every settings change. */
     private val translationFailed=mutableSetOf<String>()
+    /** Romaji made on the device this session, by track and lyrics text. */
+    private val romajiCache=mutableMapOf<String,String>()
     private fun loadLyrics(trackId: String) {
         lyricsJob?.cancel(); lyricsJob=viewModelScope.launch {
             val settings=state.value.settings
@@ -490,16 +492,29 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
                 if(row==null) { mutable.update {it.copy(lyrics=LyricsUiState(Phase.Empty,trackId,source=sourceName,error="$sourceName${if(names.size>1) " 都" else " "}找不到這首歌的歌詞"))};return@launch }
             }
             val language=settings.text("translationLanguage","繁體中文")
+            var generatedRomaji: String?=null
             fun build(r: LyricsRow?): PersistentList<LyricLine> {
                 var lines=r?.let { Lrc.parse(it.original) } ?: persistentListOf()
                 if(r?.translation!=null && settings.bool("translations") && r.translationSource?.endsWith(language)==true) lines=Lrc.align(lines,Lrc.parse(r.translation))
-                if(r?.romaji!=null) lines=Lrc.alignRomaji(lines,Lrc.parse(r.romaji))
+                (r?.romaji ?: generatedRomaji)?.let { lines=Lrc.alignRomaji(lines,Lrc.parse(it)) }
                 return lines
             }
             val lines=build(row)
             mutable.update { it.copy(lyrics=LyricsUiState(if(lines.isEmpty()) Phase.Empty else Phase.Ready,trackId,lines,row?.source ?: "未有歌詞；可匯入本機 LRC",row?.translationSource,romajiAvailable=row?.romaji!=null)) }
-            // No translation in the chosen language: translate on the device when the user asked for translations.
             val current=row ?: return@launch
+            // No romaji from the source: make it on the device for Japanese lyrics when romaji is to be shown.
+            // Kept in memory only, so it never passes for the source's own romaji.
+            val wantsRomaji=settings.text("lyricsDisplay","both")=="romaji" || settings.bool("showRomaji")
+            if(current.romaji==null && lines.isNotEmpty() && wantsRomaji && settings.bool("generateRomaji",true) && hasJapaneseScript(current.original)) {
+                val key="$trackId:${current.original.hashCode()}"
+                if(romajiCache[key]==null) mutable.update { s -> if(s.lyrics.trackId==trackId) s.copy(lyrics=s.lyrics.copy(romajiLoading=true)) else s }
+                generatedRomaji=romajiCache[key] ?: try {
+                    graph.romaji.generate(current.original).also { if(romajiCache.size>=200) romajiCache.clear(); romajiCache[key]=it }
+                } catch(e: CancellationException) { throw e } catch(e: Throwable) { null }
+                val withRomaji=build(current)
+                mutable.update { s -> if(s.lyrics.trackId==trackId) s.copy(lyrics=s.lyrics.copy(lines=withRomaji,romajiAvailable=generatedRomaji!=null,romajiGenerated=generatedRomaji!=null,romajiLoading=false)) else s }
+            }
+            // No translation in the chosen language: translate on the device when the user asked for translations.
             if(lines.isNotEmpty() && settings.bool("translations") && settings.bool("autoTranslate",true) && current.translationSource?.endsWith(language)!=true && trackId !in translationFailed) {
                 mutable.update { it.copy(lyrics=it.lyrics.copy(translationSource="正在翻譯成$language…（第一次使用需下載約 30 MB 的翻譯模型）")) }
                 try {

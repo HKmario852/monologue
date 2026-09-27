@@ -32,7 +32,11 @@ android {
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17; isCoreLibraryDesugaringEnabled = true }
     kotlinOptions { jvmTarget = "17" }
-    packaging { resources.excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1") }
+    packaging {
+        resources.excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1")
+        // kuromoji-core and kuromoji-ipadic ship the same license files; keep one copy.
+        resources.pickFirsts += setOf("META-INF/LICENSE.md", "META-INF/NOTICE.md", "META-INF/CONTRIBUTORS.md")
+    }
     testOptions { unitTests.isReturnDefaultValues = true }
 }
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
@@ -62,6 +66,8 @@ dependencies {
     implementation("com.google.mlkit:translate:17.0.3")
     // Reads the optional J-Lyric / うたてん lyric pages (off by default).
     implementation("org.jsoup:jsoup:1.18.3")
+    // Japanese word readings for romaji generated on the device (Apache 2.0, bundles the IPADIC dictionary).
+    implementation("com.atilika.kuromoji:kuromoji-ipadic:0.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
     implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.8")
