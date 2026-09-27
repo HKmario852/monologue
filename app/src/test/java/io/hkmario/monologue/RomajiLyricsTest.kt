@@ -32,4 +32,15 @@ class RomajiLyricsTest {
     @Test fun shortTextIsNeverTakenForRomaji() {
         assertFalse(looksLikeRomaji("Sakura sakura yayoi no sora wa"))
     }
+
+    @Test fun syncedJapaneseOutranksPlainAndRomaji() {
+        val plain = japanese.replace(Regex("""\[[^\]]*]"""), "")
+        assertTrue(isSyncedLyrics(japanese))
+        assertFalse(isSyncedLyrics(plain))
+        assertTrue(lyricsRank(japanese, true) > lyricsRank(plain, true))
+        assertTrue(lyricsRank(plain, true) > lyricsRank(romaji, true))
+        assertEquals(bestLyricsRank(true), lyricsRank(japanese, true))
+        // Without the preference, plain Japanese is already good enough to stop searching.
+        assertEquals(bestLyricsRank(false), lyricsRank(plain, false))
+    }
 }

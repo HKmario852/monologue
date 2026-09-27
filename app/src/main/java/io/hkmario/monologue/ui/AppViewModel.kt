@@ -459,8 +459,8 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             try { graph.lyricsSources.find(next,state.value.settings)?.let { dao.lyrics(it) } } catch(e: CancellationException) { throw e } catch(e: Exception) { /* The song's own lookup will try again and report. */ }
         }
     }
-    /** Tracks whose stored romaji-only lyrics were already re-checked for a Japanese version in this session. */
-    private val romajiRechecked=mutableSetOf<String>()
+    /** Tracks whose stored romaji-only or plain-text lyrics were already re-checked for a better version in this session. */
+    private val lyricsRechecked=mutableSetOf<String>()
     /** Tracks whose machine translation already failed in this session, so it is not retried on every settings change. */
     private val translationFailed=mutableSetOf<String>()
     private fun loadLyrics(trackId: String) {
@@ -468,13 +468,15 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             val settings=state.value.settings
             var row=dao.lyrics(trackId)
             val names=graph.lyricsSources.enabledNames(settings); val sourceName=names.joinToString("、").ifBlank {"LRCLIB"}
-            // Lyrics saved earlier as romaji only: look once per session for the Japanese original; keep the old ones if none turns up.
+            // Lyrics saved earlier as romaji only, or as plain text when synced lyrics are preferred: look once per session
+            // for something better (the Japanese original, or a version that scrolls); keep the stored ones if nothing better turns up.
             val stored=row
-            if(stored!=null && settings.bool("onlineLyrics") && trackId !in romajiRechecked && looksLikeRomaji(stored.original) && !stored.source.startsWith("使用者") && !stored.source.startsWith("本機")) {
-                romajiRechecked+=trackId
+            val preferSynced=settings.bool("preferSyncedLyrics",true)
+            if(stored!=null && settings.bool("onlineLyrics") && trackId !in lyricsRechecked && lyricsRank(stored.original,preferSynced)<bestLyricsRank(preferSynced) && !stored.source.startsWith("使用者") && !stored.source.startsWith("本機")) {
+                lyricsRechecked+=trackId
                 try {
-                    allTracks.find {it.id==trackId}?.let { track -> graph.lyricsSources.find(track,settings) }?.takeIf { !looksLikeRomaji(it.original) }?.let { better ->
-                        val merged=better.copy(romaji=better.romaji ?: stored.original)
+                    allTracks.find {it.id==trackId}?.let { track -> graph.lyricsSources.find(track,settings) }?.takeIf { lyricsRank(it.original,preferSynced)>lyricsRank(stored.original,preferSynced) }?.let { better ->
+                        val merged=if(better.romaji==null && looksLikeRomaji(stored.original)) better.copy(romaji=stored.original) else better
                         dao.lyrics(merged); row=merged
                     }
                 } catch(e: CancellationException) { throw e } catch(e: Exception) { /* Keep showing the stored lyrics. */ }

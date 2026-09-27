@@ -137,6 +137,7 @@ val timeZones=listOf("Asia/Hong_Kong" to "香港","Asia/Taipei" to "台北","Asi
                 EditSetting("歌詞服務網址",s.text("lyricsBase","https://lrclib.net"),"LRCLIB 或相容的 HTTPS 自行託管服務。") {if(it.startsWith("https://")) setting("lyricsBase",it)}
                 SectionTitle("歌詞來源")
                 Info("依序搜尋已開啟的來源；用箭頭調整順序。非官方來源預設關閉。")
+                Toggle("優先同步歌詞","找到純文字歌詞時，繼續向後面的來源查詢會跟著播放捲動的同步版本；都沒有才用純文字",s.bool("preferSyncedLyrics",true)) {setting("preferSyncedLyrics",it.toString())}
                 val providers=lyricsProviders(s)
                 providers.forEachIndexed { index,p ->
                     Row(Modifier.fillMaxWidth().padding(vertical=4.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -147,7 +148,7 @@ val timeZones=listOf("Asia/Hong_Kong" to "香港","Asia/Taipei" to "台北","Asi
                     }
                     HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
                 }
-                Info("已儲存的歌詞不會自動更換來源（只有羅馬拼音歌詞會自動再找一次日文原文）；在歌詞畫面按「重新搜尋」即可改用目前的來源設定。翻譯也可獨立匯入帶時間戳的 LRC。")
+                Info("已儲存的歌詞不會自動更換來源（只有羅馬拼音或純文字歌詞會自動再找一次日文原文或同步版本）；在歌詞畫面按「重新搜尋」即可改用目前的來源設定。翻譯也可獨立匯入帶時間戳的 LRC。")
             }
             6 -> {
                 Toggle("記錄本機聆聽資料","預設開啟；與 ListenBrainz 同步分開",s.bool("statistics",true)) {setting("statistics",it.toString())}
