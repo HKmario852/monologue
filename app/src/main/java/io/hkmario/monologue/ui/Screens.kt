@@ -159,7 +159,18 @@ import java.time.format.DateTimeFormatter
                 } },label={Text(label)})
             }
         }
-        if(mode=="romaji" && state.lines.isNotEmpty() && !state.romajiAvailable) Text("這首歌的歌詞來源沒有提供羅馬拼音；網易雲音樂和うたてん的日文歌通常有，可在 設定 › 歌詞 開啟後按「重新搜尋」",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.tertiary,modifier=Modifier.padding(top=6.dp))
+        if(state.lines.isNotEmpty()) {
+            val romajiNote=when {
+                mode=="romaji" && state.romajiLoading -> "正在產生羅馬拼音…"
+                mode=="romaji" && !state.romajiAvailable ->
+                    if(!hasJapaneseScript(state.lines.joinToString("\n") { it.text })) "羅馬拼音只適用於日文歌詞"
+                    else if(!settings.bool("generateRomaji",true)) "這首歌的歌詞來源沒有提供羅馬拼音；可在 設定 › 歌詞 開啟「自動產生羅馬拼音」"
+                    else "未能產生羅馬拼音"
+                state.romajiGenerated && (mode=="romaji" || romajiAbove) -> "羅馬拼音由裝置自動產生，漢字讀音可能有誤"
+                else -> null
+            }
+            romajiNote?.let { Text(it,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.tertiary,modifier=Modifier.padding(top=6.dp)) }
+        }
         state.translationSource?.takeIf { translations && (it.startsWith("正在翻譯") || it.startsWith("翻譯未完成")) }?.let { Text(it,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.tertiary,modifier=Modifier.padding(top=6.dp)) }
         if(state.lines.isEmpty() && state.phase==Phase.Loading) EmptyPanel("正在搜尋歌詞…",state.source.removePrefix("正在查詢"))
         else if(state.lines.isEmpty()) EmptyPanel("未有歌詞",state.error ?: "這首歌沒有本機或已儲存的歌詞")
