@@ -9,7 +9,7 @@ import kotlinx.coroutines.CancellationException
  * result, or (with 優先同步歌詞) a plain-text one, only wins when no later source has something better.
  * LRCLIB is on by default; the unofficial sources only after the user turns them on.
  */
-class LyricsSources(private val lrclib: LyricsClient,private val netEase: NetEaseLyrics,private val jLyric: JLyricProvider,private val utaTen: UtaTenProvider) {
+class LyricsSources(private val lrclib: LyricsClient,private val netEase: NetEaseLyrics,private val jLyric: JLyricProvider,private val utaTen: UtaTenProvider,private val bahamut: BahamutLyrics) {
     fun enabledNames(settings: AppSettingsUiState)=lyricsProviders(settings).filter { it.enabled }.map { it.info.name }
 
     suspend fun find(track: Track,settings: AppSettingsUiState): LyricsRow? {
@@ -35,6 +35,7 @@ class LyricsSources(private val lrclib: LyricsClient,private val netEase: NetEas
                     "netease" -> netEase.find(track,artists)
                     "jlyric" -> jLyric.find(track,artists)
                     "utaten" -> utaTen.find(track,artists)
+                    "bahamut" -> bahamut.find(track,artists)
                     else -> null
                 }
                 answered=true
