@@ -139,7 +139,7 @@ import java.time.format.DateTimeFormatter
     LaunchedEffect(list) { snapshotFlow { list.isScrollInProgress }.collect { if(it && !autoScrolling) manual=true } }
     LaunchedEffect(active,manual,settings.bool("autoLyrics",true)) { if(active>=0 && !manual && settings.bool("autoLyrics",true)) { autoScrolling=true; try { list.animateScrollToItem(active) } finally {autoScrolling=false} } }
     Column(Modifier.fillMaxWidth().height(338.dp).padding(horizontal=24.dp)) {
-        if(state.lines.isEmpty()) EmptyPanel("未有歌詞",state.error ?: "這首歌沒有本機或已儲存的歌詞")
+        if(state.lines.isEmpty()) EmptyPanel("未有歌詞",state.error ?: if(state.phase==Phase.Loading) state.source else "這首歌沒有本機或已儲存的歌詞")
         else LazyColumn(state=list,modifier=Modifier.weight(1f),contentPadding=PaddingValues(vertical=24.dp),verticalArrangement=Arrangement.spacedBy(18.dp)) {
             itemsIndexed(state.lines,key={_,line->line.id}) { index,line ->
                 Column(Modifier.fillMaxWidth().clickable(enabled=line.timeMs!=null) { onEvent(UiEvent.PreviewSeek(line.timeMs));onEvent(UiEvent.CommitSeek) }.padding(vertical=6.dp)) {

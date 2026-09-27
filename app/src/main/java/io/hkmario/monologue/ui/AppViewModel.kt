@@ -451,7 +451,7 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             }
             var lines=row?.let { Lrc.parse(it.original) } ?: persistentListOf()
             if(row?.translation!=null && state.value.settings.bool("translations") && row?.translationSource?.endsWith(state.value.settings.text("translationLanguage","繁體中文"))==true) lines=Lrc.align(lines,Lrc.parse(row!!.translation!!))
-            mutable.update { it.copy(lyrics=LyricsUiState(if(lines.isEmpty()) Phase.Empty else Phase.Ready,trackId,lines,row?.source ?: if(searchedOnline) "線上找不到這首歌的歌詞（已按歌名及歌手搜尋）" else "未有歌詞；可匯入本機 LRC",row?.translationSource)) }
+            mutable.update { it.copy(lyrics=LyricsUiState(if(lines.isEmpty()) Phase.Empty else Phase.Ready,trackId,lines,row?.source ?: "未有歌詞；可匯入本機 LRC",row?.translationSource,error=if(lines.isEmpty() && searchedOnline) "線上找不到這首歌的歌詞（已按歌名及歌手搜尋）" else null)) }
         }
     }
     private fun importLyrics(uri: String, translation: Boolean) {
