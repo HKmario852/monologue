@@ -50,10 +50,10 @@ import kotlin.math.abs
     Row(Modifier.fillMaxWidth().padding(top=20.dp,bottom=8.dp),verticalAlignment=Alignment.CenterVertically) { Text(title,Modifier.weight(1f),style=MaterialTheme.typography.titleLarge); if(action!=null) TextButton(onClick=onAction) { Text(action) } }
 }
 @Composable fun TrackRow(track: Track, subtitle: String="${track.artist} · ${formatTime(track.durationMs)}", onPlay: ()->Unit, onMore: ()->Unit, leading: String?=null) {
-    Row(Modifier.fillMaxWidth().heightIn(min=76.dp).clickable(enabled=track.uri.isNotBlank(),onClick=onPlay).padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+    Row(Modifier.fillMaxWidth().heightIn(min=88.dp).clickable(enabled=track.uri.isNotBlank(),onClick=onPlay).padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(16.dp)) {
         if(leading!=null) Text(leading,Modifier.widthIn(min=24.dp),style=MaterialTheme.typography.titleLarge,color=MaterialTheme.colorScheme.primary)
-        Art(track)
-        Column(Modifier.weight(1f)) { Text(track.title,maxLines=1,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.titleMedium); Text(subtitle,maxLines=2,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant) }
+        Art(track,60.dp)
+        Column(Modifier.weight(1f)) { Text(track.title,maxLines=1,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.titleMedium.copy(fontSize=18.sp,fontWeight=androidx.compose.ui.text.font.FontWeight.SemiBold)); Text(subtitle,Modifier.padding(top=2.dp),maxLines=2,overflow=TextOverflow.Ellipsis,style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant) }
         ActionIcon(Icons.Outlined.MoreVert,"${track.title} 更多操作",action=onMore)
     }
     HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant.copy(alpha=0.65f))

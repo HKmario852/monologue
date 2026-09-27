@@ -1,4 +1,4 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 package io.hkmario.monologue.ui
 
 import android.net.Uri
@@ -158,8 +158,15 @@ import kotlinx.coroutines.launch
     var rename by remember {mutableStateOf(false)};var name by remember(title) {mutableStateOf(title)};var delete by remember {mutableStateOf(false)}
     LazyColumn(Modifier.fillMaxSize(),state=listState,contentPadding=PaddingValues(24.dp)) {
         item {
-            Text(title,style=MaterialTheme.typography.headlineMedium);Text("${tracks.size} 首歌曲",style=MaterialTheme.typography.bodyMedium)
-            Row {Button(onClick={onEvent(UiEvent.PlayList(tracks))},enabled=tracks.isNotEmpty()) {Text("播放全部")};if(playlist!=null) {TextButton(onClick={rename=true}) {Text("改名")};TextButton(onClick={delete=true}) {Text("刪除")}}}
+            // 播放全部 sits beside the title (as on 雲端); a long title pushes it onto the next line.
+            FlowRow(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text(title,Modifier.align(Alignment.CenterVertically).padding(end=12.dp),style=MaterialTheme.typography.headlineMedium,maxLines=2,overflow=androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                Button(onClick={onEvent(UiEvent.PlayList(tracks))},modifier=Modifier.align(Alignment.CenterVertically),enabled=tracks.isNotEmpty()) {Icon(Icons.Outlined.PlayArrow,null,Modifier.size(18.dp));Spacer(Modifier.width(6.dp));Text("播放全部")}
+            }
+            Row(Modifier.fillMaxWidth().heightIn(min=48.dp),verticalAlignment=Alignment.CenterVertically) {
+                Text("${tracks.size} 首歌曲",Modifier.weight(1f),style=MaterialTheme.typography.bodyMedium)
+                if(playlist!=null) {TextButton(onClick={rename=true}) {Text("改名")};TextButton(onClick={delete=true}) {Text("刪除")}}
+            }
             if(playlist!=null && tracks.isNotEmpty()) Text("向左滑動移除歌曲；長按右側把手拖曳排序",Modifier.padding(top=8.dp),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
         }
         itemsIndexed(tracks,key={i,t->playlist?.entryIds?.getOrNull(i) ?: "$i:${t.id}"}) {i,track->
