@@ -26,9 +26,15 @@ class NetEaseLyrics {
 
     suspend fun find(track: Track, artists: List<String>): FoundLyrics? = withContext(Dispatchers.IO) {
         val seconds=(track.durationMs/1000).toInt()
-        val query=listOfNotNull(track.title,artists.firstOrNull()).joinToString(" ")
-        val search=get("https://music.163.com/api/cloudsearch/pc".toHttpUrl().newBuilder().addQueryParameter("s",query).addQueryParameter("type","1").addQueryParameter("limit","20").build())
-        val songs=search.optJSONObject("result")?.optJSONArray("songs") ?: return@withContext null
+        // Search with the title as tagged, then without bracketed notes; keep every result for matching.
+        val songs=org.json.JSONArray()
+        for(title in listOfNotNull(track.title,searchTitleWithoutNotes(track.title))) {
+            val query=listOfNotNull(title,artists.firstOrNull()).joinToString(" ")
+            val found=get("https://music.163.com/api/cloudsearch/pc".toHttpUrl().newBuilder().addQueryParameter("s",query).addQueryParameter("type","1").addQueryParameter("limit","20").build()).optJSONObject("result")?.optJSONArray("songs")
+            if(found!=null) for(i in 0 until found.length()) songs.put(found.getJSONObject(i))
+            if(songs.length()>0 && (0 until songs.length()).any { sameTitle(songs.getJSONObject(it).optString("name"),track.title) }) break
+        }
+        if(songs.length()==0) return@withContext null
         // Treat each result as a candidate and reuse the LRCLIB matching rules: same title, a matching credited artist.
         val candidates=(0 until songs.length()).map { songs.getJSONObject(it) }.flatMap { s ->
             val names=s.optJSONArray("ar")?.let { a -> (0 until a.length()).map { a.getJSONObject(it).optString("name") } }.orEmpty()

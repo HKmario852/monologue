@@ -60,6 +60,8 @@ dependencies {
     implementation("com.google.android.gms:play-services-auth:21.3.0")
     // On-device lyric translation; language models download inside the app on first use.
     implementation("com.google.mlkit:translate:17.0.3")
+    // Reads the optional J-Lyric / うたてん lyric pages (off by default).
+    implementation("org.jsoup:jsoup:1.18.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
     implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.8")

@@ -85,7 +85,7 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
         }.collect { rows -> mutable.update { it.copy(library=it.library.copy(playlists=rows)) } } }
         viewModelScope.launch { graph.playback.state.collect { player ->
             mutable.update { it.copy(player=player) }
-            if(lastTrack!=player.entry?.track?.id) { lastTrack=player.entry?.track?.id; player.entry?.track?.id?.let(::loadLyrics) ?: mutable.update { it.copy(lyrics=LyricsUiState()) } }
+            if(lastTrack!=player.entry?.track?.id) { lastTrack=player.entry?.track?.id; player.entry?.track?.id?.let(::loadLyrics) ?: mutable.update { it.copy(lyrics=LyricsUiState()) }; prefetchNextLyrics() }
         } }
         viewModelScope.launch { graph.playback.queue.collect { q -> mutable.update { it.copy(queue=q) } } }
         viewModelScope.launch { graph.playback.equalizer.collect { eq -> mutable.update { it.copy(equalizer=eq) } } }
@@ -193,6 +193,11 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             }
             UiEvent.ClearArtworkCache -> launch {withContext(Dispatchers.IO) {coil.Coil.imageLoader(getApplication()).diskCache?.clear();coil.Coil.imageLoader(getApplication()).memoryCache?.clear()};storage()}
             UiEvent.RetryLyrics -> lastTrack?.let(::loadLyrics)
+            is UiEvent.SetLyricsProvider -> launch { graph.settings.set("lyricsProviders",encodeLyricsProviders(lyricsProviders(state.value.settings).map { if(it.info.id==event.id) it.copy(enabled=event.enabled) else it })) }
+            is UiEvent.MoveLyricsProvider -> launch {
+                val list=lyricsProviders(state.value.settings).toMutableList(); val from=list.indexOfFirst { it.info.id==event.id }; val to=(from+event.by).coerceIn(0,list.lastIndex)
+                if(from>=0 && to!=from) { list.add(to,list.removeAt(from)); graph.settings.set("lyricsProviders",encodeLyricsProviders(list)) }
+            }
             // Drop the stored online lyrics for this song and search the enabled sources again.
             UiEvent.RefetchLyrics -> lastTrack?.let { id -> launch { dao.deleteLyrics(id); translationFailed-=id; loadLyrics(id) } }
             UiEvent.ClearLyricsCache -> launch { dao.clearLyrics(); lastTrack?.let(::loadLyrics); storage() }
@@ -441,20 +446,33 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             catch(e: Exception) { mutable.update { it.copy(listenBrainz=it.listenBrainz.copy(connection=if(e is HttpFailure && e.code==401) Connection.InvalidToken else Connection.NetworkError,error=e.message)) } }
         }
     }
+    private var prefetchJob: Job?=null
+    /** Fetches the next queued song's lyrics a little after a song starts, so they show at once when it plays. */
+    private fun prefetchNextLyrics() {
+        prefetchJob?.cancel()
+        if(!state.value.settings.bool("onlineLyrics")) return
+        prefetchJob=viewModelScope.launch {
+            delay(8000)
+            val queue=state.value.queue
+            val next=queue.entries.getOrNull(queue.entries.indexOfFirst { it.id==queue.currentId }+1)?.track ?: return@launch
+            if(dao.lyrics(next.id)!=null) return@launch
+            try { graph.lyricsSources.find(next,state.value.settings)?.let { dao.lyrics(it) } } catch(e: CancellationException) { throw e } catch(e: Exception) { /* The song's own lookup will try again and report. */ }
+        }
+    }
     /** Tracks whose machine translation already failed in this session, so it is not retried on every settings change. */
     private val translationFailed=mutableSetOf<String>()
     private fun loadLyrics(trackId: String) {
         lyricsJob?.cancel(); lyricsJob=viewModelScope.launch {
             val settings=state.value.settings
             var row=dao.lyrics(trackId)
-            val sourceName=if(settings.bool("neteaseLyrics")) "歌詞來源" else "LRCLIB"
+            val names=graph.lyricsSources.enabledNames(settings); val sourceName=names.joinToString("、").ifBlank {"LRCLIB"}
             if(row==null && settings.bool("onlineLyrics")) {
                 mutable.update { it.copy(lyrics=LyricsUiState(phase=Phase.Loading,trackId=trackId,source="正在查詢$sourceName")) }
                 try {
                     allTracks.find {it.id==trackId}?.let {track -> graph.lyricsSources.find(track,settings)?.let {found -> dao.lyrics(found);row=found} }
                 } catch(e: CancellationException) {throw e} catch(e: Exception) { mutable.update {it.copy(lyrics=LyricsUiState(Phase.Error,trackId,source=sourceName,error="歌詞服務暫時無法連線（${e.message ?: "網絡錯誤"}）"))};return@launch }
                 // Say so plainly instead of the generic empty text, so it is clear the search ran.
-                if(row==null) { mutable.update {it.copy(lyrics=LyricsUiState(Phase.Empty,trackId,source=sourceName,error="${if(settings.bool("neteaseLyrics")) "LRCLIB 和網易雲音樂都" else "LRCLIB "}找不到這首歌的歌詞"))};return@launch }
+                if(row==null) { mutable.update {it.copy(lyrics=LyricsUiState(Phase.Empty,trackId,source=sourceName,error="$sourceName${if(names.size>1) " 都" else " "}找不到這首歌的歌詞"))};return@launch }
             }
             val language=settings.text("translationLanguage","繁體中文")
             fun build(r: LyricsRow?): PersistentList<LyricLine> {

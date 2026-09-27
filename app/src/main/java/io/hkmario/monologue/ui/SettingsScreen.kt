@@ -135,8 +135,18 @@ val timeZones=listOf("Asia/Hong_Kong" to "香港","Asia/Taipei" to "台北","Asi
                 Info("目前來源：${state.lyrics.source}")
                 Toggle("線上歌詞搜尋（LRCLIB）","本機歌詞優先，然後快取；只查詢目前歌曲",s.bool("onlineLyrics")) { enabled -> if(enabled) confirm="啟用 LRCLIB 查詢？會傳送目前歌曲的歌名和歌手到歌詞服務，必要時向 MusicBrainz 查詢歌手的其他寫法，不上傳音訊或完整媒體庫。歌詞版權屬原權利人。" to UiEvent.Setting("onlineLyrics","true") else setting("onlineLyrics","false") }
                 EditSetting("歌詞服務網址",s.text("lyricsBase","https://lrclib.net"),"LRCLIB 或相容的 HTTPS 自行託管服務。") {if(it.startsWith("https://")) setting("lyricsBase",it)}
-                Toggle("網易雲音樂歌詞（非官方）","通常有中文翻譯和羅馬拼音；非官方介面，可能隨時失效",s.bool("neteaseLyrics")) { enabled -> if(enabled) confirm="網易雲音樂沒有公開的官方 API，這裡用的是它網頁播放器使用的非官方介面：可能隨時失效，也不符合網易雲的服務條款。開啟後會把目前歌曲的歌名和歌手傳送到網易雲音樂（中國大陸的服務）。它通常有中文翻譯和羅馬拼音。要開啟嗎？" to UiEvent.Setting("neteaseLyrics","true") else setting("neteaseLyrics","false") }
-                if(s.bool("neteaseLyrics")) Choice("歌詞來源順序",s.text("lyricsOrder","netease"),listOf("netease" to "網易雲音樂優先，LRCLIB 備用","lrclib" to "LRCLIB 優先，網易雲音樂備用")) {setting("lyricsOrder",it)}
+                SectionTitle("歌詞來源")
+                Info("依序搜尋已開啟的來源；用箭頭調整順序。非官方來源預設關閉。")
+                val providers=lyricsProviders(s)
+                providers.forEachIndexed { index,p ->
+                    Row(Modifier.fillMaxWidth().padding(vertical=4.dp),verticalAlignment=Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) { Text("${index+1}. ${p.info.name}",style=MaterialTheme.typography.titleMedium); Text(p.info.detail,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant) }
+                        ActionIcon(Icons.Outlined.ArrowUpward,"${p.info.name} 往前",index>0) {onEvent(UiEvent.MoveLyricsProvider(p.info.id,-1))}
+                        ActionIcon(Icons.Outlined.ArrowDownward,"${p.info.name} 往後",index<providers.lastIndex) {onEvent(UiEvent.MoveLyricsProvider(p.info.id,1))}
+                        Switch(p.enabled,{ on -> if(on && p.info.warning!=null) confirm="${p.info.warning}要開啟嗎？" to UiEvent.SetLyricsProvider(p.info.id,true) else onEvent(UiEvent.SetLyricsProvider(p.info.id,on)) })
+                    }
+                    HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
+                }
                 Info("已儲存的歌詞不會自動更換來源；在歌詞畫面按「重新搜尋」即可改用目前的來源設定。翻譯也可獨立匯入帶時間戳的 LRC。")
             }
             6 -> {

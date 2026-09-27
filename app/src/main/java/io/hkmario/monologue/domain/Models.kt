@@ -117,6 +117,8 @@ sealed interface UiEvent {
     data object ClearLyricsCache : UiEvent
     data object RetryLyrics : UiEvent
     data object RefetchLyrics : UiEvent
+    data class SetLyricsProvider(val id: String, val enabled: Boolean) : UiEvent
+    data class MoveLyricsProvider(val id: String, val by: Int) : UiEvent
     data object ClearArtworkCache : UiEvent
     data object ClearIndex : UiEvent
     data class ClearStatistics(val start: Long, val end: Long) : UiEvent
