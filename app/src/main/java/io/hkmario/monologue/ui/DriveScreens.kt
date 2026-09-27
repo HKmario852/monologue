@@ -32,16 +32,6 @@ internal val Muted @Composable get()=MaterialTheme.colorScheme.onSurfaceVariant
 internal val Accent @Composable get()=MaterialTheme.colorScheme.primary
 internal val SerifItalic=androidx.compose.ui.text.TextStyle(fontFamily=androidx.compose.ui.text.font.FontFamily.Serif,fontStyle=FontStyle.Italic)
 
-/** Letter-spaced wordmark over a hairline, the compact header used by every Drive state. */
-@Composable fun Wordmark(actions: @Composable RowScope.()->Unit={}) {
-    Column(Modifier.fillMaxWidth().padding(top=8.dp)) {
-        Row(Modifier.fillMaxWidth().heightIn(min=48.dp),verticalAlignment=Alignment.CenterVertically) {
-            Text("Monologue",Modifier.weight(1f),style=MaterialTheme.typography.titleMedium.copy(fontFamily=androidx.compose.ui.text.font.FontFamily.Serif,fontWeight=FontWeight.Bold,letterSpacing=4.sp),color=Ink)
-            actions()
-        }
-        HorizontalDivider(color=Ink,thickness=1.dp)
-    }
-}
 @Composable fun Eyebrow(text: String)=Text(text,style=MaterialTheme.typography.labelMedium.copy(letterSpacing=1.5.sp),color=Muted)
 @Composable fun InkButton(text: String,icon: androidx.compose.ui.graphics.vector.ImageVector?,modifier: Modifier=Modifier,enabled: Boolean=true,compact: Boolean=false,click: ()->Unit) {
     Button(onClick=click,modifier=modifier.heightIn(min=if(compact) 48.dp else 52.dp),enabled=enabled,shape=RoundedCornerShape(2.dp),colors=ButtonDefaults.buttonColors(containerColor=Ink,contentColor=MaterialTheme.colorScheme.background),contentPadding=PaddingValues(horizontal=if(compact) 14.dp else 20.dp)) {
@@ -54,7 +44,7 @@ internal val SerifItalic=androidx.compose.ui.text.TextStyle(fontFamily=androidx.
     val known=state.connection==Connection.Connected || state.everywhere.isNotEmpty()
     Box(Modifier.fillMaxSize()) {
         when {
-            !known && state.phase==Phase.Loading -> Column(Modifier.fillMaxSize().padding(horizontal=24.dp)) { Wordmark(); Spacer(Modifier.height(48.dp)); LinearProgressIndicator(Modifier.fillMaxWidth(),color=Accent); Text("正在讀取雲端硬碟…",Modifier.padding(top=12.dp),style=MaterialTheme.typography.bodyMedium,color=Muted) }
+            !known && state.phase==Phase.Loading -> Column(Modifier.fillMaxSize().padding(horizontal=24.dp)) { Spacer(Modifier.height(56.dp)); LinearProgressIndicator(Modifier.fillMaxWidth(),color=Accent); Text("正在讀取雲端硬碟…",Modifier.padding(top=12.dp),style=MaterialTheme.typography.bodyMedium,color=Muted) }
             !known -> DriveIntro(state.error,onEvent,openLibrary)
             state.connection==Connection.Connected && !settings.bool("driveRootChosen") -> DriveRootPicker(state,onEvent)
             else -> DriveLibrary(state,settings,downloads,onEvent,onDownloads,onMore,openSettings)
@@ -66,8 +56,7 @@ internal val SerifItalic=androidx.compose.ui.text.TextStyle(fontFamily=androidx.
 /** i-a: what connecting means, before any Google screen appears. */
 @Composable private fun DriveIntro(error: String?,onEvent: (UiEvent)->Unit,openLibrary: ()->Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=24.dp)) {
-        Wordmark()
-        Spacer(Modifier.height(28.dp)); Eyebrow("雲端")
+        Spacer(Modifier.height(24.dp)); Eyebrow("雲端")
         Text("把你的唱片櫃\n接上雲端。",Modifier.padding(top=8.dp),style=MaterialTheme.typography.displaySmall.copy(fontWeight=FontWeight.Bold,lineHeight=44.sp),color=Ink)
         Text("登入 Google 帳戶後，Monologue 會讀取你雲端硬碟中的音樂資料夾，可即時串流，也可逐首下載離線收聽。",Modifier.padding(top=16.dp),style=MaterialTheme.typography.bodyLarge.copy(fontFamily=androidx.compose.ui.text.font.FontFamily.Serif),color=Muted)
         HorizontalDivider(Modifier.padding(top=24.dp),color=Ink)
@@ -124,8 +113,7 @@ internal val SerifItalic=androidx.compose.ui.text.TextStyle(fontFamily=androidx.
     val children=index.children(here)
     var selected by rememberSaveable(here) { mutableStateOf(children.maxByOrNull { index.stat(it.id).tracks }?.takeIf { index.stat(it.id).tracks>0 }?.id ?: here) }
     Column(Modifier.fillMaxSize().padding(horizontal=24.dp)) {
-        Wordmark()
-        Row(Modifier.fillMaxWidth().padding(vertical=16.dp),verticalAlignment=Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().padding(top=8.dp,bottom=16.dp),verticalAlignment=Alignment.CenterVertically) {
             Box(Modifier.size(44.dp).clip(CircleShape).background(Accent),contentAlignment=Alignment.Center) { Text((state.account ?: "M").take(1).uppercase(),style=SerifItalic.copy(fontSize=20.sp,fontWeight=FontWeight.Bold),color=MaterialTheme.colorScheme.onPrimary) }
             Text(state.account ?: "Google 帳戶",Modifier.weight(1f).padding(horizontal=12.dp),style=MaterialTheme.typography.bodyMedium,color=Ink,maxLines=1,overflow=TextOverflow.Ellipsis)
             Text("● 已連接",style=MaterialTheme.typography.labelSmall,color=Muted)

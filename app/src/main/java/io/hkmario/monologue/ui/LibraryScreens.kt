@@ -158,7 +158,11 @@ private fun displayPath(folder: String): String { val (label,prefix)=displayRoot
 @Composable private fun LibraryHeader(state: LocalLibraryUiState,local: Int,cloud: Int,request: SearchRequest,onEvent: (UiEvent)->Unit,openSettings: ()->Unit,openAppSettings: ()->Unit) {
     var menu by remember { mutableStateOf(false) }
     Column {
-        Wordmark {
+        Row(Modifier.fillMaxWidth().padding(top=12.dp),verticalAlignment=Alignment.CenterVertically) {
+            Row(Modifier.weight(1f),verticalAlignment=Alignment.Bottom) {
+                Text("媒體庫",style=MaterialTheme.typography.displaySmall.copy(fontWeight=FontWeight.Bold),color=Ink)
+                Text(when { local>0 && cloud>0 -> "本機 $local · 雲端 $cloud 首"; cloud>0 -> "雲端 · $cloud 首"; else -> "本機 · $local 首" },Modifier.padding(start=12.dp,bottom=6.dp),style=SerifItalic.copy(fontSize=15.sp),color=Muted,maxLines=1,overflow=TextOverflow.Ellipsis)
+            }
             ActionIcon(Icons.Outlined.Settings,"設定",action=openAppSettings)
             Box {
                 ActionIcon(Icons.Outlined.MoreVert,"媒體庫選項") { menu=true }
@@ -168,10 +172,6 @@ private fun displayPath(folder: String): String { val (label,prefix)=displayRoot
                     DropdownMenuItem(text={Text("媒體庫設定")},onClick={menu=false;openSettings()})
                 }
             }
-        }
-        Row(Modifier.padding(top=20.dp),verticalAlignment=Alignment.Bottom) {
-            Text("媒體庫",style=MaterialTheme.typography.displaySmall.copy(fontWeight=FontWeight.Bold),color=Ink)
-            Text(when { local>0 && cloud>0 -> "本機 $local · 雲端 $cloud 首"; cloud>0 -> "雲端 · $cloud 首"; else -> "本機 · $local 首" },Modifier.padding(start=12.dp,bottom=6.dp),style=SerifItalic.copy(fontSize=15.sp),color=Muted)
         }
         Row(Modifier.fillMaxWidth().padding(top=16.dp).heightIn(min=48.dp).drawBehind { drawLine(Color(0xFF2E2722).copy(alpha=.9f),Offset(0f,size.height),Offset(size.width,size.height),1.dp.toPx()) },verticalAlignment=Alignment.CenterVertically) {
             Icon(Icons.Outlined.Search,null,Modifier.size(20.dp),tint=Ink)
@@ -237,14 +237,14 @@ val albumSorts=linkedMapOf("name" to "依專輯名稱","artist" to "依歌手","
 }
 @Composable fun LibraryTrackRow(t: Track,playing: Boolean,play: ()->Unit,more: ()->Unit) {
     Column {
-        Row(Modifier.fillMaxWidth().heightIn(min=64.dp).clickable(enabled=t.uri.isNotBlank(),onClick=play).padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
-            Box(Modifier.size(48.dp)) {
+        Row(Modifier.fillMaxWidth().heightIn(min=88.dp).clickable(enabled=t.uri.isNotBlank(),onClick=play).padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically) {
+            Box(Modifier.size(60.dp)) {
                 GeneratedCover(t.album+t.artist,t.album,Modifier.fillMaxSize())
                 t.artwork?.let { AsyncImage(it,null,Modifier.fillMaxSize().clip(RoundedCornerShape(2.dp)),contentScale=ContentScale.Crop) }
             }
-            Column(Modifier.weight(1f).padding(start=14.dp)) {
-                Text(t.title,style=SerifTitle,color=if(playing) Accent else Ink,maxLines=1,overflow=TextOverflow.Ellipsis)
-                Text(listOfNotNull(t.artist,if(t.durationMs>0) formatTime(t.durationMs) else null,if(t.source==Source.Drive && t.offlinePath==null) "雲端" else null).joinToString(" · "),style=SerifItalic.copy(fontSize=12.sp),color=if(playing) Accent else Muted,maxLines=1,overflow=TextOverflow.Ellipsis)
+            Column(Modifier.weight(1f).padding(start=16.dp)) {
+                Text(t.title,style=SerifTitle.copy(fontSize=19.sp),color=if(playing) Accent else Ink,maxLines=1,overflow=TextOverflow.Ellipsis)
+                Text(listOfNotNull(t.artist,if(t.durationMs>0) formatTime(t.durationMs) else null,if(t.source==Source.Drive && t.offlinePath==null) "雲端" else null).joinToString(" · "),Modifier.padding(top=2.dp),style=SerifItalic.copy(fontSize=14.sp),color=if(playing) Accent else Muted,maxLines=1,overflow=TextOverflow.Ellipsis)
             }
             ActionIcon(Icons.Outlined.MoreVert,"${t.title} 更多操作",action=more)
         }
@@ -378,14 +378,14 @@ val albumSorts=linkedMapOf("name" to "依專輯名稱","artist" to "依歌手","
 /** A weekly recommendation: release cover, what will actually play, and a way to pick another version. */
 @Composable fun RecommendationRow(r: Recommendation,resolving: Boolean,busy: Boolean,play: ()->Unit,chooseVersion: ()->Unit) {
     Column {
-        Row(Modifier.fillMaxWidth().heightIn(min=72.dp).clickable(enabled=!busy,onClick=play).padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
-            Box(Modifier.size(56.dp)) {
+        Row(Modifier.fillMaxWidth().heightIn(min=88.dp).clickable(enabled=!busy,onClick=play).padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically) {
+            Box(Modifier.size(60.dp)) {
                 GeneratedCover(r.title+r.artist,r.title,Modifier.fillMaxSize())
                 (r.artwork ?: r.match?.artwork)?.let { AsyncImage(it,null,Modifier.fillMaxSize().clip(RoundedCornerShape(2.dp)),contentScale=ContentScale.Crop) }
             }
-            Column(Modifier.weight(1f).padding(horizontal=14.dp)) {
-                Text(r.title,style=SerifTitle,color=Ink,maxLines=1,overflow=TextOverflow.Ellipsis)
-                Text(r.artist,style=SerifItalic.copy(fontSize=12.sp),color=Muted,maxLines=1,overflow=TextOverflow.Ellipsis)
+            Column(Modifier.weight(1f).padding(horizontal=16.dp)) {
+                Text(r.title,style=SerifTitle.copy(fontSize=19.sp),color=Ink,maxLines=1,overflow=TextOverflow.Ellipsis)
+                Text(r.artist,style=SerifItalic.copy(fontSize=14.sp),color=Muted,maxLines=1,overflow=TextOverflow.Ellipsis)
                 Text(if(r.match!=null) "● 媒體庫已有此歌曲" else "○ 由 YouTube 播放・自動配對，版本可能不同",style=MaterialTheme.typography.labelSmall,color=if(r.match!=null) Ink else MaterialTheme.colorScheme.tertiary,maxLines=1,overflow=TextOverflow.Ellipsis)
             }
             if(r.match==null) Text("選版本",Modifier.clickable(onClick=chooseVersion).padding(8.dp),style=MaterialTheme.typography.labelMedium,color=Accent)

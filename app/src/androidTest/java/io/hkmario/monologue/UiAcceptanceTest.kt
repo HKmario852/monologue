@@ -35,7 +35,10 @@ class UiAcceptanceTest {
     }
     @Test fun libraryAndSettingsRender() {
         compose.setContent {MonologueTheme {AppHost(PreviewFixtures.app,remember {mutableStateOf(PlaybackProgress(positionMs=102000))},remember {VinylClock()},false,{},null,{}, {_,_->},{},{})}}
-        Assert.assertTrue(compose.onAllNodesWithText("Monologue").fetchSemanticsNodes().indices.any {compose.onAllNodesWithText("Monologue")[it].isDisplayed()})
+        // No app-name bar: the 媒體庫 title row carries the gear and ⋮ menu.
+        // (The closed drawer still composes its "Monologue" heading, so check visibility rather than existence.)
+        Assert.assertFalse(compose.onAllNodesWithText("Monologue").fetchSemanticsNodes().indices.any {compose.onAllNodesWithText("Monologue")[it].isDisplayed()})
+        compose.onNodeWithContentDescription("媒體庫選項").assertIsDisplayed()
         compose.onAllNodesWithText("Afterglow").onFirst().assertExists()
         screenshot("01-library-demo")
         compose.onNodeWithContentDescription("設定").performClick()
