@@ -15,7 +15,7 @@ class MonologueApp: Application(), coil.ImageLoaderFactory {
 }
 class AppGraph(val context: Context) {
     val scope=CoroutineScope(SupervisorJob()+Dispatchers.Main.immediate)
-    val db=Room.databaseBuilder(context,MusicDatabase::class.java,"monologue.db").build()
+    val db=Room.databaseBuilder(context,MusicDatabase::class.java,"monologue.db").addMigrations(MIGRATION_1_2).build()
     val settings=SettingsRepository(context)
     val secrets=SecretStore(context)
     val spotify=SpotifyClient(secrets)
@@ -28,5 +28,7 @@ class AppGraph(val context: Context) {
     val playback=PlaybackRepository(this)
     val downloads=DownloadCoordinator(this)
     val lyrics=LyricsClient()
+    val lyricsSources=LyricsSources(lyrics,NetEaseLyrics())
+    val translator=LyricsTranslator()
     val indexObserver=IndexObserver(this)
 }

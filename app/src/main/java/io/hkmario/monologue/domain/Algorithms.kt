@@ -51,8 +51,15 @@ object Lrc {
         }
         return lines.sortedWith(compareBy<LyricLine> { it.timeMs ?: Long.MAX_VALUE }).toPersistentList()
     }
+    /** Attaches romanised lines by the same one-to-one timestamp rule as translations. */
+    fun alignRomaji(original: List<LyricLine>, romaji: List<LyricLine>, tolerance: Long = 400): PersistentList<LyricLine> =
+        align(original.map { it.copy(translation = null) }, romaji, tolerance).mapIndexed { i, l -> original[i].copy(romaji = l.translation) }.toPersistentList()
     /** Only one-to-one timestamp matches inside a small tolerance. Never align by list index. */
     fun align(original: List<LyricLine>, translated: List<LyricLine>, tolerance: Long = 400): PersistentList<LyricLine> {
+        // Plain (untimed) lyrics have nothing else to go by: pair lines in order, but only when both sides are
+        // entirely untimed and have the same number of lines, as with a line-by-line machine translation.
+        if(original.isNotEmpty() && original.all { it.timeMs == null } && translated.all { it.timeMs == null } && original.size == translated.size)
+            return original.mapIndexed { i, line -> line.copy(translation = translated[i].text) }.toPersistentList()
         val used = mutableSetOf<String>()
         return original.map { line ->
             val candidates = if(line.timeMs == null) emptyList() else translated.filter { it.timeMs != null && it.id !in used && abs(it.timeMs - line.timeMs) <= tolerance }

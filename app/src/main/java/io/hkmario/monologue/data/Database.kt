@@ -21,7 +21,7 @@ data class ListenEvent(@PrimaryKey val id: String, val instanceId: String, val t
     fun model() = DownloadItem(id,trackId,title,DownloadStatus.valueOf(status),received,size,error)
 }
 @Entity(tableName="download_control") data class DownloadControl(@PrimaryKey val id: Int = 1, val phase: String = DownloadPhase.Idle.name, val pauseBetween: Boolean = false, val cancelled: Boolean = false)
-@Entity(tableName="lyrics") data class LyricsRow(@PrimaryKey val trackId: String, val original: String, val translation: String? = null, val source: String, val translationSource: String? = null)
+@Entity(tableName="lyrics") data class LyricsRow(@PrimaryKey val trackId: String, val original: String, val translation: String? = null, val source: String, val translationSource: String? = null, val romaji: String? = null)
 
 @Dao interface MusicDao {
     @Query("SELECT * FROM tracks ORDER BY title COLLATE NOCASE") fun observeTracks(): Flow<List<TrackRow>>
@@ -69,7 +69,10 @@ data class ListenEvent(@PrimaryKey val id: String, val instanceId: String, val t
     @Query("SELECT * FROM lyrics WHERE trackId=:id") suspend fun lyrics(id: String): LyricsRow?
     @Upsert suspend fun lyrics(row: LyricsRow)
     @Query("DELETE FROM lyrics") suspend fun clearLyrics()
+    @Query("DELETE FROM lyrics WHERE trackId=:id") suspend fun deleteLyrics(id: String)
     @Query("SELECT SUM(LENGTH(CAST(original AS BLOB))+COALESCE(LENGTH(CAST(translation AS BLOB)),0)) FROM lyrics") suspend fun lyricsBytes(): Long?
 }
-@Database(entities=[TrackRow::class,PlaylistRow::class,PlaylistEntryRow::class,QueueRow::class,PlaybackCheckpoint::class,ListenEvent::class,OutboxRow::class,DownloadRow::class,DownloadControl::class,LyricsRow::class], version=1, exportSchema=true)
+@Database(entities=[TrackRow::class,PlaylistRow::class,PlaylistEntryRow::class,QueueRow::class,PlaybackCheckpoint::class,ListenEvent::class,OutboxRow::class,DownloadRow::class,DownloadControl::class,LyricsRow::class], version=2, exportSchema=true)
 abstract class MusicDatabase: RoomDatabase() { abstract fun dao(): MusicDao }
+/** 2: lyrics gain an optional romanised (romaji) LRC. Existing lyrics stay as they are. */
+val MIGRATION_1_2=object: androidx.room.migration.Migration(1,2) { override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) { db.execSQL("ALTER TABLE lyrics ADD COLUMN romaji TEXT") } }

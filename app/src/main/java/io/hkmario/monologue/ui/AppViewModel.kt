@@ -193,6 +193,8 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             }
             UiEvent.ClearArtworkCache -> launch {withContext(Dispatchers.IO) {coil.Coil.imageLoader(getApplication()).diskCache?.clear();coil.Coil.imageLoader(getApplication()).memoryCache?.clear()};storage()}
             UiEvent.RetryLyrics -> lastTrack?.let(::loadLyrics)
+            // Drop the stored online lyrics for this song and search the enabled sources again.
+            UiEvent.RefetchLyrics -> lastTrack?.let { id -> launch { dao.deleteLyrics(id); translationFailed-=id; loadLyrics(id) } }
             UiEvent.ClearLyricsCache -> launch { dao.clearLyrics(); lastTrack?.let(::loadLyrics); storage() }
             UiEvent.ClearIndex -> launch { dao.clearLocalIndex() }
             is UiEvent.ClearStatistics -> launch { clearStatistics(event.start,event.end) }
@@ -439,20 +441,46 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             catch(e: Exception) { mutable.update { it.copy(listenBrainz=it.listenBrainz.copy(connection=if(e is HttpFailure && e.code==401) Connection.InvalidToken else Connection.NetworkError,error=e.message)) } }
         }
     }
+    /** Tracks whose machine translation already failed in this session, so it is not retried on every settings change. */
+    private val translationFailed=mutableSetOf<String>()
     private fun loadLyrics(trackId: String) {
         lyricsJob?.cancel(); lyricsJob=viewModelScope.launch {
+            val settings=state.value.settings
             var row=dao.lyrics(trackId)
-            if(row==null && state.value.settings.bool("onlineLyrics")) {
-                mutable.update { it.copy(lyrics=LyricsUiState(phase=Phase.Loading,trackId=trackId,source="正在查詢 LRCLIB")) }
+            val sourceName=if(settings.bool("neteaseLyrics")) "歌詞來源" else "LRCLIB"
+            if(row==null && settings.bool("onlineLyrics")) {
+                mutable.update { it.copy(lyrics=LyricsUiState(phase=Phase.Loading,trackId=trackId,source="正在查詢$sourceName")) }
                 try {
-                    allTracks.find {it.id==trackId}?.let {track -> graph.lyrics.find(track,state.value.settings.text("lyricsBase","https://lrclib.net"))?.let {found -> dao.lyrics(found);row=found} }
-                } catch(e: CancellationException) {throw e} catch(e: Exception) { mutable.update {it.copy(lyrics=LyricsUiState(Phase.Error,trackId,source="LRCLIB",error="歌詞服務暫時無法連線（${e.message ?: "網絡錯誤"}）"))};return@launch }
+                    allTracks.find {it.id==trackId}?.let {track -> graph.lyricsSources.find(track,settings)?.let {found -> dao.lyrics(found);row=found} }
+                } catch(e: CancellationException) {throw e} catch(e: Exception) { mutable.update {it.copy(lyrics=LyricsUiState(Phase.Error,trackId,source=sourceName,error="歌詞服務暫時無法連線（${e.message ?: "網絡錯誤"}）"))};return@launch }
                 // Say so plainly instead of the generic empty text, so it is clear the search ran.
-                if(row==null) { mutable.update {it.copy(lyrics=LyricsUiState(Phase.Empty,trackId,source="LRCLIB",error="LRCLIB 找不到這首歌的歌詞"))};return@launch }
+                if(row==null) { mutable.update {it.copy(lyrics=LyricsUiState(Phase.Empty,trackId,source=sourceName,error="${if(settings.bool("neteaseLyrics")) "LRCLIB 和網易雲音樂都" else "LRCLIB "}找不到這首歌的歌詞"))};return@launch }
             }
-            var lines=row?.let { Lrc.parse(it.original) } ?: persistentListOf()
-            if(row?.translation!=null && state.value.settings.bool("translations") && row?.translationSource?.endsWith(state.value.settings.text("translationLanguage","繁體中文"))==true) lines=Lrc.align(lines,Lrc.parse(row!!.translation!!))
-            mutable.update { it.copy(lyrics=LyricsUiState(if(lines.isEmpty()) Phase.Empty else Phase.Ready,trackId,lines,row?.source ?: "未有歌詞；可匯入本機 LRC",row?.translationSource)) }
+            val language=settings.text("translationLanguage","繁體中文")
+            fun build(r: LyricsRow?): PersistentList<LyricLine> {
+                var lines=r?.let { Lrc.parse(it.original) } ?: persistentListOf()
+                if(r?.translation!=null && settings.bool("translations") && r.translationSource?.endsWith(language)==true) lines=Lrc.align(lines,Lrc.parse(r.translation))
+                if(r?.romaji!=null && settings.bool("showRomaji")) lines=Lrc.alignRomaji(lines,Lrc.parse(r.romaji))
+                return lines
+            }
+            val lines=build(row)
+            mutable.update { it.copy(lyrics=LyricsUiState(if(lines.isEmpty()) Phase.Empty else Phase.Ready,trackId,lines,row?.source ?: "未有歌詞；可匯入本機 LRC",row?.translationSource,romajiAvailable=row?.romaji!=null)) }
+            // No translation in the chosen language: translate on the device when the user asked for translations.
+            val current=row ?: return@launch
+            if(lines.isNotEmpty() && settings.bool("translations") && settings.bool("autoTranslate",true) && current.translationSource?.endsWith(language)!=true && trackId !in translationFailed) {
+                mutable.update { it.copy(lyrics=it.lyrics.copy(translationSource="正在翻譯成$language…（第一次使用需下載約 30 MB 的翻譯模型）")) }
+                try {
+                    val translated=graph.translator.translate(current.original,language)
+                    if(translated==null) { mutable.update { it.copy(lyrics=it.lyrics.copy(translationSource=null)) }; return@launch }
+                    val updated=current.copy(translation=translated,translationSource="裝置上機器翻譯（ML Kit）：$language")
+                    dao.lyrics(updated)
+                    val withTranslation=build(updated)
+                    mutable.update { s -> if(s.lyrics.trackId==trackId) s.copy(lyrics=s.lyrics.copy(lines=withTranslation,translationSource=updated.translationSource)) else s }
+                } catch(e: CancellationException) { throw e } catch(e: Exception) {
+                    translationFailed+=trackId
+                    mutable.update { it.copy(lyrics=it.lyrics.copy(translationSource="翻譯未完成：${e.message ?: "請檢查網絡後再試"}")) }
+                }
+            }
         }
     }
     private fun importLyrics(uri: String, translation: Boolean) {

@@ -21,8 +21,8 @@ data class PlaylistDetailUiState(val phase: Phase = Phase.Empty, val playlist: P
 data class NowPlayingUiState(val phase: Phase = Phase.Empty, val entry: QueueEntry? = null, val isPlaying: Boolean = false, val buffering: Boolean = false, val seekable: Boolean = false, val durationMs: Long = 0, val shuffle: Boolean = false, val repeat: Int = 0, val speed: Float = 1f, val error: String? = null, val audioFormat: String? = null)
 data class PlaybackProgress(val entryId: String? = null, val positionMs: Long = 0, val bufferedMs: Long = 0, val seekPreview: Long? = null)
 data class VinylPresentationState(val angle: Double = 0.0, val anchorNanos: Long? = null, val degreesPerSecond: Double = 15.0, val enginePlaying: Boolean = false, val allowed: Boolean = true, val visible: Boolean = false)
-data class LyricLine(val id: String, val timeMs: Long?, val text: String, val translation: String? = null)
-data class LyricsUiState(val phase: Phase = Phase.Empty, val trackId: String? = null, val lines: PersistentList<LyricLine> = persistentListOf(), val source: String = "未有歌詞", val translationSource: String? = null, val manualScroll: Boolean = false, val error: String? = null)
+data class LyricLine(val id: String, val timeMs: Long?, val text: String, val translation: String? = null, val romaji: String? = null)
+data class LyricsUiState(val phase: Phase = Phase.Empty, val trackId: String? = null, val lines: PersistentList<LyricLine> = persistentListOf(), val source: String = "未有歌詞", val translationSource: String? = null, val manualScroll: Boolean = false, val error: String? = null, val romajiAvailable: Boolean = false)
 data class PlaybackQueueUiState(val entries: PersistentList<QueueEntry> = persistentListOf(), val currentId: String? = null)
 data class EqualizerBand(val index: Int, val hz: Int, val level: Int)
 data class EqualizerUiState(val supported: Boolean = false, val enabled: Boolean = false, val bands: PersistentList<EqualizerBand> = persistentListOf(), val min: Int = 0, val max: Int = 0, val presets: PersistentList<String> = persistentListOf(), val reason: String = "播放音訊後偵測裝置能力")
@@ -116,6 +116,7 @@ sealed interface UiEvent {
     data class DeleteOffline(val trackId: String) : UiEvent
     data object ClearLyricsCache : UiEvent
     data object RetryLyrics : UiEvent
+    data object RefetchLyrics : UiEvent
     data object ClearArtworkCache : UiEvent
     data object ClearIndex : UiEvent
     data class ClearStatistics(val start: Long, val end: Long) : UiEvent

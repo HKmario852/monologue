@@ -58,7 +58,7 @@ import java.time.format.DateTimeFormatter
 @Composable fun NowPlayingScreen(state: AppUiState, progress: State<PlaybackProgress>, clock: VinylClock, visible: Boolean, onEvent: (UiEvent)->Unit, collapse: ()->Unit, queue: ()->Unit, equalizer: ()->Unit, sleep: ()->Unit, more: ()->Unit, importLyrics: (Boolean)->Unit) {
     val player=state.player; val track=player.entry?.track
     var lyrics by rememberSaveable { mutableStateOf(false) }
-    var askOnlineLyrics by rememberSaveable { mutableStateOf(false) }
+    var askOnlineLyrics by rememberSaveable { mutableStateOf(false) }; var askNetEase by rememberSaveable { mutableStateOf(false) }
     var drag by remember { mutableFloatStateOf(0f) }; var dragging by remember { mutableStateOf(false) }
     val displayDrag by animateFloatAsState(if(dragging) drag else 0f,spring(),label="collapse")
     val threshold=with(LocalDensity.current) { 120.dp.toPx() }
@@ -111,6 +111,7 @@ import java.time.format.DateTimeFormatter
                     if(lyrics && state.lyrics.lines.isEmpty()) Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
                         if(!state.settings.bool("onlineLyrics")) Button(onClick={askOnlineLyrics=true},modifier=Modifier.fillMaxWidth()) {Text("搜尋線上歌詞")}
                         else if(state.lyrics.phase!=Phase.Loading) Button(onClick={onEvent(UiEvent.RetryLyrics)},modifier=Modifier.fillMaxWidth()) {Text("再搜尋一次")}
+                        if(state.settings.bool("onlineLyrics") && !state.settings.bool("neteaseLyrics") && state.lyrics.phase!=Phase.Loading) OutlinedButton(onClick={askNetEase=true},modifier=Modifier.fillMaxWidth()) {Text("也搜尋網易雲音樂（非官方）")}
                         OutlinedButton(onClick={importLyrics(false)},modifier=Modifier.fillMaxWidth()) {Text("匯入 LRC 歌詞檔")}
                     }
                 }
@@ -119,6 +120,10 @@ import java.time.format.DateTimeFormatter
             else Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) { cover(Modifier.fillMaxWidth().heightIn(max=380.dp).padding(horizontal=16.dp)); controls(Modifier.fillMaxWidth()) }
         }
     }
+    if(askNetEase) AlertDialog(onDismissRequest={askNetEase=false},title={Text("開啟網易雲音樂歌詞？")},
+        text={Text("網易雲音樂沒有公開的官方 API，這裡用的是它網頁播放器使用的非官方介面：可能隨時失效，也不符合網易雲的服務條款。開啟後會把目前歌曲的歌名和歌手傳送到網易雲音樂（中國大陸的服務）。它通常有中文翻譯和羅馬拼音。要開啟嗎？")},
+        confirmButton={TextButton(onClick={askNetEase=false;onEvent(UiEvent.Setting("neteaseLyrics","true"))}) {Text("開啟並搜尋")}},
+        dismissButton={TextButton(onClick={askNetEase=false}) {Text("取消")}})
     if(askOnlineLyrics) AlertDialog(onDismissRequest={askOnlineLyrics=false},title={Text("搜尋線上歌詞？")},
         text={Text("會把目前歌曲的歌名和歌手傳送到歌詞服務（LRCLIB）；歌手名稱寫法不同時，也會向 MusicBrainz 查詢歌手的其他寫法。不會上傳音訊或整個媒體庫。之後可在「設定 › 歌詞」關閉。")},
         confirmButton={TextButton(onClick={askOnlineLyrics=false;onEvent(UiEvent.Setting("onlineLyrics","true"))}) {Text("開始搜尋")}},
@@ -138,20 +143,37 @@ import java.time.format.DateTimeFormatter
     val active=state.lines.indexOfLast { it.timeMs!=null && it.timeMs<=position }
     LaunchedEffect(list) { snapshotFlow { list.isScrollInProgress }.collect { if(it && !autoScrolling) manual=true } }
     LaunchedEffect(active,manual,settings.bool("autoLyrics",true)) { if(active>=0 && !manual && settings.bool("autoLyrics",true)) { autoScrolling=true; try { list.animateScrollToItem(active) } finally {autoScrolling=false} } }
+    val translations=settings.bool("translations"); val mode=if(!translations) "original" else settings.text("lyricsDisplay","both")
+    val romaji=settings.bool("showRomaji") && state.romajiAvailable
     Column(Modifier.fillMaxWidth().height(338.dp).padding(horizontal=24.dp)) {
-        if(state.lines.isEmpty() && state.phase==Phase.Loading) EmptyPanel("正在搜尋歌詞…","LRCLIB")
+        if(state.lines.isNotEmpty()) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            // Original / both / translation only, and romaji when the source provides it.
+            listOf("original" to "原文","both" to "原文＋翻譯","translation" to "翻譯").forEach { (id,label) ->
+                FilterChip(mode==id,{ if(id=="original") onEvent(UiEvent.Setting("translations","false")) else { onEvent(UiEvent.Setting("lyricsDisplay",id)); onEvent(UiEvent.Setting("translations","true")) } },label={Text(label)})
+            }
+            if(state.romajiAvailable) FilterChip(romaji,{onEvent(UiEvent.Setting("showRomaji",(!romaji).toString()))},label={Text("羅馬拼音")})
+        }
+        state.translationSource?.takeIf { translations && (it.startsWith("正在翻譯") || it.startsWith("翻譯未完成")) }?.let { Text(it,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.tertiary,modifier=Modifier.padding(top=6.dp)) }
+        if(state.lines.isEmpty() && state.phase==Phase.Loading) EmptyPanel("正在搜尋歌詞…",state.source.removePrefix("正在查詢"))
         else if(state.lines.isEmpty()) EmptyPanel("未有歌詞",state.error ?: "這首歌沒有本機或已儲存的歌詞")
         else LazyColumn(state=list,modifier=Modifier.weight(1f),contentPadding=PaddingValues(vertical=24.dp),verticalArrangement=Arrangement.spacedBy(18.dp)) {
             itemsIndexed(state.lines,key={_,line->line.id}) { index,line ->
                 Column(Modifier.fillMaxWidth().clickable(enabled=line.timeMs!=null) { onEvent(UiEvent.PreviewSeek(line.timeMs));onEvent(UiEvent.CommitSeek) }.padding(vertical=6.dp)) {
-                    Text(line.text,fontSize=settings.number("lyricSize",22f).sp,color=if(index==active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,fontWeight=if(index==active) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal)
-                    line.translation?.let { Text(it,fontSize=(settings.number("lyricSize",22f)*.72f).sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=6.dp)) }
+                    val size=settings.number("lyricSize",22f)
+                    if(romaji) line.romaji?.let { Text(it,fontSize=(size*.6f).sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(bottom=4.dp)) }
+                    val main=if(mode=="translation") line.translation ?: line.text else line.text
+                    Text(main,fontSize=size.sp,color=if(index==active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,fontWeight=if(index==active) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal)
+                    if(mode=="both") line.translation?.let { Text(it,fontSize=(size*.72f).sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=6.dp)) }
                 }
             }
         }
         if(manual) TextButton(onClick={manual=false}) {Text("返回目前歌詞")}
         // The source line names where shown lyrics came from; with none shown the empty panel already says so.
-        if(state.lines.isNotEmpty()) Text(state.source,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=12.dp))
+        if(state.lines.isNotEmpty()) Row(Modifier.fillMaxWidth().padding(top=6.dp),verticalAlignment=Alignment.CenterVertically) {
+            Text(state.source,Modifier.weight(1f),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=2)
+            // Lyrics found online can be searched again, e.g. after turning on another source.
+            if(!state.source.startsWith("使用者") && !state.source.startsWith("本機")) TextButton(onClick={onEvent(UiEvent.RefetchLyrics)}) {Text("重新搜尋")}
+        }
     }
 }
 

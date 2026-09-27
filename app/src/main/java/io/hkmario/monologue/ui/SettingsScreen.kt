@@ -121,7 +121,10 @@ val timeZones=listOf("Asia/Hong_Kong" to "香港","Asia/Taipei" to "台北","Asi
             5 -> {
                 Choice("歌詞文字大小",s.text("lyricSize","22"),listOf("18" to "18 sp","22" to "22 sp","26" to "26 sp","30" to "30 sp")) {setting("lyricSize",it)}
                 Toggle("顯示翻譯歌詞","只有時間戳可可靠配對才顯示",s.bool("translations")) {setting("translations",it.toString())}
+                Choice("翻譯顯示方式",s.text("lyricsDisplay","both"),listOf("both" to "原文＋翻譯","translation" to "只顯示翻譯")) {setting("lyricsDisplay",it)}
                 Choice("翻譯目標語言",s.text("translationLanguage","繁體中文"),listOf("繁體中文" to "繁體中文","English" to "English","日本語" to "日本語")) {setting("translationLanguage",it)}
+                Toggle("沒有翻譯時在裝置上翻譯","使用 ML Kit 離線翻譯；第一次使用會下載約 30 MB 的語言模型，歌詞不會傳送到翻譯伺服器",s.bool("autoTranslate",true)) {setting("autoTranslate",it.toString())}
+                Toggle("顯示羅馬拼音","歌詞來源有提供時（例如網易雲音樂的日文歌）顯示在每行上方",s.bool("showRomaji")) {setting("showRomaji",it.toString())}
                 Toggle("自動捲動歌詞","手動捲動後可按返回目前歌詞",s.bool("autoLyrics",true)) {setting("autoLyrics",it.toString())}
                 EditSetting("全域時間偏移（毫秒）",s.text("lyricOffset","0"),"正數延後高亮；負數提早",true) {if(it.toLongOrNull()!=null) setting("lyricOffset",it)}
                 state.player.entry?.track?.let { t ->
@@ -132,7 +135,9 @@ val timeZones=listOf("Asia/Hong_Kong" to "香港","Asia/Taipei" to "台北","Asi
                 Info("目前來源：${state.lyrics.source}")
                 Toggle("線上歌詞搜尋（LRCLIB）","本機歌詞優先，然後快取；只查詢目前歌曲",s.bool("onlineLyrics")) { enabled -> if(enabled) confirm="啟用 LRCLIB 查詢？會傳送目前歌曲的歌名和歌手到歌詞服務，必要時向 MusicBrainz 查詢歌手的其他寫法，不上傳音訊或完整媒體庫。歌詞版權屬原權利人。" to UiEvent.Setting("onlineLyrics","true") else setting("onlineLyrics","false") }
                 EditSetting("歌詞服務網址",s.text("lyricsBase","https://lrclib.net"),"LRCLIB 或相容的 HTTPS 自行託管服務。") {if(it.startsWith("https://")) setting("lyricsBase",it)}
-                Info("線上服務未提供可靠翻譯時只顯示原文。翻譯可獨立匯入帶時間戳的 LRC。")
+                Toggle("網易雲音樂歌詞（非官方）","通常有中文翻譯和羅馬拼音；非官方介面，可能隨時失效",s.bool("neteaseLyrics")) { enabled -> if(enabled) confirm="網易雲音樂沒有公開的官方 API，這裡用的是它網頁播放器使用的非官方介面：可能隨時失效，也不符合網易雲的服務條款。開啟後會把目前歌曲的歌名和歌手傳送到網易雲音樂（中國大陸的服務）。它通常有中文翻譯和羅馬拼音。要開啟嗎？" to UiEvent.Setting("neteaseLyrics","true") else setting("neteaseLyrics","false") }
+                if(s.bool("neteaseLyrics")) Choice("歌詞來源順序",s.text("lyricsOrder","netease"),listOf("netease" to "網易雲音樂優先，LRCLIB 備用","lrclib" to "LRCLIB 優先，網易雲音樂備用")) {setting("lyricsOrder",it)}
+                Info("已儲存的歌詞不會自動更換來源；在歌詞畫面按「重新搜尋」即可改用目前的來源設定。翻譯也可獨立匯入帶時間戳的 LRC。")
             }
             6 -> {
                 Toggle("記錄本機聆聽資料","預設開啟；與 ListenBrainz 同步分開",s.bool("statistics",true)) {setting("statistics",it.toString())}
