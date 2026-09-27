@@ -97,7 +97,7 @@ Drive API：以 file ID 索引；完整分頁；資料夾遞迴增量下載；�
 - 聆聽上傳另有明確同意開關，預設關閉。Room outbox 先持久化；以穩定播放實例 ID、原始 timestamp 和相同 payload 重試；收到伺服器 `status=ok` 才移除。
 - 不同帳號的 outbox 分開；斷開時可保留或刪除待同步項目。驗證網絡錯誤與 Token 無效分開。
 - 推薦讀取實際推薦歌單；精確正規化曲名／歌手配對，未找到音源則禁用播放。
-- LRC 原文與翻譯可獨立匯入；翻譯只接受唯一且相近的時間戳匹配。可選 LRCLIB exact metadata 查詢預設關閉，首次啟用說明傳送資料；不會上傳音訊。沒有翻譯來源時只顯示原文。
+- LRC 原文與翻譯可獨立匯入；翻譯只接受唯一且相近的時間戳匹配。可選 LRCLIB 線上查詢（只傳送歌名及歌手）預設關閉，首次啟用說明傳送資料；不會上傳音訊。沒有翻譯來源時只顯示原文。
 
 參考：[ListenBrainz API](https://listenbrainz.readthedocs.io/en/latest/users/api/core.html)、[LRCLIB 文件](https://lrclib.net/docs)。
 

@@ -110,6 +110,7 @@ import java.time.format.DateTimeFormatter
                     // No lyrics: offer the online lookup right here instead of only a file import; it still asks before sending anything.
                     if(lyrics && state.lyrics.lines.isEmpty()) Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
                         if(!state.settings.bool("onlineLyrics")) Button(onClick={askOnlineLyrics=true},modifier=Modifier.fillMaxWidth()) {Text("搜尋線上歌詞")}
+                        else if(state.lyrics.phase!=Phase.Loading) Button(onClick={onEvent(UiEvent.ReloadLyrics)},modifier=Modifier.fillMaxWidth()) {Text("再次搜尋線上歌詞")}
                         OutlinedButton(onClick={importLyrics(false)},modifier=Modifier.fillMaxWidth()) {Text("匯入 LRC 歌詞檔")}
                     }
                 }
@@ -119,7 +120,7 @@ import java.time.format.DateTimeFormatter
         }
     }
     if(askOnlineLyrics) AlertDialog(onDismissRequest={askOnlineLyrics=false},title={Text("搜尋線上歌詞？")},
-        text={Text("會把目前歌曲的歌名、歌手、專輯及長度傳送到歌詞服務（LRCLIB），不會上傳音訊或整個媒體庫。之後可在「設定 › 歌詞」關閉。")},
+        text={Text("會把目前歌曲的歌名及歌手傳送到歌詞服務（LRCLIB），不會上傳音訊或整個媒體庫。之後可在「設定 › 歌詞」關閉。")},
         confirmButton={TextButton(onClick={askOnlineLyrics=false;onEvent(UiEvent.Setting("onlineLyrics","true"))}) {Text("開始搜尋")}},
         dismissButton={TextButton(onClick={askOnlineLyrics=false}) {Text("取消")}})
 }

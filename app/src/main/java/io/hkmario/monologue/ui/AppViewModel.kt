@@ -197,6 +197,7 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             is UiEvent.ClearStatistics -> launch { clearStatistics(event.start,event.end) }
             UiEvent.ResetSettings -> launch { graph.settings.reset() }
             is UiEvent.ImportLyrics -> importLyrics(event.uri,event.translation)
+            UiEvent.ReloadLyrics -> lastTrack?.let(::loadLyrics)
             is UiEvent.Export -> launch { effectsChannel.send(UiEffect.Export(event.kind,export(event.kind))) }
             UiEvent.ImportSettings -> launch { effectsChannel.send(UiEffect.ImportSettings) }
             UiEvent.PickFolder -> launch { effectsChannel.send(UiEffect.PickFolder) }
@@ -441,15 +442,16 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
     private fun loadLyrics(trackId: String) {
         lyricsJob?.cancel(); lyricsJob=viewModelScope.launch {
             var row=dao.lyrics(trackId)
-            if(row==null && state.value.settings.bool("onlineLyrics")) {
-                mutable.update { it.copy(lyrics=LyricsUiState(phase=Phase.Loading,trackId=trackId,source="正在查詢 LRCLIB")) }
+            val searchedOnline=row==null && state.value.settings.bool("onlineLyrics")
+            if(searchedOnline) {
+                mutable.update { it.copy(lyrics=LyricsUiState(phase=Phase.Loading,trackId=trackId,source="正在按歌名及歌手搜尋線上歌詞…")) }
                 try {
                     allTracks.find {it.id==trackId}?.let {track -> graph.lyrics.find(track,state.value.settings.text("lyricsBase","https://lrclib.net"))?.let {found -> dao.lyrics(found);row=found} }
-                } catch(e: CancellationException) {throw e} catch(e: Exception) { mutable.update {it.copy(lyrics=LyricsUiState(Phase.Error,trackId,source="LRCLIB",error=e.message))};return@launch }
+                } catch(e: CancellationException) {throw e} catch(e: Exception) { mutable.update {it.copy(lyrics=LyricsUiState(Phase.Error,trackId,source="LRCLIB",error="線上歌詞搜尋失敗：${e.message ?: "請檢查網絡"}"))};return@launch }
             }
             var lines=row?.let { Lrc.parse(it.original) } ?: persistentListOf()
             if(row?.translation!=null && state.value.settings.bool("translations") && row?.translationSource?.endsWith(state.value.settings.text("translationLanguage","繁體中文"))==true) lines=Lrc.align(lines,Lrc.parse(row!!.translation!!))
-            mutable.update { it.copy(lyrics=LyricsUiState(if(lines.isEmpty()) Phase.Empty else Phase.Ready,trackId,lines,row?.source ?: "未有歌詞；可匯入本機 LRC",row?.translationSource)) }
+            mutable.update { it.copy(lyrics=LyricsUiState(if(lines.isEmpty()) Phase.Empty else Phase.Ready,trackId,lines,row?.source ?: if(searchedOnline) "線上找不到這首歌的歌詞（已按歌名及歌手搜尋）" else "未有歌詞；可匯入本機 LRC",row?.translationSource)) }
         }
     }
     private fun importLyrics(uri: String, translation: Boolean) {

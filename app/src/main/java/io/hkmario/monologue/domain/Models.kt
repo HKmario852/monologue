@@ -120,6 +120,8 @@ sealed interface UiEvent {
     data class ClearStatistics(val start: Long, val end: Long) : UiEvent
     data object ResetSettings : UiEvent
     data class ImportLyrics(val uri: String, val translation: Boolean = false) : UiEvent
+    /** Looks up the current song's lyrics again, e.g. to retry the online search. */
+    data object ReloadLyrics : UiEvent
     data class Export(val kind: String) : UiEvent
     data object ImportSettings : UiEvent
     data object PickFolder : UiEvent
