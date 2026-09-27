@@ -143,15 +143,22 @@ import java.time.format.DateTimeFormatter
     val active=state.lines.indexOfLast { it.timeMs!=null && it.timeMs<=position }
     LaunchedEffect(list) { snapshotFlow { list.isScrollInProgress }.collect { if(it && !autoScrolling) manual=true } }
     LaunchedEffect(active,manual,settings.bool("autoLyrics",true)) { if(active>=0 && !manual && settings.bool("autoLyrics",true)) { autoScrolling=true; try { list.animateScrollToItem(active) } finally {autoScrolling=false} } }
-    val translations=settings.bool("translations"); val mode=if(!translations) "original" else settings.text("lyricsDisplay","both")
-    val romaji=settings.bool("showRomaji") && state.romajiAvailable
+    val translations=settings.bool("translations"); val display=settings.text("lyricsDisplay","both")
+    // 原文＋羅馬拼音 only applies when the lyrics have romaji; otherwise fall back to the original alone.
+    val mode=when { display=="romaji" -> if(state.romajiAvailable) "romaji" else "original"; !translations -> "original"; else -> display }
+    // Romaji above each line in the other views, when turned on in 設定 › 歌詞.
+    val romajiAbove=settings.bool("showRomaji") && state.romajiAvailable && mode!="romaji"
     Column(Modifier.fillMaxWidth().height(338.dp).padding(horizontal=24.dp)) {
         if(state.lines.isNotEmpty()) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-            // Original / both / translation only, and romaji when the source provides it.
-            listOf("original" to "原文","both" to "原文＋翻譯","translation" to "翻譯").forEach { (id,label) ->
-                FilterChip(mode==id,{ if(id=="original") onEvent(UiEvent.Setting("translations","false")) else { onEvent(UiEvent.Setting("lyricsDisplay",id)); onEvent(UiEvent.Setting("translations","true")) } },label={Text(label)})
+            // Original / both / translation only, and original + romaji when the source provides romaji.
+            (listOf("original" to "原文","both" to "原文＋翻譯","translation" to "翻譯")+(if(state.romajiAvailable) listOf("romaji" to "原文＋羅馬拼音") else emptyList())).forEach { (id,label) ->
+                FilterChip(mode==id,{ when(id) {
+                    "original" -> { if(display=="romaji") onEvent(UiEvent.Setting("lyricsDisplay","both")); onEvent(UiEvent.Setting("translations","false")) }
+                    // Translations are not shown with romaji, so the on-device translator need not run.
+                    "romaji" -> { onEvent(UiEvent.Setting("lyricsDisplay","romaji")); onEvent(UiEvent.Setting("translations","false")) }
+                    else -> { onEvent(UiEvent.Setting("lyricsDisplay",id)); onEvent(UiEvent.Setting("translations","true")) }
+                } },label={Text(label)})
             }
-            if(state.romajiAvailable) FilterChip(romaji,{onEvent(UiEvent.Setting("showRomaji",(!romaji).toString()))},label={Text("羅馬拼音")})
         }
         state.translationSource?.takeIf { translations && (it.startsWith("正在翻譯") || it.startsWith("翻譯未完成")) }?.let { Text(it,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.tertiary,modifier=Modifier.padding(top=6.dp)) }
         if(state.lines.isEmpty() && state.phase==Phase.Loading) EmptyPanel("正在搜尋歌詞…",state.source.removePrefix("正在查詢"))
@@ -160,9 +167,10 @@ import java.time.format.DateTimeFormatter
             itemsIndexed(state.lines,key={_,line->line.id}) { index,line ->
                 Column(Modifier.fillMaxWidth().clickable(enabled=line.timeMs!=null) { onEvent(UiEvent.PreviewSeek(line.timeMs));onEvent(UiEvent.CommitSeek) }.padding(vertical=6.dp)) {
                     val size=settings.number("lyricSize",22f)
-                    if(romaji) line.romaji?.let { Text(it,fontSize=(size*.6f).sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(bottom=4.dp)) }
+                    if(romajiAbove) line.romaji?.let { Text(it,fontSize=(size*.6f).sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(bottom=4.dp)) }
                     val main=if(mode=="translation") line.translation ?: line.text else line.text
                     Text(main,fontSize=size.sp,color=if(index==active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,fontWeight=if(index==active) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal)
+                    if(mode=="romaji") line.romaji?.let { Text(it,fontSize=(size*.72f).sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=6.dp)) }
                     if(mode=="both") line.translation?.let { Text(it,fontSize=(size*.72f).sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=6.dp)) }
                 }
             }
