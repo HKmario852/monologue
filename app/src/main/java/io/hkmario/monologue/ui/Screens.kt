@@ -144,14 +144,13 @@ import java.time.format.DateTimeFormatter
     LaunchedEffect(list) { snapshotFlow { list.isScrollInProgress }.collect { if(it && !autoScrolling) manual=true } }
     LaunchedEffect(active,manual,settings.bool("autoLyrics",true)) { if(active>=0 && !manual && settings.bool("autoLyrics",true)) { autoScrolling=true; try { list.animateScrollToItem(active) } finally {autoScrolling=false} } }
     val translations=settings.bool("translations"); val display=settings.text("lyricsDisplay","both")
-    // 原文＋羅馬拼音 only applies when the lyrics have romaji; otherwise fall back to the original alone.
-    val mode=when { display=="romaji" -> if(state.romajiAvailable) "romaji" else "original"; !translations -> "original"; else -> display }
+    // 原文＋羅馬拼音 stays selected for songs without romaji: they show the original and say why no romaji appears.
+    val mode=when { display=="romaji" -> "romaji"; !translations -> "original"; else -> display }
     // Romaji above each line in the other views, when turned on in 設定 › 歌詞.
     val romajiAbove=settings.bool("showRomaji") && state.romajiAvailable && mode!="romaji"
     Column(Modifier.fillMaxWidth().height(338.dp).padding(horizontal=24.dp)) {
         if(state.lines.isNotEmpty()) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-            // Original / both / translation only, and original + romaji when the source provides romaji.
-            (listOf("original" to "原文","both" to "原文＋翻譯","translation" to "翻譯")+(if(state.romajiAvailable) listOf("romaji" to "原文＋羅馬拼音") else emptyList())).forEach { (id,label) ->
+            listOf("original" to "原文","romaji" to "原文＋羅馬拼音","both" to "原文＋翻譯","translation" to "翻譯").forEach { (id,label) ->
                 FilterChip(mode==id,{ when(id) {
                     "original" -> { if(display=="romaji") onEvent(UiEvent.Setting("lyricsDisplay","both")); onEvent(UiEvent.Setting("translations","false")) }
                     // Translations are not shown with romaji, so the on-device translator need not run.
@@ -160,6 +159,7 @@ import java.time.format.DateTimeFormatter
                 } },label={Text(label)})
             }
         }
+        if(mode=="romaji" && state.lines.isNotEmpty() && !state.romajiAvailable) Text("這首歌的歌詞來源沒有提供羅馬拼音；網易雲音樂和うたてん的日文歌通常有，可在 設定 › 歌詞 開啟後按「重新搜尋」",style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.tertiary,modifier=Modifier.padding(top=6.dp))
         state.translationSource?.takeIf { translations && (it.startsWith("正在翻譯") || it.startsWith("翻譯未完成")) }?.let { Text(it,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.tertiary,modifier=Modifier.padding(top=6.dp)) }
         if(state.lines.isEmpty() && state.phase==Phase.Loading) EmptyPanel("正在搜尋歌詞…",state.source.removePrefix("正在查詢"))
         else if(state.lines.isEmpty()) EmptyPanel("未有歌詞",state.error ?: "這首歌沒有本機或已儲存的歌詞")
