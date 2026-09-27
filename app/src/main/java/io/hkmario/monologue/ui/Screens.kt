@@ -138,7 +138,7 @@ import java.time.format.DateTimeFormatter
     LaunchedEffect(list) { snapshotFlow { list.isScrollInProgress }.collect { if(it && !autoScrolling) manual=true } }
     LaunchedEffect(active,manual,settings.bool("autoLyrics",true)) { if(active>=0 && !manual && settings.bool("autoLyrics",true)) { autoScrolling=true; try { list.animateScrollToItem(active) } finally {autoScrolling=false} } }
     Column(Modifier.fillMaxWidth().height(338.dp).padding(horizontal=24.dp)) {
-        if(state.lines.isEmpty()) EmptyPanel("未有歌詞",state.error ?: state.source)
+        if(state.lines.isEmpty()) EmptyPanel("未有歌詞",state.error ?: "這首歌沒有本機或已儲存的歌詞")
         else LazyColumn(state=list,modifier=Modifier.weight(1f),contentPadding=PaddingValues(vertical=24.dp),verticalArrangement=Arrangement.spacedBy(18.dp)) {
             itemsIndexed(state.lines,key={_,line->line.id}) { index,line ->
                 Column(Modifier.fillMaxWidth().clickable(enabled=line.timeMs!=null) { onEvent(UiEvent.PreviewSeek(line.timeMs));onEvent(UiEvent.CommitSeek) }.padding(vertical=6.dp)) {
@@ -148,7 +148,8 @@ import java.time.format.DateTimeFormatter
             }
         }
         if(manual) TextButton(onClick={manual=false}) {Text("返回目前歌詞")}
-        Text(state.source,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+        // The source line names where shown lyrics came from; with none shown the empty panel already says so.
+        if(state.lines.isNotEmpty()) Text(state.source,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -195,7 +196,7 @@ val periodLabels=listOf("本週","本月","全部")
 }
 
 @Composable fun DiscoverScreen(account: ListenBrainzUiState,state: DiscoverUiState,onEvent: (UiEvent)->Unit,stats: ListeningStatsUiState = ListeningStatsUiState(),openAccount: ()->Unit = {},openRecap: ()->Unit = {},chooseVersion: (Recommendation)->Unit = {}) {
-    LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
+    LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(start=24.dp,end=24.dp,bottom=24.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
         item {SectionTitle("你的聆聽足跡","聆聽回顧",openRecap)}
         item {StatCard("${stats.all.sumOf {it.listenedMs}/60000} 分鐘","累計聆聽 · ${stats.all.sumOf {it.count}} 次播放 · 排行與明細",openRecap)}
         item {SectionTitle("每週推薦","更新") {onEvent(UiEvent.Recommendations)}}
