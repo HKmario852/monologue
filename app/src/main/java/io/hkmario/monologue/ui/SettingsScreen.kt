@@ -147,7 +147,7 @@ val timeZones=listOf("Asia/Hong_Kong" to "香港","Asia/Taipei" to "台北","Asi
                     }
                     HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
                 }
-                Info("已儲存的歌詞不會自動更換來源；在歌詞畫面按「重新搜尋」即可改用目前的來源設定。翻譯也可獨立匯入帶時間戳的 LRC。")
+                Info("已儲存的歌詞不會自動更換來源（只有羅馬拼音歌詞會自動再找一次日文原文）；在歌詞畫面按「重新搜尋」即可改用目前的來源設定。翻譯也可獨立匯入帶時間戳的 LRC。")
             }
             6 -> {
                 Toggle("記錄本機聆聽資料","預設開啟；與 ListenBrainz 同步分開",s.bool("statistics",true)) {setting("statistics",it.toString())}
