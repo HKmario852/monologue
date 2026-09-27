@@ -1,4 +1,4 @@
-@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 package io.hkmario.monologue.ui
 
 import androidx.compose.foundation.*
@@ -43,10 +43,10 @@ internal val SerifItalic=androidx.compose.ui.text.TextStyle(fontFamily=androidx.
     }
 }
 @Composable fun Eyebrow(text: String)=Text(text,style=MaterialTheme.typography.labelMedium.copy(letterSpacing=1.5.sp),color=Muted)
-@Composable fun InkButton(text: String,icon: androidx.compose.ui.graphics.vector.ImageVector?,modifier: Modifier=Modifier,enabled: Boolean=true,click: ()->Unit) {
-    Button(onClick=click,modifier=modifier.heightIn(min=52.dp),enabled=enabled,shape=RoundedCornerShape(2.dp),colors=ButtonDefaults.buttonColors(containerColor=Ink,contentColor=MaterialTheme.colorScheme.background),contentPadding=PaddingValues(horizontal=20.dp)) {
-        if(icon!=null) {Icon(icon,null,Modifier.size(18.dp));Spacer(Modifier.width(10.dp))}
-        Text(text,style=MaterialTheme.typography.titleSmall.copy(fontFamily=androidx.compose.ui.text.font.FontFamily.Serif,fontWeight=FontWeight.Bold))
+@Composable fun InkButton(text: String,icon: androidx.compose.ui.graphics.vector.ImageVector?,modifier: Modifier=Modifier,enabled: Boolean=true,compact: Boolean=false,click: ()->Unit) {
+    Button(onClick=click,modifier=modifier.heightIn(min=if(compact) 48.dp else 52.dp),enabled=enabled,shape=RoundedCornerShape(2.dp),colors=ButtonDefaults.buttonColors(containerColor=Ink,contentColor=MaterialTheme.colorScheme.background),contentPadding=PaddingValues(horizontal=if(compact) 14.dp else 20.dp)) {
+        if(icon!=null) {Icon(icon,null,Modifier.size(18.dp));Spacer(Modifier.width(if(compact) 8.dp else 10.dp))}
+        Text(text,style=MaterialTheme.typography.titleSmall.copy(fontFamily=androidx.compose.ui.text.font.FontFamily.Serif,fontWeight=FontWeight.Bold,fontSize=if(compact) 13.sp else MaterialTheme.typography.titleSmall.fontSize))
     }
 }
 
@@ -186,8 +186,15 @@ private fun sizeLabel(bytes: Long)=if(bytes>=1_000_000_000) "%.1f GB".format(byt
     var menu by remember { mutableStateOf(false) }; var sortMenu by remember { mutableStateOf(false) }
     LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(start=24.dp,end=24.dp,bottom=24.dp)) {
         item {
-            Wordmark {
-                if(state.phase==Phase.Loading) CircularProgressIndicator(Modifier.size(18.dp),strokeWidth=2.dp,color=Accent)
+            Row(Modifier.fillMaxWidth().padding(top=8.dp).heightIn(min=48.dp),verticalAlignment=Alignment.CenterVertically) {
+                Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()),verticalAlignment=Alignment.CenterVertically) {
+                    (listOf(DriveFolder("",  "雲端硬碟"))+state.breadcrumbs).forEachIndexed { i,crumb ->
+                        if(i>0) Text("  —  ",style=MaterialTheme.typography.labelMedium,color=Muted)
+                        val target=i-1
+                        Text(crumb.name.uppercase(),Modifier.clickable(enabled=target>=0 && target<state.breadcrumbs.lastIndex) { onEvent(UiEvent.DriveBreadcrumb(target)) },style=MaterialTheme.typography.labelMedium.copy(letterSpacing=1.5.sp),color=if(target>=0 && target<state.breadcrumbs.lastIndex) Accent else Muted)
+                    }
+                }
+                if(state.phase==Phase.Loading) CircularProgressIndicator(Modifier.padding(start=8.dp).size(18.dp),strokeWidth=2.dp,color=Accent)
                 Box {
                     ActionIcon(Icons.Outlined.MoreVert,"雲端選項") { menu=true }
                     DropdownMenu(menu,{menu=false}) {
@@ -211,18 +218,13 @@ private fun sizeLabel(bytes: Long)=if(bytes>=1_000_000_000) "%.1f GB".format(byt
             Row(Modifier.fillMaxWidth().padding(top=12.dp),verticalAlignment=Alignment.CenterVertically) { Text(state.error ?: "無法連線到 Google Drive",Modifier.weight(1f),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.error); TextButton(onClick={onEvent(UiEvent.DriveRefresh)}) {Text("重試",color=Accent)} }
         }
         item {
-            Row(Modifier.fillMaxWidth().padding(top=20.dp).horizontalScroll(rememberScrollState()),verticalAlignment=Alignment.CenterVertically) {
-                (listOf(DriveFolder("",  "雲端硬碟"))+state.breadcrumbs).forEachIndexed { i,crumb ->
-                    if(i>0) Text("  —  ",style=MaterialTheme.typography.labelMedium,color=Muted)
-                    val target=i-1
-                    Text(crumb.name.uppercase(),Modifier.clickable(enabled=target>=0 && target<state.breadcrumbs.lastIndex) { onEvent(UiEvent.DriveBreadcrumb(target)) },style=MaterialTheme.typography.labelMedium.copy(letterSpacing=1.5.sp),color=if(target>=0 && target<state.breadcrumbs.lastIndex) Accent else Muted)
-                }
+            // The download button sits beside the folder name; a long name pushes it onto the next line instead of overlapping.
+            FlowRow(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text(state.breadcrumbs.last().name,Modifier.align(Alignment.CenterVertically).padding(end=12.dp),style=MaterialTheme.typography.displaySmall.copy(fontWeight=FontWeight.Bold),color=Ink,maxLines=2,overflow=TextOverflow.Ellipsis)
+                InkButton(if(unsaved>0) "下載未儲存的 $unsaved 首" else "已全部下載",if(unsaved>0) Icons.Outlined.Download else Icons.Outlined.DownloadDone,Modifier.align(Alignment.CenterVertically),enabled=!offline && unsaved>0,compact=true) { onEvent(UiEvent.DownloadFolder) }
             }
-            Text(state.breadcrumbs.last().name,Modifier.padding(top=6.dp),style=MaterialTheme.typography.displaySmall.copy(fontWeight=FontWeight.Bold),color=Ink,maxLines=2,overflow=TextOverflow.Ellipsis)
-            Text("${under.size} 首${if(folders.isNotEmpty()) " · ${folders.size} 個資料夾" else ""} · ${sizeLabel(under.sumOf {it.bytes})}",style=SerifItalic.copy(fontSize=15.sp),color=Muted)
-            Row(Modifier.fillMaxWidth().padding(top=16.dp),verticalAlignment=Alignment.CenterVertically) {
-                InkButton(if(unsaved>0) "下載未儲存的 $unsaved 首" else "已全部下載",if(unsaved>0) Icons.Outlined.Download else Icons.Outlined.DownloadDone,enabled=!offline && unsaved>0) { onEvent(UiEvent.DownloadFolder) }
-                Spacer(Modifier.weight(1f))
+            Row(Modifier.fillMaxWidth().heightIn(min=48.dp),verticalAlignment=Alignment.CenterVertically) {
+                Text("${under.size} 首${if(folders.isNotEmpty()) " · ${folders.size} 個資料夾" else ""} · ${sizeLabel(under.sumOf {it.bytes})}",Modifier.weight(1f),style=SerifItalic.copy(fontSize=15.sp),color=Muted,maxLines=1,overflow=TextOverflow.Ellipsis)
                 // While signed out only downloaded songs can play, so shuffle just those.
                 val shufflable=if(offline) under.filter {it.offlinePath!=null} else under
                 Row(Modifier.clickable(enabled=shufflable.isNotEmpty()) { onEvent(UiEvent.PlayList(shufflable.shuffled().toPersistentList())) }.heightIn(min=48.dp).padding(start=8.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -232,7 +234,7 @@ private fun sizeLabel(bytes: Long)=if(bytes>=1_000_000_000) "%.1f GB".format(byt
             }
         }
         item {
-            Row(Modifier.fillMaxWidth().padding(top=16.dp,bottom=4.dp),verticalAlignment=Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(top=4.dp,bottom=4.dp),verticalAlignment=Alignment.CenterVertically) {
                 Row(Modifier.weight(1f).heightIn(min=44.dp).border(1.dp,MaterialTheme.colorScheme.outlineVariant,RoundedCornerShape(2.dp)).padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically) {
                     Icon(Icons.Outlined.Search,null,Modifier.size(18.dp),tint=Muted)
                     Box(Modifier.weight(1f).padding(start=8.dp)) {
@@ -282,13 +284,13 @@ private val sortLabels=linkedMapOf("name" to "名稱 A–Z","nameDesc" to "名�
     val playable=saved || !offline
     val downloading=job?.status==DownloadStatus.Downloading
     val pct=if(job!=null && job.total>0) (job.bytes*100/job.total).toInt() else 0
-    Row(Modifier.fillMaxWidth().heightIn(min=64.dp).alpha(if(playable) 1f else .45f).combinedClickable(enabled=playable,onClick={onEvent(UiEvent.Play(t))},onLongClick={onMore(t)},onLongClickLabel="更多操作").padding(vertical=10.dp),verticalAlignment=Alignment.CenterVertically) {
-        if(albumView) Text("$number",Modifier.width(44.dp),style=SerifItalic.copy(fontSize=18.sp),color=Muted)
-        else { Art(t,44.dp); Spacer(Modifier.width(14.dp)) }
+    Row(Modifier.fillMaxWidth().heightIn(min=88.dp).alpha(if(playable) 1f else .45f).combinedClickable(enabled=playable,onClick={onEvent(UiEvent.Play(t))},onLongClick={onMore(t)},onLongClickLabel="更多操作").padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically) {
+        if(albumView) Text("$number",Modifier.width(44.dp),style=SerifItalic.copy(fontSize=20.sp),color=Muted)
+        else { Art(t,60.dp); Spacer(Modifier.width(16.dp)) }
         Column(Modifier.weight(1f)) {
-            Text(t.title,style=MaterialTheme.typography.titleMedium.copy(fontFamily=androidx.compose.ui.text.font.FontFamily.Serif),color=Ink,maxLines=1,overflow=TextOverflow.Ellipsis)
-            if(downloading) LinearProgressIndicator(progress={pct/100f},modifier=Modifier.fillMaxWidth(.85f).padding(top=6.dp).height(2.dp),color=Accent,trackColor=MaterialTheme.colorScheme.outlineVariant,drawStopIndicator={})
-            else Text(listOfNotNull(if(albumView) null else t.artist,if(t.durationMs>0) formatTime(t.durationMs) else null,formatLabel(t.mime),if(!playable) "需重新登入" else null).joinToString(" · "),style=MaterialTheme.typography.bodySmall,color=Muted,maxLines=1,overflow=TextOverflow.Ellipsis)
+            Text(t.title,style=MaterialTheme.typography.titleMedium.copy(fontFamily=androidx.compose.ui.text.font.FontFamily.Serif,fontSize=19.sp,fontWeight=FontWeight.SemiBold),color=Ink,maxLines=1,overflow=TextOverflow.Ellipsis)
+            if(downloading) LinearProgressIndicator(progress={pct/100f},modifier=Modifier.fillMaxWidth(.85f).padding(top=10.dp).height(3.dp),color=Accent,trackColor=MaterialTheme.colorScheme.outlineVariant,drawStopIndicator={})
+            else Text(listOfNotNull(if(albumView) null else t.artist,if(t.durationMs>0) formatTime(t.durationMs) else null,formatLabel(t.mime),if(!playable) "需重新登入" else null).joinToString(" · "),Modifier.padding(top=2.dp),style=MaterialTheme.typography.bodyMedium,color=Muted,maxLines=1,overflow=TextOverflow.Ellipsis)
         }
         val (label,color)=when {
             downloading -> "$pct%" to Accent
@@ -299,7 +301,7 @@ private val sortLabels=linkedMapOf("name" to "名稱 A–Z","nameDesc" to "名�
             offline -> "— 離線" to Muted
             else -> "○ 串流" to MaterialTheme.colorScheme.tertiary
         }
-        Text(label,Modifier.padding(start=12.dp),style=MaterialTheme.typography.labelMedium,color=color)
+        Text(label,Modifier.padding(start=12.dp),style=MaterialTheme.typography.labelLarge,color=color)
         ActionIcon(Icons.Outlined.MoreVert,"${t.title} 更多操作") { onMore(t) }
     }
     HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
