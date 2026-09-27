@@ -153,3 +153,14 @@ fun looksLikeRomaji(text: String): Boolean {
     if(words.size < 20) return false
     return words.count { romajiWord.matches(it) } >= words.size * 0.55
 }
+
+/** Lyrics with timestamps on most lines, so they scroll with playback. */
+fun isSyncedLyrics(text: String): Boolean { val lines=Lrc.parse(text); return lines.size>=5 && lines.count { it.timeMs!=null }>=lines.size*0.8 }
+
+/**
+ * Worth of a lyrics result when several sources answer: Japanese script over a romaji-only transcription first,
+ * then (when the user prefers synced lyrics) timestamped over plain text. The highest possible rank ends the search.
+ */
+fun lyricsRank(original: String, preferSynced: Boolean): Int =
+    (if(looksLikeRomaji(original)) 0 else 2)+(if(preferSynced && isSyncedLyrics(original)) 1 else 0)
+fun bestLyricsRank(preferSynced: Boolean)=if(preferSynced) 3 else 2
