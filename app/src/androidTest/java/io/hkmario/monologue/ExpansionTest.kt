@@ -19,10 +19,9 @@ import org.junit.runner.RunWith
 class ExpansionTest {
     @get:Rule val compose=createAndroidComposeRule<ComponentActivity>()
     @Test fun discoverHasStatsAndNoCredentialFields() {
-        var listening=false;var support=false
-        compose.setContent {MonologueTheme {DiscoverScreen(ListenBrainzUiState(),DiscoverUiState(),{},ListeningStatsUiState(),{}, {listening=true},{support=true})}}
-        compose.onNodeWithText("0 分鐘").performClick();Assert.assertTrue(listening)
-        compose.onNodeWithText("US$ 0.00–0.00").performScrollTo().performClick();Assert.assertTrue(support)
+        var recap=false
+        compose.setContent {MonologueTheme {DiscoverScreen(ListenBrainzUiState(),DiscoverUiState(),{},ListeningStatsUiState(),{}, {recap=true})}}
+        compose.onNodeWithText("0 分鐘").performClick();Assert.assertTrue(recap)
         compose.onAllNodes(hasSetTextAction()).assertCountEquals(0)
     }
     @Test fun statisticsIncludeEverySongAndSubThresholdTime() {
@@ -45,13 +44,14 @@ class ExpansionTest {
         compose.onAllNodesWithText("探索").onLast().performClick()
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("0 分鐘"))
         compose.onNodeWithText("0 分鐘").performClick()
-        compose.onNodeWithText("聆聽明細").assertExists()
+        compose.onNodeWithText("聆聽回顧").assertExists()
         compose.onNodeWithContentDescription("返回").performClick()
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("你的聆聽足跡"))
         compose.onNodeWithText("你的聆聽足跡").assertExists()
         compose.mainClock.advanceTimeBy(1000)
         compose.waitForIdle()
-        compose.onNodeWithTag("nav-settings").performClick()
+        compose.onNodeWithTag("nav-library").performClick()
+        compose.onNodeWithContentDescription("設定").performClick()
         compose.waitForIdle()
         java.io.File(InstrumentationRegistry.getInstrumentation().targetContext.filesDir,"navigation-qa.png").outputStream().use {compose.onRoot().captureToImage().asAndroidBitmap().compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)}
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("外觀與導航"))

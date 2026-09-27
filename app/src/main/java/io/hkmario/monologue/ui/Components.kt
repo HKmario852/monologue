@@ -139,7 +139,7 @@ fun formatBytes(bytes: Long)="%.1f MB".format(bytes/1_000_000.0)
         }
         Column(Modifier.fillMaxWidth().padding(horizontal=24.dp).navigationBarsPadding()) {
             SectionTitle("播放隊列","清除待播") { onEvent(UiEvent.QueueClear) }
-            if(state.entries.isEmpty()) EmptyPanel("隊列係空嘅","喺媒體庫選擇歌曲開始聆聽")
+            if(state.entries.isEmpty()) EmptyPanel("隊列是空的","在媒體庫或搜尋選擇歌曲開始聆聽")
             LazyColumn(state=list,modifier=Modifier.fillMaxWidth().heightIn(max=520.dp).onGloballyPositioned {viewport=it.boundsInRoot()}) {
                 itemsIndexed(state.entries,key={_,entry->entry.id}) { index,entry ->
                     var handleCoordinates by remember(entry.id) {mutableStateOf<LayoutCoordinates?>(null)}

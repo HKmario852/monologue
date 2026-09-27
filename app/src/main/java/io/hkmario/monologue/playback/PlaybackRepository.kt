@@ -209,7 +209,9 @@ class PlaybackRepository(private val graph: AppGraph) {
         else { val at=index.coerceIn(0,entries.size); entries=entries.add(at,entry); player?.addMediaItem(at,item(entry)) }
         saveQueue(); publish()
     }
-    fun clearUpcoming() { entries.filter { it.id!=state.value.entry?.id }.map { it.id }.forEach(::remove) }
+    /** Returns what was removed, in removal order, so [restore] can undo it. */
+    fun clearUpcoming(): List<Pair<QueueEntry,Int>> = entries.filter { it.id!=state.value.entry?.id }.map { it.id }.mapNotNull(::remove)
+    fun restore(removed: List<Pair<QueueEntry,Int>>) { removed.asReversed().forEach { (entry,index) -> undo(entry,index) } }
     fun refreshTracks(tracks: List<Track>) {
         val map=tracks.associateBy { it.id }
         entries=entries.map { it.copy(track=map[it.track.id] ?: it.track) }.toPersistentList(); publish()

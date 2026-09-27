@@ -88,7 +88,7 @@ private fun displayRoot(folder: String): Pair<String,String> = when {
 /** "內部儲存空間/Music/Album" style path used for browsing local folders. */
 private fun displayPath(folder: String): String { val (label,prefix)=displayRoot(folder); return (label+"/"+folder.removePrefix(prefix).trim('/')).trimEnd('/') }
 
-@Composable fun LibraryScreen(state: LocalLibraryUiState,settings: AppSettingsUiState,onEvent: (UiEvent)->Unit,onGroup: (GroupItem)->Unit,onPlaylist: (String)->Unit,onMore: (Track)->Unit,discover: ()->Unit,openDrive: ()->Unit={},searchOnline: (String)->Unit={},playingId: String?=null,openSettings: ()->Unit={}) {
+@Composable fun LibraryScreen(state: LocalLibraryUiState,settings: AppSettingsUiState,onEvent: (UiEvent)->Unit,onGroup: (GroupItem)->Unit,onPlaylist: (String)->Unit,onMore: (Track)->Unit,discover: ()->Unit,openDrive: ()->Unit={},searchOnline: (String)->Unit={},playingId: String?=null,openSettings: ()->Unit={},openAppSettings: ()->Unit={}) {
     val search=state.search; val request=search.request; val searching=request.query.isNotBlank()
     val grid=rememberLazyGridState(); val scope=rememberCoroutineScope()
     val sectionIndex=remember { HashMap<String,Int>() }
@@ -102,12 +102,12 @@ private fun displayPath(folder: String): String { val (label,prefix)=displayRoot
         LazyVerticalGrid(GridCells.Adaptive(150.dp),Modifier.fillMaxSize(),state=grid,contentPadding=PaddingValues(start=24.dp,end=if(showStrip) 40.dp else 24.dp,bottom=24.dp),horizontalArrangement=Arrangement.spacedBy(16.dp)) {
             var n=0
             fun full(key: Any,content: @Composable ()->Unit) { item(key=key,span={GridItemSpan(maxLineSpan)}) {content()}; n++ }
-            full("head") { LibraryHeader(state,local,cloud,request,onEvent,openSettings) }
+            full("head") { LibraryHeader(state,local,cloud,request,onEvent,openSettings,openAppSettings) }
             if(state.phase==Phase.Loading) full("scan") { LinearProgressIndicator(Modifier.fillMaxWidth().padding(top=8.dp),color=Accent) }
             if(searching && search.phase==Phase.Empty) {
                 full("empty") {
                     Column {
-                        EmptyPanel("搵唔到「${request.query}」","目前只搜尋媒體庫${request.tab.label}","清除搜尋") { onEvent(UiEvent.Query("")) }
+                        EmptyPanel("找不到「${request.query}」","目前只搜尋媒體庫${request.tab.label}","清除搜尋") { onEvent(UiEvent.Query("")) }
                         FilledTonalButton(onClick={searchOnline(request.query)},modifier=Modifier.fillMaxWidth()) { Icon(Icons.Outlined.TravelExplore,null); Spacer(Modifier.width(8.dp)); Text("改為線上搜尋「${request.query}」") }
                     }
                 }
@@ -133,7 +133,7 @@ private fun displayPath(folder: String): String { val (label,prefix)=displayRoot
                             full("section:$key") { SectionLetter(key) }
                             items(groups,key={it.id},span={GridItemSpan(maxLineSpan)}) { g -> ArtistRow(g) {onGroup(g)} }; n+=groups.size
                         }
-                        if(artistSections.isEmpty() && state.phase!=Phase.Loading && search.phase!=Phase.Loading) full("none") { EmptyPanel("未有歌手","加入本機或雲端音樂後會喺呢度顯示") }
+                        if(artistSections.isEmpty() && state.phase!=Phase.Loading && search.phase!=Phase.Loading) full("none") { EmptyPanel("未有歌手","加入本機或雲端音樂後會在這裡顯示") }
                     }
                 }
                 LibraryTab.Albums -> {
@@ -141,7 +141,7 @@ private fun displayPath(folder: String): String { val (label,prefix)=displayRoot
                     val albums=search.groups.let { g -> when(sort) {"count"->g.sortedByDescending {it.tracks.size};"artist"->g.sortedBy {normalize(it.tracks.firstOrNull()?.artist ?: "")};else->g.sortedBy {normalize(it.title)}} }
                     full("albumbar") { AlbumBar(albums.size,sort,onEvent) }
                     items(albums,key={it.id}) { g -> AlbumCard(g) {onGroup(g)} }
-                    if(albums.isEmpty() && state.phase!=Phase.Loading && search.phase!=Phase.Loading) full("none") { EmptyPanel("未有專輯","加入本機或雲端音樂後會喺呢度顯示") }
+                    if(albums.isEmpty() && state.phase!=Phase.Loading && search.phase!=Phase.Loading) full("none") { EmptyPanel("未有專輯","加入本機或雲端音樂後會在這裡顯示") }
                 }
                 LibraryTab.Folders -> {
                     if(searching) items(search.groups.filter {!it.title.startsWith("drive") && (it.title.startsWith("/") || it.title.startsWith("授權"))},key={it.id},span={GridItemSpan(maxLineSpan)}) { g ->
@@ -155,10 +155,11 @@ private fun displayPath(folder: String): String { val (label,prefix)=displayRoot
     if(create) AlertDialog(onDismissRequest={create=false},title={Text("新增歌單")},text={OutlinedTextField(name,{name=it},label={Text("名稱")},singleLine=true)},confirmButton={TextButton(onClick={onEvent(UiEvent.PlaylistCreate(name));name="";create=false},enabled=name.isNotBlank()) {Text("建立")}},dismissButton={TextButton(onClick={create=false}) {Text("取消")}})
 }
 
-@Composable private fun LibraryHeader(state: LocalLibraryUiState,local: Int,cloud: Int,request: SearchRequest,onEvent: (UiEvent)->Unit,openSettings: ()->Unit) {
+@Composable private fun LibraryHeader(state: LocalLibraryUiState,local: Int,cloud: Int,request: SearchRequest,onEvent: (UiEvent)->Unit,openSettings: ()->Unit,openAppSettings: ()->Unit) {
     var menu by remember { mutableStateOf(false) }
     Column {
         Wordmark {
+            ActionIcon(Icons.Outlined.Settings,"設定",action=openAppSettings)
             Box {
                 ActionIcon(Icons.Outlined.MoreVert,"媒體庫選項") { menu=true }
                 DropdownMenu(menu,{menu=false}) {
@@ -217,9 +218,12 @@ private fun displayPath(folder: String): String { val (label,prefix)=displayRoot
         Text("$count 首",style=SerifItalic.copy(fontSize=12.sp),color=Muted)
     }
 }
+/** Sort options shared by the 媒體庫 menus and 設定 › 媒體庫, so both always offer the same choices under the same names. */
+val songSorts=linkedMapOf("title" to "依標題排列","artist" to "依歌手排列","duration" to "依長度排列（由長至短）")
+val albumSorts=linkedMapOf("name" to "依專輯名稱","artist" to "依歌手","count" to "依歌曲數")
 @Composable private fun SongOrderBar(settings: AppSettingsUiState,tracks: List<Track>,onEvent: (UiEvent)->Unit) {
     var menu by remember { mutableStateOf(false) }
-    val sorts=linkedMapOf("title" to "依標題排列","artist" to "依歌手排列","duration" to "依長度排列")
+    val sorts=songSorts
     Row(Modifier.fillMaxWidth().padding(top=12.dp,bottom=4.dp),verticalAlignment=Alignment.CenterVertically) {
         Box(Modifier.weight(1f)) {
             Text("${sorts[settings.text("sort","title")] ?: "依標題排列"} ⌄",Modifier.clickable {menu=true}.padding(vertical=8.dp),style=SerifItalic.copy(fontSize=13.sp),color=Muted)
@@ -285,7 +289,7 @@ private fun displayPath(folder: String): String { val (label,prefix)=displayRoot
 }
 @Composable private fun AlbumBar(count: Int,sort: String,onEvent: (UiEvent)->Unit) {
     var menu by remember { mutableStateOf(false) }
-    val sorts=linkedMapOf("name" to "依專輯名稱","artist" to "依歌手","count" to "依歌曲數")
+    val sorts=albumSorts
     Row(Modifier.fillMaxWidth().padding(top=12.dp,bottom=12.dp),verticalAlignment=Alignment.CenterVertically) {
         Text("$count 張 · ${sorts[sort] ?: "依專輯名稱"}",Modifier.weight(1f),style=SerifItalic.copy(fontSize=13.sp),color=Muted)
         Box {
@@ -324,6 +328,7 @@ private fun displayPath(folder: String): String { val (label,prefix)=displayRoot
     }
     var here by rememberSaveable(start) { mutableStateOf(start) }
     var exclude by remember { mutableStateOf<String?>(null) }
+    var menuFor by remember { mutableStateOf<String?>(null) }
     val hidden=settings.text("hiddenFolders").split('\n').filter {it.isNotBlank()}
     val below=local.filter {it.first==here || it.first.startsWith("$here/")}
     val children=below.mapNotNull { (p,_) -> p.removePrefix(here).trim('/').substringBefore('/').takeIf {it.isNotEmpty() && p!=here} }.distinct().sortedBy {normalize(it)}
@@ -343,19 +348,24 @@ private fun displayPath(folder: String): String { val (label,prefix)=displayRoot
             val cloud=state.tracks.filter {it.source==Source.Drive}
             if(cloud.isNotEmpty()) FolderRow(Icons.Outlined.Cloud,"雲端硬碟 · ${settings.text("driveRootName").ifBlank {"音樂"}}","${cloud.size} 首 · 串流或已下載",highlight=true,click=openDrive)
             val saved=state.tracks.filter {it.offlinePath!=null}
-            if(saved.isNotEmpty()) FolderRow(Icons.Outlined.DownloadDone,"monologue","雲端下載的歌曲 · ${saved.size} 首",highlight=true) { onGroup(GroupItem("Offline:","離線下載",saved.toPersistentList())) }
+            if(saved.isNotEmpty()) FolderRow(Icons.Outlined.DownloadDone,"離線下載","已下載到手機的歌曲 · ${saved.size} 首",highlight=true) { onGroup(GroupItem("Offline:","離線下載",saved.toPersistentList())) }
         }
         children.forEach { child ->
             val path=if(here.isEmpty()) child else "$here/$child"
             val inside=local.filter {it.first==path || it.first.startsWith("$path/")}
             val subfolders=inside.mapNotNull {(p,_)->p.removePrefix(path).trim('/').substringBefore('/').takeIf {it.isNotEmpty()}}.distinct().size
-            FolderRow(Icons.Outlined.Folder,child,if(subfolders>0) "$subfolders 個資料夾 · ${inside.size} 首" else "${inside.size} 首",onLongClick={exclude=path}) { here=path }
+            FolderRow(Icons.Outlined.Folder,child,if(subfolders>0) "$subfolders 個資料夾 · ${inside.size} 首" else "${inside.size} 首",trailing={
+                Box {
+                    ActionIcon(Icons.Outlined.MoreVert,"$child 更多操作") { menuFor=path }
+                    DropdownMenu(menuFor==path,{menuFor=null}) { DropdownMenuItem(text={Text("不計入媒體庫")},leadingIcon={Icon(Icons.Outlined.FolderOff,null)},onClick={menuFor=null;exclude=path}) }
+                }
+            },onLongClick={exclude=path}) { here=path }
         }
         local.filter {it.first==here}.map {it.second}.sortedBy {normalize(it.title)}.forEach { t -> LibraryTrackRow(t,t.id==playingId,{onEvent(UiEvent.Play(t))},{onMore(t)}) }
         hidden.forEach { h ->
             FolderRow(Icons.Outlined.FolderOff,h.trimEnd('/').substringAfterLast('/').ifBlank {h},"已排除，不計入媒體庫",dim=true,trailing={ Text("加回",Modifier.clickable { onEvent(UiEvent.Setting("hiddenFolders",hidden.filter {it!=h}.joinToString("\n")));onEvent(UiEvent.Scan) }.padding(8.dp),style=MaterialTheme.typography.bodyMedium.copy(textDecoration=androidx.compose.ui.text.style.TextDecoration.Underline),color=Accent) }) {}
         }
-        if(local.isEmpty() && state.phase!=Phase.PermissionRequired) Text("手機內未找到音樂。可用右上角選單「授權音樂資料夾」加入其他位置。",Modifier.padding(vertical=16.dp),style=MaterialTheme.typography.bodySmall,color=Muted)
+        if(local.isEmpty() && state.phase!=Phase.PermissionRequired) Text("手機內未找到音樂。可用上方 ⋮ 選單「授權音樂資料夾」加入其他位置。",Modifier.padding(vertical=16.dp),style=MaterialTheme.typography.bodySmall,color=Muted)
         Row(Modifier.fillMaxWidth().padding(top=12.dp),verticalAlignment=Alignment.CenterVertically) {
             val last=settings.text("lastScan").toLongOrNull()?.let { ms -> val t=Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()); if(t.toLocalDate()==LocalDate.now()) "今日 "+t.format(DateTimeFormatter.ofPattern("HH:mm")) else t.format(DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")) } ?: "尚未掃描"
             Text("上次掃描 · $last",Modifier.weight(1f),style=SerifItalic.copy(fontSize=12.sp),color=Muted)
