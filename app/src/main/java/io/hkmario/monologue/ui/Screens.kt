@@ -58,6 +58,7 @@ import java.time.format.DateTimeFormatter
 @Composable fun NowPlayingScreen(state: AppUiState, progress: State<PlaybackProgress>, clock: VinylClock, visible: Boolean, onEvent: (UiEvent)->Unit, collapse: ()->Unit, queue: ()->Unit, equalizer: ()->Unit, sleep: ()->Unit, more: ()->Unit, importLyrics: (Boolean)->Unit) {
     val player=state.player; val track=player.entry?.track
     var lyrics by rememberSaveable { mutableStateOf(false) }
+    var askOnlineLyrics by rememberSaveable { mutableStateOf(false) }
     var drag by remember { mutableFloatStateOf(0f) }; var dragging by remember { mutableStateOf(false) }
     val displayDrag by animateFloatAsState(if(dragging) drag else 0f,spring(),label="collapse")
     val threshold=with(LocalDensity.current) { 120.dp.toPx() }
@@ -106,13 +107,21 @@ import java.time.format.DateTimeFormatter
                         ToolButton(if(lyrics) Icons.Outlined.Album else Icons.Outlined.Lyrics,if(lyrics) "封面" else "歌詞") {lyrics=!lyrics}
                         ToolButton(Icons.Outlined.QueueMusic,"隊列",queue)
                     }
-                    if(lyrics && state.lyrics.lines.isEmpty()) OutlinedButton(onClick={importLyrics(false)},modifier=Modifier.fillMaxWidth()) {Text("匯入本機 LRC")}
+                    // No lyrics: offer the online lookup right here instead of only a file import; it still asks before sending anything.
+                    if(lyrics && state.lyrics.lines.isEmpty()) Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                        if(!state.settings.bool("onlineLyrics")) Button(onClick={askOnlineLyrics=true},modifier=Modifier.fillMaxWidth()) {Text("搜尋線上歌詞")}
+                        OutlinedButton(onClick={importLyrics(false)},modifier=Modifier.fillMaxWidth()) {Text("匯入 LRC 歌詞檔")}
+                    }
                 }
             }
             if(landscape) Row(Modifier.weight(1f)) { cover(Modifier.weight(1f).fillMaxHeight().padding(16.dp)); controls(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState())) }
             else Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) { cover(Modifier.fillMaxWidth().heightIn(max=380.dp).padding(horizontal=16.dp)); controls(Modifier.fillMaxWidth()) }
         }
     }
+    if(askOnlineLyrics) AlertDialog(onDismissRequest={askOnlineLyrics=false},title={Text("搜尋線上歌詞？")},
+        text={Text("會把目前歌曲的歌名、歌手、專輯及長度傳送到歌詞服務（LRCLIB），不會上傳音訊或整個媒體庫。之後可在「設定 › 歌詞」關閉。")},
+        confirmButton={TextButton(onClick={askOnlineLyrics=false;onEvent(UiEvent.Setting("onlineLyrics","true"))}) {Text("開始搜尋")}},
+        dismissButton={TextButton(onClick={askOnlineLyrics=false}) {Text("取消")}})
 }
 @Composable private fun ToolButton(icon: androidx.compose.ui.graphics.vector.ImageVector,text: String,click: ()->Unit) { Column(Modifier.widthIn(min=56.dp).clickable(onClick=click).padding(8.dp),horizontalAlignment=Alignment.CenterHorizontally) {Icon(icon,text); Text(text,style=MaterialTheme.typography.labelMedium,modifier=Modifier.padding(top=4.dp))} }
 @Composable private fun Scrubber(player: NowPlayingUiState, progress: State<PlaybackProgress>, onEvent: (UiEvent)->Unit) {
@@ -146,56 +155,54 @@ import java.time.format.DateTimeFormatter
 @Composable fun DownloadSheet(state: DownloadManagerUiState,onEvent: (UiEvent)->Unit,close: ()->Unit) {
     ModalBottomSheet(onDismissRequest=close) {
         LazyColumn(Modifier.fillMaxWidth().heightIn(max=600.dp).navigationBarsPadding(),contentPadding=PaddingValues(24.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            item { Text("下載佇列",style=MaterialTheme.typography.headlineSmall);Text("成功 ${state.success} / ${state.items.size} 首 · 已處理 ${state.success+state.failed} · 失敗 ${state.failed} · 待下載 ${state.pending}",style=MaterialTheme.typography.bodySmall) }
+            item { Text("下載佇列",style=MaterialTheme.typography.headlineSmall);Text("已完成 ${state.success}／${state.items.size} 首 · 失敗 ${state.failed} · 等候 ${state.pending}",style=MaterialTheme.typography.bodySmall) }
             item { if(state.items.isNotEmpty()) LinearProgressIndicator(progress={(state.success+state.failed).toFloat()/state.items.size},modifier=Modifier.fillMaxWidth()) }
             state.current?.let { current -> item { Text(current.title); if(current.total>0) { LinearProgressIndicator(progress={(current.bytes.toFloat()/current.total).coerceIn(0f,1f)},modifier=Modifier.fillMaxWidth());Text("${current.bytes*100/current.total}%",style=TimeStyle) } else LinearProgressIndicator(Modifier.fillMaxWidth()) } }
-            item { Row(verticalAlignment=Alignment.CenterVertically) {Column(Modifier.weight(1f)) {Text("歌曲完成後暫停");Text(if(state.pauseRequested) "完成目前歌曲後暫停" else "每處理一首後等待手動繼續",style=MaterialTheme.typography.bodySmall)};Switch(state.pauseBetween,{onEvent(UiEvent.PauseBetween(it))})} }
+            item { Row(verticalAlignment=Alignment.CenterVertically) {Column(Modifier.weight(1f)) {Text("每首完成後暫停");Text(if(state.pauseRequested) "目前這首完成後會暫停" else "每下載完一首先停下，等你按繼續",style=MaterialTheme.typography.bodySmall)};Switch(state.pauseBetween,{onEvent(UiEvent.PauseBetween(it))})} }
             if(state.phase==DownloadPhase.Waiting) item { Text("已暫停，等待你繼續",color=MaterialTheme.colorScheme.primary);Button(onClick={onEvent(UiEvent.ContinueDownloads)}) {Text("繼續下載")} }
             if(state.phase==DownloadPhase.Complete) item {Text(if(state.failed>0) "下載已結束，${state.failed} 首失敗" else "全部項目已處理")}
             if(state.failed>0) item {OutlinedButton(onClick={onEvent(UiEvent.RetryDownloads)}) {Text("重試所有失敗項目（${state.failed}）")}}
             items(state.items.filter {it.status==DownloadStatus.Failed},key={it.id}) { item -> Text("${item.title}\n${item.error}",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.error) }
-            if(state.items.isEmpty()) item {EmptyPanel("未有下載工作","從 Google Drive 選擇歌曲或資料夾")}
+            if(state.items.isEmpty()) item {EmptyPanel("未有下載工作","在 Google Drive 或搜尋結果選擇歌曲下載")}
             if(state.pending>0 || state.current!=null || state.phase==DownloadPhase.Waiting) item {TextButton(onClick={onEvent(UiEvent.CancelDownloads)}) {Text("取消全部未完成工作")}}
         }
     }
 }
 
-@Composable fun RankScreen(state: LeaderboardUiState,onEvent: (UiEvent)->Unit,onMore: (Track)->Unit) {
-    val labels=listOf("週榜","月榜","總榜")
+/** Shared by every period switcher, so 聆聽回顧 and 支持金額 always use the same words. */
+val periodLabels=listOf("本週","本月","全部")
+
+/** 聆聽回顧: ranking, listening totals and the support estimate under one period switcher. */
+@Composable fun RecapScreen(state: LeaderboardUiState,onEvent: (UiEvent)->Unit,onMore: (Track)->Unit,openSupport: ()->Unit={}) {
+    // One switcher drives both the ranking and the statistics behind 支持金額, so they never show different periods.
+    fun period(p: Period,offset: Int=0,byTime: Boolean=state.sortByTime) { onEvent(UiEvent.Leaderboard(p,offset,byTime)); onEvent(UiEvent.Statistics(p,offset)) }
     LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(24.dp)) {
-        item { TabRow(state.period.ordinal,containerColor=Color.Transparent) { Period.entries.forEachIndexed { i,p -> Tab(p==state.period,{onEvent(UiEvent.Leaderboard(p,byTime=state.sortByTime))},text={Text(labels[i])}) } } }
+        item { TabRow(state.period.ordinal,containerColor=Color.Transparent) { Period.entries.forEachIndexed { i,p -> Tab(p==state.period,{period(p)},text={Text(periodLabels[i])}) } } }
         if(state.period!=Period.All) item {
             val zone=ZoneId.of(state.zone);val format=DateTimeFormatter.ofPattern("yyyy/MM/dd")
-            Row(Modifier.fillMaxWidth().padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween) {ActionIcon(Icons.Outlined.ChevronLeft,"上一期") {onEvent(UiEvent.Leaderboard(state.period,state.offset-1,state.sortByTime))};Text("${Instant.ofEpochMilli(state.startMs).atZone(zone).format(format)}\n— ${Instant.ofEpochMilli(state.endExclusiveMs-1).atZone(zone).format(format)}",style=MaterialTheme.typography.bodyMedium,textAlign=androidx.compose.ui.text.style.TextAlign.Center);ActionIcon(Icons.Outlined.ChevronRight,"下一期",state.offset<0) {onEvent(UiEvent.Leaderboard(state.period,state.offset+1,state.sortByTime))}}
+            Row(Modifier.fillMaxWidth().padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween) {ActionIcon(Icons.Outlined.ChevronLeft,"上一期") {period(state.period,state.offset-1)};Text("${Instant.ofEpochMilli(state.startMs).atZone(zone).format(format)}\n— ${Instant.ofEpochMilli(state.endExclusiveMs-1).atZone(zone).format(format)}",style=MaterialTheme.typography.bodyMedium,textAlign=androidx.compose.ui.text.style.TextAlign.Center);ActionIcon(Icons.Outlined.ChevronRight,"下一期",state.offset<0) {period(state.period,state.offset+1)}}
         }
-        item {Row(Modifier.fillMaxWidth().padding(vertical=24.dp),horizontalArrangement=Arrangement.SpaceBetween) {Column {Text("%.1f 小時".format(state.hours),style=MaterialTheme.typography.headlineLarge,color=MaterialTheme.colorScheme.primary);Text("總聆聽時數",style=MaterialTheme.typography.bodySmall)};Column {Text("${state.count} 次",style=MaterialTheme.typography.headlineLarge,color=MaterialTheme.colorScheme.primary);Text("總播放次數",style=MaterialTheme.typography.bodySmall)}}}
-        item {Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {FilterChip(!state.sortByTime,{onEvent(UiEvent.Leaderboard(state.period,state.offset,false))},label={Text("播放次數")});FilterChip(state.sortByTime,{onEvent(UiEvent.Leaderboard(state.period,state.offset,true))},label={Text("聆聽時間")})}}
-        if(state.rows.isEmpty()) item {EmptyPanel("呢個週期未有紀錄","聆聽達 30 秒或曲長一半後計一次；暫停與緩衝唔會計入。")}
+        item {Row(Modifier.fillMaxWidth().padding(vertical=24.dp),horizontalArrangement=Arrangement.SpaceBetween) {Column {Text("%.1f 小時".format(state.hours),style=MaterialTheme.typography.headlineLarge,color=MaterialTheme.colorScheme.primary);Text("聆聽時數",style=MaterialTheme.typography.bodySmall)};Column {Text("${state.count} 次",style=MaterialTheme.typography.headlineLarge,color=MaterialTheme.colorScheme.primary);Text("播放次數",style=MaterialTheme.typography.bodySmall)}}}
+        item {Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {FilterChip(!state.sortByTime,{onEvent(UiEvent.Leaderboard(state.period,state.offset,false))},label={Text("按播放次數")});FilterChip(state.sortByTime,{onEvent(UiEvent.Leaderboard(state.period,state.offset,true))},label={Text("按聆聽時間")})}}
+        if(state.rows.isEmpty()) item {EmptyPanel("這段期間未有紀錄","一首歌聽滿 30 秒（短歌則一半長度）才計一次播放；暫停與緩衝不計算在內。")}
         itemsIndexed(state.rows,key={_,it->it.track.id}) { i,row ->
             Surface(Modifier.fillMaxWidth().padding(top=8.dp),shape=RoundedCornerShape(12.dp),color=if(i==0) MaterialTheme.colorScheme.surface else Color.Transparent,border=if(i==0) BorderStroke(1.dp,MaterialTheme.colorScheme.primary) else null) {Box(Modifier.padding(horizontal=if(i==0) 12.dp else 0.dp)) {TrackRow(row.track,"${row.count} 次播放 · ${row.listenedMs/60000} 分鐘",{onEvent(UiEvent.Play(row.track))},{onMore(row.track)},"${i+1}${if(i<3) " ·" else ""}")}}
         }
+        item {SectionTitle("支持歌手")}
+        item {StatCard(supportRange(state.count),"按這段期間的播放次數估算 · 查看歌手明細",openSupport,badge="假設估算，非實際收益")}
         item {Text("統計時區：${state.zone}",style=MaterialTheme.typography.labelSmall,modifier=Modifier.padding(top=20.dp))}
     }
 }
 
-@Composable fun DiscoverScreen(account: ListenBrainzUiState,state: DiscoverUiState,onEvent: (UiEvent)->Unit,stats: ListeningStatsUiState = ListeningStatsUiState(),openAccount: ()->Unit = {},openListening: ()->Unit = {},openSupport: ()->Unit = {},openOnline: ()->Unit = {},openRank: ()->Unit = {}) {
+@Composable fun DiscoverScreen(account: ListenBrainzUiState,state: DiscoverUiState,onEvent: (UiEvent)->Unit,stats: ListeningStatsUiState = ListeningStatsUiState(),openAccount: ()->Unit = {},openRecap: ()->Unit = {},chooseVersion: (Recommendation)->Unit = {}) {
     LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
-        item {
-            Surface(onClick=openOnline,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(28.dp),color=MaterialTheme.colorScheme.surfaceContainer) {
-                Row(Modifier.heightIn(min=56.dp).padding(horizontal=20.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-                    Icon(Icons.Outlined.TravelExplore,null,tint=MaterialTheme.colorScheme.primary)
-                    Column(Modifier.weight(1f)) {Text("搜尋線上音樂",style=MaterialTheme.typography.titleMedium);Text("YouTube・MusicBrainz，不搜尋本機",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
-                }
-            }
-        }
-        item {SectionTitle("你的聆聽足跡","完整排行",openRank)}
-        item {StatCard("${stats.all.sumOf {it.listenedMs}/60000} 分鐘","累計聆聽 · ${stats.all.sumOf {it.count}} 次播放",openListening)}
-        item {StatCard(supportRange(stats.month.sumOf {it.count}),"本月支持金額 · 查看歌手明細",openSupport,badge="假設估算，非實際收益")}
+        item {SectionTitle("你的聆聽足跡","聆聽回顧",openRecap)}
+        item {StatCard("${stats.all.sumOf {it.listenedMs}/60000} 分鐘","累計聆聽 · ${stats.all.sumOf {it.count}} 次播放 · 排行與明細",openRecap)}
         item {SectionTitle("每週推薦","更新") {onEvent(UiEvent.Recommendations)}}
         if(account.connection!=Connection.Connected) item {SettingAction("連接 ListenBrainz","到設定管理帳號，取得個人推薦",openAccount)}
         if(state.phase==Phase.Loading) item {LinearProgressIndicator(Modifier.fillMaxWidth())}
         state.generated?.let {item {Text("生成日期：$it",style=MaterialTheme.typography.bodySmall)}}
         if(state.tracks.isEmpty()) item {EmptyPanel("等候新的發現",state.error ?: "尚未有推薦時不會加入示範歌曲。")}
-        items(state.tracks,key={it.id}) { r -> RecommendationRow(r,state.resolving==r.id,state.resolving!=null,{onEvent(UiEvent.PlayRecommendation(r))}) { onEvent(UiEvent.Online(OnlineAction.SearchFor("${r.title} ${r.artist}")));openOnline() } }
+        items(state.tracks,key={it.id}) { r -> RecommendationRow(r,state.resolving==r.id,state.resolving!=null,{onEvent(UiEvent.PlayRecommendation(r))}) { chooseVersion(r) } }
     }
 }

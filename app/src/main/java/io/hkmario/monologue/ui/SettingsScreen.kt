@@ -20,18 +20,20 @@ import io.hkmario.monologue.domain.*
 val settingsGroups=listOf("外觀與導航","播放","媒體庫","Google Drive 與下載","儲存空間","歌詞","聆聽統計","ListenBrainz","通知與背景行為","關於、隱私及維護","音源外掛與音質","App 更新")
 /** What each group contains, so settings search finds items by name rather than only group titles. */
 val settingsKeywords=listOf(
-    "主題 深色 暖白 動態 導航 bottom drawer banner 黑膠 旋轉 動態效果 語言",
+    "主題 深色 暖白 動態 導航 底部 側邊 bottom drawer banner 黑膠 旋轉 動態效果 語言",
     "恢復 隊列 自動播放 中斷 耳機 速度 等化器 睡眠 淡出 下載優先 行動網絡 串流",
     "權限 資料夾 掃描 索引 隱藏 長度 tab 排序 搜尋歷史",
     "google drive 雲端 連接 授權 斷開 根資料夾 下載位置 wi-fi 增量 暫停 下載中心",
-    "快取 cache 儲存 空間 離線 永久下載 歌詞快取 封面",
+    "快取 暫存 cache 儲存 空間 離線 永久下載 歌詞快取 封面",
     "歌詞 字體 翻譯 偏移 lrc lrclib",
-    "統計 時區 排行榜 匯出 csv 清除",
+    "統計 時區 排行榜 回顧 匯出 csv 清除",
     "listenbrainz token 同步 推薦 帳號",
     "通知 背景 電池",
     "版本 私隱 授權 開源 診斷 匯出 匯入 還原",
     "音源 外掛 插件 音質 youtube spotify musicbrainz 無損 lossless plugin",
     "更新 github release apk 版本")
+/** Common statistics time zones; the device zone and any previously saved zone are added when shown. */
+val timeZones=listOf("Asia/Hong_Kong" to "香港","Asia/Taipei" to "台北","Asia/Macau" to "澳門","Asia/Shanghai" to "北京／上海","Asia/Singapore" to "新加坡","Asia/Tokyo" to "東京","Asia/Seoul" to "首爾","Australia/Sydney" to "悉尼","Europe/London" to "倫敦","Europe/Paris" to "巴黎","America/New_York" to "紐約","America/Los_Angeles" to "洛杉磯","America/Vancouver" to "溫哥華","America/Toronto" to "多倫多","UTC" to "UTC")
 @Composable fun SettingsHome(open: (Int)->Unit) {
     var query by rememberSaveable {mutableStateOf("")}
     val q=query.trim().lowercase()
@@ -43,7 +45,7 @@ val settingsKeywords=listOf(
         if(matches.isEmpty()) item {Info("找不到「$query」相關設定。")}
     }
 }
-@Composable fun SettingsDetail(group: Int,state: AppUiState,onEvent: (UiEvent)->Unit,openEq: ()->Unit,openSleep: ()->Unit,openDownloads: ()->Unit,openDiscover: ()->Unit,openOffline: ()->Unit,openSystemSettings: ()->Unit,importLyrics: (Boolean)->Unit) {
+@Composable fun SettingsDetail(group: Int,state: AppUiState,onEvent: (UiEvent)->Unit,openEq: ()->Unit,openSleep: ()->Unit,openDownloads: ()->Unit,openDiscover: ()->Unit,openOffline: ()->Unit,openSystemSettings: ()->Unit,importLyrics: (Boolean)->Unit,openDrive: ()->Unit={}) {
     val s=state.settings
     var confirm by remember {mutableStateOf<Pair<String,UiEvent>?>(null)}
     fun setting(key: String,value: String) {onEvent(UiEvent.Setting(key,value))}
@@ -54,7 +56,7 @@ val settingsKeywords=listOf(
             0 -> {
                 Choice("主題",s.text("theme","paper"),listOf("paper" to "品牌暖白","dark" to "深色","system" to "跟隨系統")) {setting("theme",it)}
                 Toggle("動態主題色","Android 12 或以上；保留黑膠結構與排版",s.bool("dynamic")) {setting("dynamic",it.toString())}
-                Choice("導航樣式",s.text("navigation","bottom"),listOf("bottom" to "Bottom Bar","drawer" to "Drawer")) {setting("navigation",it)}
+                Choice("導航樣式",s.text("navigation","bottom"),listOf("bottom" to "底部導覽列","drawer" to "側邊選單")) {setting("navigation",it)}
                 Toggle("黑膠旋轉","24 秒一圈；暫停時定格",s.bool("vinyl",true)) {setting("vinyl",it.toString())}
                 Toggle("減少動態效果","關閉旋轉；亦尊重系統動畫設定",s.bool("reduceMotion")) {setting("reduceMotion",it.toString())}
                 Choice("顯示語言",s.text("language","zh-Hant"),listOf("zh-Hant" to "繁體中文","system" to "跟隨系統（未支援語言用繁體中文）")) {setting("language",it)}
@@ -66,7 +68,7 @@ val settingsKeywords=listOf(
                 Toggle("中斷後恢復播放","仍須遵循 Android 音訊焦點規則",s.bool("resumeInterruption",true)) {setting("resumeInterruption",it.toString())}
                 Toggle("耳機拔除時暫停","避免聲音突然由揚聲器播放",s.bool("noisyPause",true)) {setting("noisyPause",it.toString())}
                 Choice("播放速度",s.text("speed","1.0"),listOf("0.5" to "0.5×","0.75" to "0.75×","1.0" to "1.0×","1.25" to "1.25×","1.5" to "1.5×","2.0" to "2.0×")) {setting("speed",it)}
-                SettingAction("等化器","按裝置音訊 session 能力提供",openEq)
+                SettingAction("等化器","可調頻段視乎裝置支援",openEq)
                 SettingAction("睡眠計時器",if(state.sleep.remainingMs>0) "剩餘 ${formatTime(state.sleep.remainingMs)}" else if(state.sleep.endOfTrack) "本曲結束後停止" else "關閉",openSleep)
                 Toggle("睡眠結束前淡出","最後 5 秒降低音量",s.bool("sleepFade")) {setting("sleepFade",it.toString())}
                 Toggle("完整下載優先","已驗證的離線檔案優先於串流",s.bool("offlineFirst",true)) {setting("offlineFirst",it.toString())}
@@ -76,13 +78,14 @@ val settingsKeywords=listOf(
                 SettingAction("音樂權限","開啟系統權限設定",openSystemSettings)
                 SettingAction("授權音樂資料夾","選取本機音樂資料夾") {onEvent(UiEvent.PickFolder)}
                 state.authorizedFolders.forEach {uri -> SettingAction("取消資料夾授權",android.net.Uri.decode(uri.substringAfterLast('/'))) {confirm="取消此資料夾的讀取授權？檔案不會被刪除。" to UiEvent.RevokeFolder(uri)} }
-                SettingAction("重新掃描","更新索引；唔會移除音訊檔案") {onEvent(UiEvent.Scan)}
+                SettingAction("重新掃描","更新索引；不會移除音訊檔案") {onEvent(UiEvent.Scan)}
                 Toggle("自動更新索引","媒體資料變動時重新掃描",s.bool("autoScan",true)) {setting("autoScan",it.toString())}
                 EditSetting("隱藏資料夾",s.text("hiddenFolders"),"每行一個路徑或資料夾名稱；重新掃描後套用") {setting("hiddenFolders",it)}
                 EditSetting("最短音訊長度（秒）",s.text("minDuration","0"),"0 表示不排除；重新掃描後套用",numeric=true) {if(it.toFloatOrNull()?.let { n -> n>=0 }==true) setting("minDuration",it)}
                 Choice("預設 Tab",s.text("defaultTab","Tracks"),LibraryTab.entries.map {it.name to it.label}) {setting("defaultTab",it)}
-                Choice("歌曲排序",s.text("sort","title"),listOf("title" to "曲名 A–Z","artist" to "歌手 A–Z","duration" to "長度，由長至短")) {setting("sort",it)}
-                LibraryTab.entries.filter {it!=LibraryTab.Tracks}.forEach {tab -> Choice("${tab.label}排序",s.text("groupSort.${tab.name}","name"),listOf("name" to "名稱 A–Z","count" to "歌曲數目，由多至少")) {setting("groupSort.${tab.name}",it)} }
+                // Same options and names as the sort menus in 媒體庫.
+                Choice("歌曲排序",s.text("sort","title"),songSorts.toList()) {setting("sort",it)}
+                Choice("專輯排序",s.text("groupSort.Albums","name"),albumSorts.toList()) {setting("groupSort.Albums",it)}
                 Toggle("記錄搜尋歷史","按分類保存最近 10 個已提交搜尋",s.bool("searchHistory",true)) {setting("searchHistory",it.toString())}
                 SettingAction("清空目前 Tab 搜尋紀錄","") {onEvent(UiEvent.ClearSearchHistory)}
                 SettingAction("清除本機索引","只移除索引，不刪除音訊檔案") {confirm="清除本機索引？音樂檔仍然保留，可重新掃描。" to UiEvent.ClearIndex}
@@ -91,23 +94,23 @@ val settingsKeywords=listOf(
                 Info(state.drive.account ?: "Google Drive 尚未連接")
                 SettingAction("連接／重新驗證","唯讀權限用於瀏覽你既有的 Drive 音樂") {onEvent(UiEvent.ConnectDrive)}
                 SettingAction("斷開 Google Drive","停止雲端操作及未完成下載；保留永久下載") {confirm="斷開 Drive？目前下載會停止，永久下載會保留。" to UiEvent.DisconnectDrive}
-                SettingAction("更換音樂資料夾",s.text("driveRootName").ifBlank {"尚未選擇"}+" · 回到雲端頁重新選擇") {setting("driveRootChosen","false")}
+                SettingAction("更換音樂資料夾",s.text("driveRootName").ifBlank {"尚未選擇"}) {setting("driveRootChosen","false");openDrive()}
                 Choice("永久下載位置",s.text("downloadLocation","internal"),listOf("internal" to "App 內部私人空間","external" to "App 外置私人空間")) {setting("downloadLocation",it)}
                 Info("位置變更對下一個下載工作生效；舊檔仍可播放。兩種位置均與串流快取分開，解除安裝會移除。")
                 Toggle("只用 Wi-Fi 下載","對新排程工作生效",s.bool("wifiOnly",true)) {setting("wifiOnly",it.toString())}
-                Toggle("自動增量檢查","每 24 小時检查音樂根資料夾；需已授權",s.bool("autoIncremental")) {setting("autoIncremental",it.toString())}
+                Toggle("每日檢查新歌曲","每 24 小時檢查雲端音樂資料夾有沒有新歌；需已連接",s.bool("autoIncremental")) {setting("autoIncremental",it.toString())}
                 Toggle("歌曲間暫停","正在下載時會先完成本曲",state.downloads.pauseBetween) {onEvent(UiEvent.PauseBetween(it))}
                 SettingAction("下載中心","成功 ${state.downloads.success}，失敗 ${state.downloads.failed}",openDownloads)
-                Info("失敗項目保留原因。完成後可一鍵重試；成功歌曲不重抓。低儲存空間時停止新下載。")
+                Info("下載失敗會保留原因，可一鍵重試；已下載的歌曲不會重複下載。手機空間不足時會暫停新的下載。")
             }
             4 -> {
-                SectionTitle("串流快取")
+                SectionTitle("播放暫存")
                 Text("${formatBytes(state.storage.cacheBytes)} / 1,000 MB",style=MaterialTheme.typography.headlineSmall)
-                Info("LRU 淘汰；播放中與寫入中的資料受保護。")
-                SettingAction("清除串流快取",if(state.storage.deferredClear) "部分使用中快取將於釋放後清理" else "不刪除永久下載") {onEvent(UiEvent.ClearStreamCache)}
-                SectionTitle("永久下載")
+                Info("串流播放時暫存的音訊。空間用滿時會自動清除最久沒播放的部分；正在播放的歌曲不受影響。")
+                SettingAction("清除播放暫存",if(state.storage.deferredClear) "正在使用的部分會在播放完畢後清除" else "不影響離線下載") {onEvent(UiEvent.ClearStreamCache)}
+                SectionTitle("離線下載")
                 Text(formatBytes(state.storage.offlineBytes),style=MaterialTheme.typography.headlineSmall)
-                SettingAction("管理離線下載","逐首確認刪除",openOffline)
+                SettingAction("管理離線下載","逐首選擇刪除",openOffline)
                 Info("裝置剩餘空間：${formatBytes(state.storage.freeBytes)}")
                 Info("歌詞快取文字用量：${formatBytes(state.storage.lyricsBytes)}")
                 SettingAction("清除歌詞快取","包括你已匯入的原文及翻譯") {confirm="清除已匯入的歌詞及翻譯快取？原始 LRC 檔案不受影響。" to UiEvent.ClearLyricsCache}
@@ -133,12 +136,15 @@ val settingsKeywords=listOf(
             }
             6 -> {
                 Toggle("記錄本機聆聽資料","預設開啟；與 ListenBrainz 同步分開",s.bool("statistics",true)) {setting("statistics",it.toString())}
-                EditSetting("統計時區",s.text("timezone","Asia/Hong_Kong"),"例如 Asia/Hong_Kong。更改後歷史榜會按新時區重新計算。") {setting("timezone",it)}
-                Info("每次播放實例聆聽達 min(30 秒, 曲長 50%) 計一次；未知長度用 30 秒。暫停、緩衝與 seek 跳過部分唔計時間。週榜由週一 00:00、月榜由每月 1 號 00:00 開始；歷史紀錄保留。")
-                Choice("預設排行榜",s.text("rankPeriod","Week"),listOf("Week" to "週榜","Month" to "月榜","All" to "總榜")) {setting("rankPeriod",it)}
+                // A list instead of free text: nobody should need to know IANA zone IDs.
+                val zone=s.text("timezone","Asia/Hong_Kong"); val device=java.time.ZoneId.systemDefault().id
+                val zones=(listOf(device to "跟隨手機（$device）")+timeZones.filter {it.first!=device}).let { z -> if(z.none {it.first==zone}) z+(zone to zone) else z }
+                Choice("統計時區",zone,zones) {setting("timezone",it)}
+                Info("一首歌聽滿 30 秒（短歌則一半長度）才計一次播放；暫停、緩衝及跳過的部分不計時間。每週由星期一開始，每月由 1 號開始；更改時區後會按新時區重新計算，歷史紀錄會保留。")
+                Choice("預設回顧期間",s.text("rankPeriod","Week"),listOf("Week" to periodLabels[0],"Month" to periodLabels[1],"All" to periodLabels[2])) {setting("rankPeriod",it)}
                 Toggle("預設按聆聽時間排序","關閉則按播放次數",s.bool("rankTime")) {setting("rankTime",it.toString())}
                 SettingAction("匯出個人統計","CSV 原始事件") {onEvent(UiEvent.Export("statistics"))}
-                SettingAction("清除目前排行榜期間","不影響其他期間或 ListenBrainz 歷史") {confirm="刪除目前排行榜期間的本機統計？此操作無法復原。" to UiEvent.ClearStatistics(state.leaderboard.startMs,state.leaderboard.endExclusiveMs)}
+                SettingAction("清除目前回顧期間","不影響其他期間或 ListenBrainz 歷史") {confirm="刪除目前回顧期間的本機統計？此操作無法復原。" to UiEvent.ClearStatistics(state.leaderboard.startMs,state.leaderboard.endExclusiveMs)}
                 SettingAction("清除全部本機統計","不刪除歌曲或伺服器紀錄") {confirm="永久刪除全部本機聆聽紀錄？此操作無法復原。" to UiEvent.ClearStatistics(0,Long.MAX_VALUE)}
             }
             7 -> {

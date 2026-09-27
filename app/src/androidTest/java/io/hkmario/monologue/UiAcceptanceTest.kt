@@ -38,7 +38,7 @@ class UiAcceptanceTest {
         Assert.assertTrue(compose.onAllNodesWithText("Monologue").fetchSemanticsNodes().indices.any {compose.onAllNodesWithText("Monologue")[it].isDisplayed()})
         compose.onAllNodesWithText("Afterglow").onFirst().assertExists()
         screenshot("01-library-demo")
-        compose.onAllNodesWithText("設定").onLast().performClick()
+        compose.onNodeWithContentDescription("設定").performClick()
         compose.onNodeWithText("外觀與導航").assertIsDisplayed()
         screenshot("05-settings")
     }
@@ -57,9 +57,12 @@ class UiAcceptanceTest {
         compose.onNodeWithText("絕不修改或刪除").assertExists()
         screenshot("03-drive-unconfigured")
     }
-    @Test fun rankingEmptyStateAndSettingsDetail() {
-        compose.setContent {MonologueTheme {RankScreen(LeaderboardUiState(),{},{})}}
-        compose.onNodeWithText("呢個週期未有紀錄").assertIsDisplayed()
+    @Test fun recapEmptyStateAndSupportLink() {
+        var support=false
+        compose.setContent {MonologueTheme {RecapScreen(LeaderboardUiState(),{},{}) {support=true}}}
+        compose.onNodeWithText("這段期間未有紀錄").assertIsDisplayed()
+        compose.onNodeWithText("本週").assertIsDisplayed()
+        compose.onNodeWithText("US$ 0.00–0.00").performScrollTo().performClick();Assert.assertTrue(support)
         screenshot("04-rank-empty")
     }
     @Test fun miniPlayerButtonsDoNotExpand() {
@@ -73,23 +76,26 @@ class UiAcceptanceTest {
     @Test fun navigationStyleSwitchKeepsDestination() {
         val state=mutableStateOf(PreviewFixtures.app)
         compose.setContent {MonologueTheme {AppHost(state.value,remember {mutableStateOf(PlaybackProgress())},remember {VinylClock()},false,{},null,{}, {_,_->},{},{})}}
-        compose.onAllNodesWithText("排行榜").onLast().performClick()
-        compose.onNodeWithText("聆聽排行").assertIsDisplayed()
+        compose.onNodeWithTag("nav-discover").performClick()
+        compose.onNodeWithText("你的聆聽足跡").assertIsDisplayed()
         compose.runOnIdle {state.value=state.value.copy(settings=AppSettingsUiState(persistentMapOf("navigation" to "drawer")))}
-        compose.onNodeWithText("聆聽排行").assertIsDisplayed()
+        compose.onNodeWithText("你的聆聽足跡").assertIsDisplayed()
         compose.onNodeWithContentDescription("開啟選單").assertIsDisplayed()
         compose.runOnIdle {state.value=state.value.copy(settings=AppSettingsUiState())}
-        compose.onNodeWithText("聆聽排行").assertIsDisplayed()
+        compose.onNodeWithText("你的聆聽足跡").assertIsDisplayed()
     }
     @Test fun switchingTabsAlwaysOpensTheTabFirstPage() {
         compose.setContent {MonologueTheme {AppHost(PreviewFixtures.app,remember {mutableStateOf(PlaybackProgress())},remember {VinylClock()},false,{},null,{}, {_,_->},{},{})}}
-        compose.onNodeWithTag("nav-settings").performClick()
+        // 設定 opens from the 媒體庫 header; it is no longer a bottom tab.
+        compose.onNodeWithTag("nav-settings").assertDoesNotExist()
+        compose.onNodeWithContentDescription("設定").performClick()
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("歌詞"))
         compose.onNodeWithText("歌詞").performClick()
         compose.onNodeWithText("歌詞文字大小").assertExists()
-        compose.onNodeWithTag("nav-rank").performClick()
-        compose.onNodeWithText("聆聽排行").assertIsDisplayed()
-        compose.onNodeWithTag("nav-settings").performClick()
+        compose.onNodeWithTag("nav-discover").performClick()
+        compose.onNodeWithText("你的聆聽足跡").assertIsDisplayed()
+        compose.onNodeWithTag("nav-library").performClick()
+        compose.onNodeWithContentDescription("設定").performClick()
         compose.onNodeWithText("歌詞文字大小").assertDoesNotExist()
         compose.onNodeWithText("把 Monologue 調成你的節奏。").assertExists()
         // Same for 媒體庫: an opened album is not shown again after visiting another tab.
@@ -110,7 +116,7 @@ class UiAcceptanceTest {
         val event=mutableStateOf<UiEvent?>(null)
         val state=PreviewFixtures.app.library.copy(search=search(PreviewFixtures.tracks,SearchRequest(LibraryTab.Artists,"Afterglow",8)))
         compose.setContent {MonologueTheme {LibraryScreen(state,AppSettingsUiState(),{event.value=it},{},{},{},{})}}
-        compose.onNodeWithText("搵唔到「Afterglow」").assertIsDisplayed()
+        compose.onNodeWithText("找不到「Afterglow」").assertIsDisplayed()
         compose.onNodeWithText("目前只搜尋媒體庫歌手").assertIsDisplayed()
         compose.onNodeWithText("改為線上搜尋「Afterglow」").assertExists()
     }
@@ -124,10 +130,22 @@ class UiAcceptanceTest {
     @Test fun onlineResultsNeverClaimQualityBeforeResolving() {
         val song=OnlineSong("youtube:x","Test Song","Test Channel",durationMs=185000,provider="youtube",audio=true)
         val meta=OnlineSong("mb","Meta Song","Artist",provider="musicbrainz")
-        compose.setContent {MonologueTheme {OnlineScreen(OnlineUiState(results=persistentListOf(song,meta),phase=Phase.Ready,searched=true),PluginUiState(),AppSettingsUiState(),{},{})}}
+        compose.setContent {MonologueTheme {SearchScreen(LocalLibraryUiState(),OnlineUiState(query="Test",results=persistentListOf(song,meta),phase=Phase.Ready,searched=true),PluginUiState(),AppSettingsUiState(),{})}}
+        compose.onNodeWithText("媒體庫沒有符合的歌曲").assertExists()
         compose.onNodeWithText("音質尚未確認").assertExists()
         compose.onNodeWithText("3:05 · 平台：YouTube").assertExists()
         compose.onNodeWithText("只有歌曲資料，沒有音訊；可尋找可播音源").assertExists()
+    }
+    @Test fun searchShowsLibraryAndCloudBeforeAskingOnline() {
+        val local=Track("l","Afterglow","Local Artist",uri="content://l")
+        val cloud=Track("d","Afterglow (Live)","Drive Artist",uri="drive://d",source=Source.Drive)
+        var last: UiEvent?=null
+        compose.setContent {MonologueTheme {SearchScreen(LocalLibraryUiState(tracks=persistentListOf(local,cloud)),OnlineUiState(query="afterglow"),PluginUiState(persistentListOf(SourcePlugin("youtube","YouTube","1","audio",builtIn=true))),AppSettingsUiState(),{last=it})}}
+        compose.onNodeWithText("媒體庫 · 1 首").assertIsDisplayed()
+        compose.onNodeWithText("Google Drive · 1 首").assertIsDisplayed()
+        Assert.assertNull(last)
+        compose.onNodeWithText("在 YouTube 搜尋「afterglow」").performScrollTo().performClick()
+        Assert.assertEquals(UiEvent.Online(OnlineAction.Search),last)
     }
     @Test fun settingsSearchFindsTokenGroup() {
         compose.setContent {MonologueTheme {SettingsHome {}}}

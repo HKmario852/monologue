@@ -17,15 +17,15 @@
 ```mermaid
 flowchart TD
   App[Single Activity] --> Library[媒體庫：單曲／歌手／專輯／資料夾]
+  App --> Search[搜尋：媒體庫＋雲端即時結果／線上音源]
+  App --> Discover[探索：聆聽足跡／每週推薦]
   App --> Drive[Google Drive：帳號／資料夾／Breadcrumb]
-  App --> Rank[聆聽排行：週／月／總榜]
-  App --> Discover[探索：統計／推薦／線上搜尋]
-  App --> Settings[設定：十二組分類]
-  Discover --> Stats[逐曲聆聽明細／歌手支持估算]
-  Discover --> Online[YouTube／MusicBrainz／Spotify／音源外掛]
+  Library --> Settings[設定：十二組分類（媒體庫頁首齒輪）]
+  Discover --> Recap[聆聽回顧：排行／本週・本月・全部／支持金額估算]
+  Search --> Online[YouTube／MusicBrainz／Spotify／音源外掛]
   Library --> Detail[歌手／專輯／資料夾詳情]
   Library --> Playlist[播放清單／收藏]
-  Library & Drive & Rank & Discover --> Mini[Mini Player]
+  Library & Search & Discover & Drive --> Mini[Mini Player]
   Mini --> Playing[同一 Activity 全螢幕 Now Playing]
   Playing --> Lyrics[封面／歌詞切換]
   Playing --> Queue[隊列 Sheet]
@@ -38,7 +38,7 @@ flowchart TD
   Service -. 同一播放工作階段 .-> Playing
 ```
 
-五個主目的地包括「設定」，主要頁面不再重複右上角設定按鈕。導航預設 Bottom Bar；Drawer 使用相同 NavController 和目的地。切換外觀不重建播放服務。主頁切換採 `launchSingleTop / saveState / restoreState`。返回先關閉 Sheet／Dialog／Drawer；Drive 再回上一個資料夾；全螢幕播放頁返回原頁與列表位置。Now Playing 是 `playing` 導航目的地，不是 Dialog 或第二個 Activity。
+四個主目的地為媒體庫、搜尋、探索、雲端；「設定」由媒體庫頁首的齒輪（或 Drawer）進入，不佔底部分頁。搜尋在輸入時即時列出媒體庫及雲端歌曲，線上音源只在按下搜尋後才查詢。導航預設 Bottom Bar；Drawer 使用相同 NavController 和目的地。切換外觀不重建播放服務。主頁切換採 `launchSingleTop / saveState / restoreState`。返回先關閉 Sheet／Dialog／Drawer；Drive 再回上一個資料夾；全螢幕播放頁返回原頁與列表位置。Now Playing 是 `playing` 導航目的地，不是 Dialog 或第二個 Activity。
 
 ## 建置
 

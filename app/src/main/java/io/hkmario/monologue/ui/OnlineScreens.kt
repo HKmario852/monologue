@@ -1,3 +1,4 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package io.hkmario.monologue.ui
 
 import androidx.compose.foundation.layout.*
@@ -18,27 +19,71 @@ import io.hkmario.monologue.BuildConfig
 import io.hkmario.monologue.domain.*
 import coil.compose.AsyncImage
 
-@Composable fun OnlineScreen(state: OnlineUiState,plugins: PluginUiState,settings: AppSettingsUiState,onEvent: (UiEvent)->Unit,openPlugins: ()->Unit) {
+/** Whether this build can sign in to Spotify; when it cannot, Spotify is hidden rather than offered as an option that fails. */
+val spotifyAvailable get()=BuildConfig.SPOTIFY_CLIENT_ID.isNotBlank() && !BuildConfig.SPOTIFY_REDIRECT_URI.contains(".invalid/")
+
+@Composable private fun SearchSourceHint(icon: androidx.compose.ui.graphics.vector.ImageVector,title: String,detail: String) {
+    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(16.dp)) {
+        Icon(icon,null,tint=MaterialTheme.colorScheme.primary)
+        Column { Text(title,style=MaterialTheme.typography.titleSmall); Text(detail,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
+}
+
+/** One search box for everything: 媒體庫 and Google Drive answer while typing; an online source is asked only when the user presses search. */
+@Composable fun SearchScreen(library: LocalLibraryUiState,online: OnlineUiState,plugins: PluginUiState,settings: AppSettingsUiState,onEvent: (UiEvent)->Unit,onMore: (Track)->Unit={},playingId: String?=null,openSources: ()->Unit={}) {
     var playlist by rememberSaveable {mutableStateOf("")}
+    var allLocal by rememberSaveable(online.query) {mutableStateOf(false)}
+    var allCloud by rememberSaveable(online.query) {mutableStateOf(false)}
     fun act(a: OnlineAction)=onEvent(UiEvent.Online(a))
-    LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(24.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+    val q=normalize(online.query)
+    val matches=remember(q,library.tracks) { if(q.isEmpty()) emptyList() else library.tracks.filter {normalize(it.title).contains(q) || normalize(it.artist).contains(q) || normalize(it.album).contains(q)} }
+    val local=matches.filter {it.source!=Source.Drive}; val cloud=matches.filter {it.source==Source.Drive}
+    val sources=plugins.plugins.filter {settings.bool("plugin.${it.id}.enabled",true) && (it.id!="spotify" || online.spotifyConnected)}
+    LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(start=24.dp,end=24.dp,bottom=24.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
         item {
-            Choice("搜尋來源",state.provider,plugins.plugins.filter {settings.bool("plugin.${it.id}.enabled",true)}.map {it.id to it.name}) {act(OnlineAction.Provider(it))}
-            OutlinedTextField(state.query,{act(OnlineAction.Query(it))},Modifier.fillMaxWidth(),label={Text("搜尋 ${providerLabel(state.provider)}・歌曲、歌手或專輯")},singleLine=true,keyboardOptions=KeyboardOptions(imeAction=ImeAction.Search),keyboardActions=KeyboardActions(onSearch={act(OnlineAction.Search)}),trailingIcon={ActionIcon(Icons.Outlined.Search,"搜尋線上音樂",state.query.isNotBlank()) {act(OnlineAction.Search)}})
-            Info("按搜尋才會把查詢文字傳送至所選服務；不會上傳本機媒體庫。")
-            TextButton(onClick=openPlugins) {Text("管理音源與音質")}
+            OutlinedTextField(online.query,{act(OnlineAction.Query(it))},Modifier.fillMaxWidth(),placeholder={Text("歌名、歌手或專輯")},leadingIcon={Icon(Icons.Outlined.Search,null)},
+                trailingIcon={if(online.query.isNotEmpty()) ActionIcon(Icons.Outlined.Close,"清除搜尋") {act(OnlineAction.Query(""))}},singleLine=true,shape=RoundedCornerShape(28.dp),
+                keyboardOptions=KeyboardOptions(imeAction=ImeAction.Search),keyboardActions=KeyboardActions(onSearch={if(online.query.isNotBlank()) act(OnlineAction.Search)}))
         }
-        if(state.provider=="spotify") item {
-            Info(if(state.spotifyConnected) "Spotify · ${state.spotifyUser ?: "已連接"} · 歌曲資料來源" else "請先在外掛設定連接 Spotify")
-            OutlinedTextField(playlist,{playlist=it},Modifier.fillMaxWidth(),label={Text("Spotify 播放清單連結")},singleLine=true)
-            TextButton(onClick={act(OnlineAction.SpotifyPlaylist(playlist))},enabled=state.spotifyConnected && playlist.isNotBlank()) {Text("讀取播放清單")}
-        }
-        if(state.phase==Phase.Loading || state.resolvingId!=null) item {LinearProgressIndicator(Modifier.fillMaxWidth());Text(if(state.resolvingId!=null) "正在確認可用音訊…" else "正在搜尋…")}
-        state.error?.let {item {Text(it,color=MaterialTheme.colorScheme.error)}}
-        if(state.phase==Phase.Empty && state.searched) item {EmptyPanel("沒有搜尋結果","試試其他歌名或音源。")}
-        items(state.results,key={it.provider+":"+it.id}) {song->
+        if(q.isEmpty()) item {
+            Column(Modifier.padding(top=16.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
+                Text("一個搜尋框，找遍你的音樂",style=MaterialTheme.typography.titleMedium)
+                SearchSourceHint(Icons.Outlined.LibraryMusic,"媒體庫","手機上的歌曲、收藏及離線下載；輸入時即時顯示")
+                SearchSourceHint(Icons.Outlined.Cloud,"Google Drive","已加入音樂庫的雲端歌曲")
+                SearchSourceHint(Icons.Outlined.TravelExplore,"線上",sources.joinToString("・") {it.name}.ifBlank {"未啟用線上音源"}+"；按搜尋才會傳送文字")
+            }
+        } else {
+            item {SectionTitle("媒體庫 · ${local.size} 首")}
+            if(local.isEmpty()) item {Text("媒體庫沒有符合的歌曲",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
+            items(if(allLocal) local else local.take(5),key={"local:"+it.id}) {t -> LibraryTrackRow(t,t.id==playingId,{onEvent(UiEvent.Play(t))},{onMore(t)})}
+            if(local.size>5 && !allLocal) item {TextButton(onClick={allLocal=true}) {Text("顯示全部 ${local.size} 首")}}
+            if(cloud.isNotEmpty()) {
+                item {SectionTitle("Google Drive · ${cloud.size} 首")}
+                items(if(allCloud) cloud else cloud.take(5),key={"cloud:"+it.id}) {t -> LibraryTrackRow(t,t.id==playingId,{onEvent(UiEvent.Play(t))},{onMore(t)})}
+                if(cloud.size>5 && !allCloud) item {TextButton(onClick={allCloud=true}) {Text("顯示全部 ${cloud.size} 首")}}
+            }
+            item {SectionTitle("線上","管理音源",openSources)}
+            // The source is picked right above its results, not in a settings dialog; switching re-runs a search already made.
+            if(sources.size>1) item {
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                    sources.forEachIndexed {i,p -> SegmentedButton(selected=p.id==online.provider,onClick={act(OnlineAction.Provider(p.id));if(online.searched) act(OnlineAction.Search)},shape=SegmentedButtonDefaults.itemShape(i,sources.size)) {Text(p.name,maxLines=1)}}
+                }
+            }
+            if(online.provider=="spotify" && online.spotifyConnected) item {
+                Info("Spotify · ${online.spotifyUser ?: "已連接"} · 歌曲資料來源")
+                OutlinedTextField(playlist,{playlist=it},Modifier.fillMaxWidth(),label={Text("Spotify 播放清單連結")},singleLine=true)
+                TextButton(onClick={act(OnlineAction.SpotifyPlaylist(playlist))},enabled=playlist.isNotBlank()) {Text("讀取播放清單")}
+            }
+            if(!online.searched && online.phase!=Phase.Loading && online.resolvingId==null) item {
+                FilledTonalButton(onClick={act(OnlineAction.Search)},modifier=Modifier.fillMaxWidth().heightIn(min=48.dp),enabled=sources.isNotEmpty()) {Icon(Icons.Outlined.TravelExplore,null);Spacer(Modifier.width(8.dp));Text("在 ${providerLabel(online.provider)} 搜尋「${online.query}」",maxLines=1)}
+                Text("按搜尋才會把文字傳送至所選服務；不會上傳你的媒體庫。",Modifier.padding(top=4.dp),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if(online.phase==Phase.Loading || online.resolvingId!=null) item {LinearProgressIndicator(Modifier.fillMaxWidth());Text(if(online.resolvingId!=null) "正在確認可用音訊…" else "正在搜尋…")}
+            online.error?.let {item {Text(it,color=MaterialTheme.colorScheme.error)}}
+            if(online.phase==Phase.Empty && online.searched) item {EmptyPanel("線上沒有搜尋結果","試試其他歌名，或換一個音源。")}
+        items(online.results,key={it.provider+":"+it.id}) {song->
             Column {
-                val quality=state.quality[song.provider+":"+song.id]
+                val quality=online.quality[song.provider+":"+song.id]
                 ListItem(headlineContent={Text(song.title)},supportingContent={
                     Column {
                         Text("${if(song.provider=="youtube") "YouTube 頻道" else "歌手"}：${song.artist.ifBlank {"未知"}}${if(song.album.isNotBlank()) " · ${song.album}" else ""}")
@@ -51,14 +96,15 @@ import coil.compose.AsyncImage
                 },colors=ListItemDefaults.colors(containerColor=MaterialTheme.colorScheme.surface))
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
                     if(song.audio) {
-                        if(quality==null) TextButton(onClick={act(OnlineAction.Inspect(song))},modifier=Modifier.heightIn(min=48.dp),enabled=state.resolvingId==null) {Text("檢查音質")}
-                        TextButton(onClick={act(OnlineAction.Download(song))},modifier=Modifier.heightIn(min=48.dp),enabled=state.resolvingId==null) {Text("離線下載")}
-                        FilledTonalButton(onClick={act(OnlineAction.Play(song))},modifier=Modifier.heightIn(min=48.dp),enabled=state.resolvingId==null) {Text("播放")}
+                        if(quality==null) TextButton(onClick={act(OnlineAction.Inspect(song))},modifier=Modifier.heightIn(min=48.dp),enabled=online.resolvingId==null) {Text("檢查音質")}
+                        TextButton(onClick={act(OnlineAction.Download(song))},modifier=Modifier.heightIn(min=48.dp),enabled=online.resolvingId==null) {Text("離線下載")}
+                        FilledTonalButton(onClick={act(OnlineAction.Play(song))},modifier=Modifier.heightIn(min=48.dp),enabled=online.resolvingId==null) {Text("播放")}
                     } else TextButton(onClick={act(OnlineAction.Match(song))},modifier=Modifier.heightIn(min=48.dp)) {Text("尋找可播音源")}
                 }
             }
         }
-        if(state.results.isNotEmpty() && state.results.none {it.audio}) item {Info("這些結果提供歌曲資料；尋找音源後由你確認演出者及版本，不會把不同錄音自動當成同一首。")}
+            if(online.results.isNotEmpty() && online.results.none {it.audio}) item {Info("這些結果提供歌曲資料；尋找音源後由你確認演出者及版本，不會把不同錄音自動當成同一首。")}
+        }
     }
 }
 
@@ -70,15 +116,16 @@ import coil.compose.AsyncImage
     Choice("音質偏好",s.text("audioQuality","best"),listOf("best" to "最高可用音質","balanced" to "節省流量（優先 ≤192 kbps）")) {onEvent(UiEvent.Setting("audioQuality",it))}
     Choice("配對歌曲的預設音源",s.text("audioProvider","youtube"),state.plugins.plugins.filter {it.category=="audio" && s.bool("plugin.${it.id}.enabled",true)}.map {it.id to it.name}) {onEvent(UiEvent.Setting("audioProvider",it))}
     Info("音質設定用於下一次解析音源；已下載檔案保持原格式。數字以來源及解碼器回報為準，不把轉碼或升頻標為無損。")
-    state.plugins.plugins.filter {category=="all" || it.category==category}.forEach {p->
+    // A source this build cannot use (Spotify without the developer's app registration) is not shown at all.
+    state.plugins.plugins.filter {(category=="all" || it.category==category) && (it.id!="spotify" || spotifyAvailable || state.online.spotifyConnected)}.forEach {p->
         SectionTitle(p.name)
         Info("${if(p.builtIn) "內建接入模組" else "已安裝 HTTP 外掛"} · ${p.version} · ${if(p.category=="audio") "音訊來源" else "歌曲資料"}")
         Toggle("啟用 ${p.name}","停用後不再向此來源搜尋或解析音訊",s.bool("plugin.${p.id}.enabled",true)) {onEvent(UiEvent.Setting("plugin.${p.id}.enabled",it.toString()))}
         when(p.id) {
             "spotify" -> {
-                Info(if(state.online.spotifyConnected) "已連接 · ${state.online.spotifyUser}" else if(BuildConfig.SPOTIFY_CLIENT_ID.isBlank() || BuildConfig.SPOTIFY_REDIRECT_URI.contains(".invalid/")) "此測試版本尚未完成開發方 Spotify 配置" else "尚未連接 Spotify")
+                Info(if(state.online.spotifyConnected) "已連接 · ${state.online.spotifyUser}" else "尚未連接 Spotify")
                 if(state.online.spotifyConnected) TextButton(onClick={act(OnlineAction.SpotifyDisconnect)}) {Text("斷開 Spotify")}
-                else Button(onClick={act(OnlineAction.SpotifyConnect)},enabled=BuildConfig.SPOTIFY_CLIENT_ID.isNotBlank() && !BuildConfig.SPOTIFY_REDIRECT_URI.contains(".invalid/")) {Text("登入 Spotify")}
+                else Button(onClick={act(OnlineAction.SpotifyConnect)},enabled=spotifyAvailable) {Text("登入 Spotify")}
             }
             "musicbrainz" -> SettingAction("ListenBrainz 帳號與同步",state.listenBrainz.username ?: "未連接",openAccount)
             "youtube" -> Info("NewPipe Extractor · 直接確認目前可用的音訊串流。來源變更、地區或登入限制可能令解析失敗。YouTube 音訊不標為無損。")
@@ -90,7 +137,7 @@ import coil.compose.AsyncImage
         }
     }
     SectionTitle("新增音訊來源")
-    Info("支援 monologue HTTP provider v1 描述檔。可接入提供無損音訊的服務；Spotube 的 .smplug 不能直接安裝。")
+    Info("貼上音源外掛的 HTTPS 網址即可加入，例如提供無損音訊的服務（格式：monologue HTTP provider v1）。Spotube 的 .smplug 外掛不能直接安裝。")
     OutlinedTextField(manifest,{manifest=it},Modifier.fillMaxWidth(),label={Text("HTTPS 外掛描述網址")},singleLine=true)
     Button(onClick={act(OnlineAction.InspectPlugin(manifest))},enabled=manifest.startsWith("https://") && state.plugins.phase!=Phase.Loading) {Text("檢查外掛")}
     if(state.plugins.phase==Phase.Loading) LinearProgressIndicator(Modifier.fillMaxWidth())

@@ -75,11 +75,15 @@ sealed interface UiEvent {
     data class QueueMove(val id: String, val index: Int) : UiEvent
     data class QueueRemove(val id: String) : UiEvent
     data object QueueClear : UiEvent
-    data class PlaylistCreate(val name: String) : UiEvent
+    /** Puts back entries removed by [QueueClear], in the order they were removed. */
+    data class QueueRestore(val removed: List<Pair<QueueEntry, Int>>) : UiEvent
+    /** Creates a playlist; when [track] is given it becomes the first song, so "add to playlist" never dead-ends. */
+    data class PlaylistCreate(val name: String, val track: Track? = null) : UiEvent
     data class PlaylistRename(val id: String, val name: String) : UiEvent
     data class PlaylistDelete(val id: String) : UiEvent
     data class PlaylistAdd(val id: String, val track: Track) : UiEvent
     data class PlaylistRemove(val id: String, val position: Int) : UiEvent
+    data class PlaylistRestore(val id: String, val position: Int, val trackId: String) : UiEvent
     data class PlaylistMove(val id: String, val from: Int, val to: Int) : UiEvent
     data class Setting(val key: String, val value: String) : UiEvent
     data class Sleep(val minutes: Int, val endOfTrack: Boolean = false) : UiEvent
@@ -126,6 +130,8 @@ sealed interface UiEffect {
     data class InstallApk(val path: String): UiEffect
     data class Message(val text: String) : UiEffect
     data class UndoQueue(val entry: QueueEntry, val index: Int) : UiEffect
+    /** A message whose "復原" action dispatches [undo]. */
+    data class Undo(val text: String, val undo: UiEvent) : UiEffect
     data object AudioPermission : UiEffect
     data object GoogleAuthorization : UiEffect
     data object PickFolder : UiEffect

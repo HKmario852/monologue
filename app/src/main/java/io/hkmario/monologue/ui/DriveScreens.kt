@@ -79,7 +79,8 @@ internal val SerifItalic=androidx.compose.ui.text.TextStyle(fontFamily=androidx.
             HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
         }
         Spacer(Modifier.height(24.dp))
-        InkButton(if(BuildConfig.GOOGLE_AUTH_CONFIGURED) "以 Google 帳戶登入" else "查看連接設定",Icons.Outlined.Cloud,Modifier.fillMaxWidth()) { onEvent(UiEvent.ConnectDrive) }
+        InkButton(if(BuildConfig.GOOGLE_AUTH_CONFIGURED) "以 Google 帳戶登入" else "此版本暫未開放雲端登入",Icons.Outlined.Cloud,Modifier.fillMaxWidth(),enabled=BuildConfig.GOOGLE_AUTH_CONFIGURED) { onEvent(UiEvent.ConnectDrive) }
+        if(!BuildConfig.GOOGLE_AUTH_CONFIGURED) Text("正式版會開放 Google Drive；現在可先聽本機音樂或搜尋線上音樂。",Modifier.padding(top=12.dp),style=MaterialTheme.typography.bodySmall,color=Muted)
         error?.let { Text(it,Modifier.padding(top=12.dp),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.error) }
         TextButton(onClick=openLibrary,modifier=Modifier.align(Alignment.CenterHorizontally).padding(vertical=8.dp)) { Text("稍後再說，先聽本機音樂",style=MaterialTheme.typography.bodyMedium.copy(textDecoration=TextDecoration.Underline),color=Muted) }
     }
@@ -220,8 +221,8 @@ private fun sizeLabel(bytes: Long)=if(bytes>=1_000_000_000) "%.1f GB".format(byt
             Text(state.breadcrumbs.last().name,Modifier.padding(top=6.dp),style=MaterialTheme.typography.displaySmall.copy(fontWeight=FontWeight.Bold),color=Ink,maxLines=2,overflow=TextOverflow.Ellipsis)
             Text("${under.size} 首${if(folders.isNotEmpty()) " · ${folders.size} 個資料夾" else ""} · ${sizeLabel(under.sumOf {it.bytes})}",style=SerifItalic.copy(fontSize=15.sp),color=Muted)
             Row(Modifier.fillMaxWidth().padding(top=16.dp),verticalAlignment=Alignment.CenterVertically) {
-                InkButton("全部增量下載",Icons.Outlined.Download,enabled=!offline && unsaved>0) { onEvent(UiEvent.DownloadFolder) }
-                Text(if(unsaved==0) "全部已存" else "尚餘 $unsaved 首未存",Modifier.weight(1f).padding(start=16.dp),style=MaterialTheme.typography.bodyMedium,color=Muted,maxLines=1,overflow=TextOverflow.Ellipsis)
+                InkButton(if(unsaved>0) "下載未儲存的 $unsaved 首" else "已全部下載",if(unsaved>0) Icons.Outlined.Download else Icons.Outlined.DownloadDone,enabled=!offline && unsaved>0) { onEvent(UiEvent.DownloadFolder) }
+                Spacer(Modifier.weight(1f))
                 // While signed out only downloaded songs can play, so shuffle just those.
                 val shufflable=if(offline) under.filter {it.offlinePath!=null} else under
                 Row(Modifier.clickable(enabled=shufflable.isNotEmpty()) { onEvent(UiEvent.PlayList(shufflable.shuffled().toPersistentList())) }.heightIn(min=48.dp).padding(start=8.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -251,14 +252,14 @@ private fun sizeLabel(bytes: Long)=if(bytes>=1_000_000_000) "%.1f GB".format(byt
             HorizontalDivider(Modifier.padding(top=8.dp),color=MaterialTheme.colorScheme.outlineVariant)
             Row(Modifier.fillMaxWidth().clickable(onClick=onDownloads).heightIn(min=48.dp).padding(vertical=6.dp),verticalAlignment=Alignment.CenterVertically) {
                 Text("下載中",style=MaterialTheme.typography.labelLarge,color=Accent)
-                Text("${cur.title} — $pct%, ${downloads.success+downloads.failed+1} of ${downloads.items.size}",Modifier.weight(1f).padding(start=14.dp),style=SerifItalic.copy(fontSize=14.sp),color=Ink,maxLines=1,overflow=TextOverflow.Ellipsis)
+                Text("${cur.title} — $pct% · 第 ${downloads.success+downloads.failed+1}／${downloads.items.size} 首",Modifier.weight(1f).padding(start=14.dp),style=SerifItalic.copy(fontSize=14.sp),color=Ink,maxLines=1,overflow=TextOverflow.Ellipsis)
                 Icon(Icons.Outlined.ChevronRight,null,tint=Ink)
             }
         } }
         if(folders.isNotEmpty()) item { HorizontalDivider(Modifier.padding(top=4.dp),color=MaterialTheme.colorScheme.outlineVariant) }
         items(folders,key={"dir:${it.id}"}) { folder ->
             Row(Modifier.fillMaxWidth().heightIn(min=52.dp).clickable { onEvent(UiEvent.DriveOpen(DriveFolder(folder.id,folder.name))) },verticalAlignment=Alignment.CenterVertically) {
-                Text("dir.",Modifier.width(44.dp),style=SerifItalic.copy(fontSize=13.sp),color=Muted)
+                Box(Modifier.width(44.dp)) { Icon(Icons.Outlined.Folder,"資料夾",Modifier.size(20.dp),tint=Muted) }
                 Text(folder.name,Modifier.weight(1f),style=MaterialTheme.typography.titleMedium.copy(fontFamily=androidx.compose.ui.text.font.FontFamily.Serif),color=Ink,maxLines=1,overflow=TextOverflow.Ellipsis)
                 Text("${index.stat(folder.id).tracks} 首 →",style=MaterialTheme.typography.bodySmall,color=Muted)
             }
@@ -270,7 +271,7 @@ private fun sizeLabel(bytes: Long)=if(bytes>=1_000_000_000) "%.1f GB".format(byt
         }
         itemsIndexed(listed,key={_,t->t.id}) { i,t -> DriveTrackRow(i+1,t,album!=null,state.downloads[t.id],offline,onEvent,onMore) }
         if(listed.isEmpty() && state.phase!=Phase.Loading) item {
-            EmptyPanel(if(q.isNotEmpty()) "搵唔到「${state.query}」" else "這裡沒有音訊檔",if(q.isNotEmpty()) "只搜尋目前資料夾及其子資料夾" else "可在右上角選單「更換音樂資料夾」，或把音樂放入此資料夾後重新整理。")
+            EmptyPanel(if(q.isNotEmpty()) "找不到「${state.query}」" else "這裡沒有音訊檔",if(q.isNotEmpty()) "只搜尋目前資料夾及其子資料夾" else "可在右上角選單「更換音樂資料夾」，或把音樂放入此資料夾後重新整理。")
         }
     }
 }
@@ -299,6 +300,7 @@ private val sortLabels=linkedMapOf("name" to "名稱 A–Z","nameDesc" to "名�
             else -> "○ 串流" to MaterialTheme.colorScheme.tertiary
         }
         Text(label,Modifier.padding(start=12.dp),style=MaterialTheme.typography.labelMedium,color=color)
+        ActionIcon(Icons.Outlined.MoreVert,"${t.title} 更多操作") { onMore(t) }
     }
     HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
 }
