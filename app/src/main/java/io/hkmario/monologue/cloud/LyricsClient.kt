@@ -77,6 +77,8 @@ class LyricsClient(context: android.content.Context) {
             val first=Lrc.parse(split.first).map { it.text }
             return when(lyricsLanguage(second)) {
                 com.google.mlkit.nl.translate.TranslateLanguage.CHINESE -> FoundLyrics(split.first,split.second,null,source)
+                // Romaji first, Japanese second: show the Japanese and keep the romaji as its own layer.
+                com.google.mlkit.nl.translate.TranslateLanguage.JAPANESE -> if(looksLikeRomaji(split.first)) FoundLyrics(split.second,null,split.first,source) else FoundLyrics(pick.text,null,null,source)
                 com.google.mlkit.nl.translate.TranslateLanguage.ENGLISH -> if(lyricsLanguage(first)==com.google.mlkit.nl.translate.TranslateLanguage.JAPANESE) FoundLyrics(split.first,null,split.second,source) else FoundLyrics(pick.text,null,null,source)
                 else -> FoundLyrics(pick.text,null,null,source)
             }
@@ -84,21 +86,41 @@ class LyricsClient(context: android.content.Context) {
         // Search with the title as tagged, then without bracketed notes such as (Single Ver.) or (feat. X).
         val titles=listOfNotNull(track.title,searchTitleWithoutNotes(track.title))
         val all=mutableListOf<LyricsCandidate>()
+        var titleOnlySearched=false
+        suspend fun expandedArtists()=artists+artists.take(3).flatMap { name -> try { aliasesOf(name) } catch(e: CancellationException) { throw e } catch(e: Exception) { emptyList() } }
+        /**
+         * Some catalogues list the romaji transcription under the romanised artist and the Japanese original under the
+         * Japanese name (BABYMETAL / ベビーメタル). When the match is romaji, look for a Japanese version of the same song:
+         * same title and an alias-matched artist, or same title and a length within 3 s. The romaji stays as its own layer.
+         */
+        suspend fun preferJapanese(pick: LyricsPick,via: String=""): FoundLyrics {
+            if(!looksLikeRomaji(pick.text)) return found(pick,via)
+            // The Japanese version is often under another artist, so it only shows up in a title-only search.
+            if(!titleOnlySearched) { titleOnlySearched=true; all+=try { search(origin,mapOf("track_name" to track.title)) } catch(e: java.io.IOException) { emptyList() } }
+            val japanese=all.distinctBy { it.id }.filter { sameTitle(it.track,track.title) && hasJapaneseScript(it.synced ?: it.plain ?: "") }
+            if(japanese.isEmpty()) return found(pick,via)
+            val byArtist=pickLyrics(track.title,expandedArtists(),seconds,japanese)
+            val byLength=if(seconds>0) pickLyrics(track.title,emptyList(),seconds,japanese.filter { kotlin.math.abs(it.durationSec-seconds)<=3 }) else null
+            // An artist match whose length is off loses to a same-length version, whose timestamps fit the recording.
+            val nativePick=(if(byArtist!=null && (byArtist.offsetSec<=3 || byLength==null)) byArtist else byLength) ?: return found(pick,via)
+            val native=found(nativePick," · 日文版")
+            return native.copy(romaji=native.romaji ?: pick.text)
+        }
         for(title in titles) {
             ensureActive()
             // 1. Title + main artist. 2. Title only (catalogues credit artists differently).
             val first=artists.firstOrNull()?.let { search(origin,mapOf("track_name" to title,"artist_name" to it)) } ?: emptyList()
             all+=first
-            pickLyrics(track.title,artists,seconds,all.distinctBy { it.id })?.let { return@withContext found(it) }
+            pickLyrics(track.title,artists,seconds,all.distinctBy { it.id })?.let { return@withContext preferJapanese(it) }
             // A failed fallback after a real answer means "not found" rather than "service down".
             all+=try { search(origin,mapOf("track_name" to title)) } catch(e: java.io.IOException) { if(artists.isEmpty()) throw e else emptyList() }
-            pickLyrics(track.title,artists,seconds,all.distinctBy { it.id })?.let { return@withContext found(it) }
+            if(title==track.title) titleOnlySearched=true
+            pickLyrics(track.title,artists,seconds,all.distinctBy { it.id })?.let { return@withContext preferJapanese(it) }
         }
         // 3. The title exists under another spelling of the artist: ask MusicBrainz for aliases, only when it could help.
         val candidates=all.distinctBy { it.id }
         if(artists.isEmpty() || candidates.none { sameTitle(it.track,track.title) }) return@withContext null
-        val expanded=artists+artists.take(3).flatMap { name -> try { aliasesOf(name) } catch(e: CancellationException) { throw e } catch(e: Exception) { emptyList() } }
-        pickLyrics(track.title,expanded,seconds,candidates)?.let { return@withContext found(it," · 以 MusicBrainz 別名配對") }
+        pickLyrics(track.title,expandedArtists(),seconds,candidates)?.let { return@withContext preferJapanese(it," · 以 MusicBrainz 別名配對") }
         null
     }
 }

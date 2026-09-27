@@ -135,3 +135,21 @@ private fun nearlySameSong(c: LyricsCandidate, ours: List<String>, durationSec: 
 /** Credit lines NetEase puts at the top of lyrics ("作词 : …", "编曲 : …"); not part of the song. */
 private val creditLine=Regex("""^\s*(作词|作詞|作曲|编曲|編曲|制作人|製作人|词|詞|曲|编|編|演唱|混音|母带|母帶|和声|和聲|录音|錄音|吉他|贝斯|貝斯|鼓|弦乐|弦樂|监制|監製|出品|发行|發行|OP|SP)\s*[:：]""")
 fun stripCreditLines(lrc: String): String = lrc.lineSequence().filterNot { line -> creditLine.containsMatchIn(line.replace(Regex("""^(\[[^\]]*\])+"""),"")) }.joinToString("\n")
+
+/** Lyrics written in Japanese script (kana), as opposed to a romanised transcription. */
+fun hasJapaneseScript(text: String) = text.count { it in '\u3040'..'\u30ff' } >= 5
+
+/** A Hepburn-style word: consonant(+y)+vowel syllables, syllabic n, and doubled consonants (makka, motto). */
+private val romajiWord = Regex("""^(?:(?:kk|ss|tt|pp|cch|ssh|tch)?(?:sh|ch|ts|[kgsztdnhbpmyrwfjv])?y?[aiueo]|n)+$""")
+
+/**
+ * True for Japanese lyrics written only in Latin letters ("Higashi no sora wo makka ni someru…").
+ * English lyrics fail because most English words ("the", "road", "is") are not built from these syllables:
+ * measured on LRCLIB, English songs score at most 0.33 and romaji 0.69–1.0 (0.69 for a song with English lines).
+ */
+fun looksLikeRomaji(text: String): Boolean {
+    if(hasJapaneseScript(text) || text.count { it in '\u4e00'..'\u9fff' } >= 5) return false
+    val words = Regex("""[A-Za-z]+""").findAll(Regex("""\[[^\]]*]""").replace(text, " ")).map { it.value.lowercase() }.filter { it.length >= 2 }.toList()
+    if(words.size < 20) return false
+    return words.count { romajiWord.matches(it) } >= words.size * 0.55
+}

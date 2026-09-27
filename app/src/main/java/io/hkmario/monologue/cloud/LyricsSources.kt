@@ -15,6 +15,8 @@ class LyricsSources(private val lrclib: LyricsClient,private val netEase: NetEas
         val language=settings.text("translationLanguage","繁體中文"); val chinese=language=="繁體中文"
         val artists=creditedArtists(track.artist)
         var failure: Exception?=null; var answered=false
+        // Romaji-only lyrics are kept as a fallback while later sources are asked for the Japanese original.
+        var romajiOnly: LyricsRow?=null
         for(provider in lyricsProviders(settings).filter { it.enabled }) {
             try {
                 val found: FoundLyrics?=when(provider.info.id) {
@@ -29,10 +31,13 @@ class LyricsSources(private val lrclib: LyricsClient,private val netEase: NetEas
                     // Chinese translations (NetEase, or embedded in LRCLIB uploads) show as 繁體中文 after conversion.
                     val translation=found.translation?.let { if(chinese) toTraditional(it) else it }
                     val label=found.translation?.let { "${found.source.substringBefore(" · ")}中文翻譯：${if(chinese) "繁體中文" else "简体中文"}" }
-                    return LyricsRow(track.id,found.original,translation,found.source,label,found.romaji)
+                    val row=LyricsRow(track.id,found.original,translation,found.source,label,found.romaji)
+                    if(!looksLikeRomaji(found.original)) return if(romajiOnly!=null && row.romaji==null) row.copy(romaji=romajiOnly.original) else row
+                    if(romajiOnly==null) romajiOnly=row
                 }
             } catch(e: CancellationException) { throw e } catch(e: Exception) { failure=e }
         }
+        romajiOnly?.let { return it }
         // Report a connection problem only when no source gave a real answer.
         if(!answered && failure!=null) throw failure
         return null
