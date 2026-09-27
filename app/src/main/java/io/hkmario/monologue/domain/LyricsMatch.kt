@@ -58,7 +58,7 @@ fun pickLyrics(title: String, artists: Collection<String>, durationSec: Int, can
     return candidates.asSequence()
         .filter { !it.instrumental && !Regex("(?i)off vocal|instrumental|karaoke|カラオケ").containsMatchIn(it.track) }
         .filter { sameTitle(it.track,title) }
-        .filter { c -> ours.isEmpty() || creditedArtists(c.artist).ifEmpty { listOf(c.artist) }.any { theirs -> ours.any { sameName(it,theirs) } } }
+        .filter { c -> ours.isEmpty() || creditedArtists(c.artist).ifEmpty { listOf(c.artist) }.any { theirs -> ours.any { sameName(it,theirs) } } || nearlySameSong(c,ours,durationSec) }
         .mapNotNull { c ->
             val text=c.synced?.takeIf { it.isNotBlank() } ?: c.plain?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
             LyricsPick(c,text,if(durationSec>0 && c.durationSec>0) abs(c.durationSec-durationSec).toInt() else 0)
@@ -72,3 +72,17 @@ fun sortNameVariants(sortName: String): List<String> {
     val parts=sortName.split(',').map { it.trim() }.filter { it.isNotEmpty() }
     return if(parts.size==2) listOf("${parts[1]} ${parts[0]}","${parts[0]} ${parts[1]}") else listOf(sortName.trim())
 }
+
+/**
+ * Catalogues sometimes spell an artist in another script variant (水瀬いのり ↔ 水濑いのり).
+ * Accept that only with independent evidence: the same length within 3 s and a mostly similar name.
+ */
+private fun nearlySameSong(c: LyricsCandidate, ours: List<String>, durationSec: Int): Boolean {
+    if(durationSec<=0 || c.durationSec<=0 || abs(c.durationSec-durationSec)>3) return false
+    val theirs=creditedArtists(c.artist).ifEmpty { listOf(c.artist) }
+    return theirs.any { t -> ours.any { o -> val x=nameKey(o); val y=nameKey(t); minOf(x.length,y.length)>=3 && similarity(x,y)>=0.6 } }
+}
+
+/** Credit lines NetEase puts at the top of lyrics ("作词 : …", "编曲 : …"); not part of the song. */
+private val creditLine=Regex("""^\s*(作词|作詞|作曲|编曲|編曲|制作人|製作人|词|詞|曲|编|編|演唱|混音|母带|母帶|和声|和聲|录音|錄音|吉他|贝斯|貝斯|鼓|弦乐|弦樂|监制|監製|出品|发行|發行|OP|SP)\s*[:：]""")
+fun stripCreditLines(lrc: String): String = lrc.lineSequence().filterNot { line -> creditLine.containsMatchIn(line.replace(Regex("""^(\[[^\]]*\])+"""),"")) }.joinToString("\n")
