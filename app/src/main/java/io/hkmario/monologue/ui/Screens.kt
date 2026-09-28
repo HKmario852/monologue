@@ -78,33 +78,35 @@ import java.time.format.DateTimeFormatter
             val cover: @Composable (Modifier)->Unit = { modifier ->
                 BoxWithConstraints(modifier,contentAlignment=Alignment.Center) {
                     val discSide=minOf(maxWidth,maxHeight)
-                    if(lyrics) LyricsPanel(state.lyrics,progress,state.settings,onEvent,onFullScreen={fullLyrics=true})
+                    if(lyrics) LyricsPanel(state.lyrics,progress,state.settings,onEvent,modifier=Modifier.fillMaxSize(),onFullScreen={fullLyrics=true})
                     else Box(Modifier.size(discSide).then(dismissGesture).clickable { lyrics=true }.padding(vertical=8.dp)) {
                         Vinyl(clock,player.isPlaying,visible && !lyrics,state.settings.bool("vinyl",true) && !state.settings.bool("reduceMotion"),track,Modifier.fillMaxWidth())
                     }
                 }
             }
+            // Lyrics on a phone held upright: the controls shrink so more lines fit above them.
+            val compact=lyrics && !landscape
             val controls: @Composable (Modifier)->Unit = { modifier ->
-                Column(modifier.padding(horizontal=24.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                Column(modifier.padding(horizontal=24.dp),verticalArrangement=Arrangement.spacedBy(if(compact) 0.dp else 4.dp)) {
                     Row(verticalAlignment=Alignment.CenterVertically) {
                         // The lyrics replace the record, so keep the cover in sight next to the title.
-                        if(lyrics) Art(track,64.dp,Modifier.padding(end=12.dp))
-                        Column(Modifier.weight(1f)) { Text(track?.title ?: "未有播放歌曲",style=MaterialTheme.typography.headlineMedium,maxLines=2,overflow=TextOverflow.Ellipsis); Text(track?.artist ?: "從媒體庫開始聆聽",style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant) }
+                        if(lyrics) Art(track,if(compact) 48.dp else 64.dp,Modifier.padding(end=12.dp))
+                        Column(Modifier.weight(1f)) { Text(track?.title ?: "未有播放歌曲",style=if(compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,maxLines=if(compact) 1 else 2,overflow=TextOverflow.Ellipsis); Text(track?.artist ?: "從媒體庫開始聆聽",style=if(compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,overflow=TextOverflow.Ellipsis) }
                         ActionIcon(if(track?.favorite==true) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,"收藏歌曲",track!=null) { track?.let { onEvent(UiEvent.Favorite(it)) } }
                     }
-                    state.player.audioFormat?.let {Text(it,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
-                    track?.let { Text(when { it.offlinePath!=null -> "✓ 已下載"; it.source==Source.Online -> "音訊來源：${providerLabel(it.folder)}"; it.source==Source.Drive -> "☁ 線上串流"; else -> "本機音樂" },style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.tertiary,modifier=Modifier.padding(vertical=4.dp)) }
+                    if(!compact) state.player.audioFormat?.let {Text(it,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
+                    if(!compact) track?.let { Text(when { it.offlinePath!=null -> "✓ 已下載"; it.source==Source.Online -> "音訊來源：${providerLabel(it.folder)}"; it.source==Source.Drive -> "☁ 線上串流"; else -> "本機音樂" },style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.tertiary,modifier=Modifier.padding(vertical=4.dp)) }
                     if(player.buffering) Text("正在緩衝…",style=MaterialTheme.typography.bodySmall)
                     player.error?.let { Text(it,color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodySmall) }
                     Scrubber(player,progress,onEvent)
-                    Row(Modifier.fillMaxWidth().padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween) {
+                    Row(Modifier.fillMaxWidth().padding(vertical=if(compact) 0.dp else 8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween) {
                         IconToggleButton(player.shuffle,{onEvent(UiEvent.Shuffle)}) { Icon(Icons.Outlined.Shuffle,"隨機播放",tint=if(player.shuffle) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
                         ActionIcon(Icons.Outlined.SkipPrevious,"上一首",track!=null) {onEvent(UiEvent.Previous)}
-                        FilledIconButton(onClick={onEvent(UiEvent.TogglePlay)},enabled=track!=null,modifier=Modifier.size(76.dp),shape=CircleShape) { Icon(if(player.isPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,if(player.isPlaying) "暫停" else "播放",Modifier.size(36.dp)) }
+                        FilledIconButton(onClick={onEvent(UiEvent.TogglePlay)},enabled=track!=null,modifier=Modifier.size(if(compact) 60.dp else 76.dp),shape=CircleShape) { Icon(if(player.isPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,if(player.isPlaying) "暫停" else "播放",Modifier.size(if(compact) 30.dp else 36.dp)) }
                         ActionIcon(Icons.Outlined.SkipNext,"下一首",track!=null) {onEvent(UiEvent.Next)}
                         IconButton({onEvent(UiEvent.Repeat)}) { Icon(if(player.repeat==1) Icons.Outlined.RepeatOne else Icons.Outlined.Repeat,"循環：${when(player.repeat){1->"單曲";2->"全部";else->"關閉"}}",tint=if(player.repeat!=0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
-                    Row(Modifier.fillMaxWidth().padding(top=8.dp,bottom=12.dp),horizontalArrangement=Arrangement.SpaceBetween) {
+                    Row(Modifier.fillMaxWidth().padding(top=if(compact) 4.dp else 8.dp,bottom=if(compact) 0.dp else 12.dp),horizontalArrangement=Arrangement.SpaceBetween) {
                         ToolButton(Icons.Outlined.Equalizer,"音效",equalizer)
                         ToolButton(Icons.Outlined.Bedtime,"睡眠",sleep)
                         ToolButton(if(lyrics) Icons.Outlined.Album else Icons.Outlined.Lyrics,if(lyrics) "封面" else "歌詞") {lyrics=!lyrics}
@@ -120,6 +122,8 @@ import java.time.format.DateTimeFormatter
                 }
             }
             if(landscape) Row(Modifier.weight(1f)) { cover(Modifier.weight(1f).fillMaxHeight().padding(16.dp)); controls(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState())) }
+            // Upright with lyrics: the lyrics take all the height the controls leave, and the controls sit at the bottom.
+            else if(compact) Column(Modifier.weight(1f)) { cover(Modifier.fillMaxWidth().weight(1f)); controls(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) }
             else Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) { cover(Modifier.fillMaxWidth().heightIn(max=380.dp).padding(horizontal=16.dp)); controls(Modifier.fillMaxWidth()) }
         }
     }
@@ -188,8 +192,7 @@ import java.time.format.DateTimeFormatter
     // Romaji above each line in the other views, when turned on in 設定 › 歌詞.
     val romajiAbove=settings.bool("showRomaji") && state.romajiAvailable && mode!="romaji"
     Column(modifier.padding(horizontal=24.dp)) {
-        if(state.lines.isNotEmpty()) Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-          Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+        if(state.lines.isNotEmpty()) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             listOf("original" to "原文","romaji" to "原文＋羅馬拼音","both" to "原文＋翻譯","translation" to "翻譯").forEach { (id,label) ->
                 FilterChip(mode==id,{ when(id) {
                     "original" -> { if(display=="romaji") onEvent(UiEvent.Setting("lyricsDisplay","both")); onEvent(UiEvent.Setting("translations","false")) }
@@ -198,8 +201,6 @@ import java.time.format.DateTimeFormatter
                     else -> { onEvent(UiEvent.Setting("lyricsDisplay",id)); onEvent(UiEvent.Setting("translations","true")) }
                 } },label={Text(label)})
             }
-          }
-          onFullScreen?.let { ActionIcon(Icons.Outlined.Fullscreen,"全螢幕歌詞",action=it) }
         }
         if(state.lines.isNotEmpty()) {
             val romajiNote=when {
@@ -228,7 +229,12 @@ import java.time.format.DateTimeFormatter
                 }
             }
         }
-        if(manual) TextButton(onClick={manual=false}) {Text("返回目前歌詞")}
+        val fullScreen=onFullScreen?.takeIf { state.lines.isNotEmpty() }
+        if(manual || fullScreen!=null) Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+            if(manual) TextButton(onClick={manual=false}) {Text("返回目前歌詞")}
+            Spacer(Modifier.weight(1f))
+            fullScreen?.let { ActionIcon(Icons.Outlined.Fullscreen,"全螢幕歌詞",action=it) }
+        }
         // The source line names where shown lyrics came from; with none shown the empty panel already says so.
         if(state.lines.isNotEmpty()) Row(Modifier.fillMaxWidth().padding(top=6.dp),verticalAlignment=Alignment.CenterVertically) {
             Text(state.source,Modifier.weight(1f),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=2)

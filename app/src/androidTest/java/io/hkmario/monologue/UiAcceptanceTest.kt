@@ -169,6 +169,25 @@ class UiAcceptanceTest {
         compose.onNodeWithText("繼續下載").performClick()
         Assert.assertEquals(UiEvent.ContinueDownloads,last)
     }
+    @Test fun uprightLyricsFillTheScreenAboveCompactControls() {
+        val lines=(1..20).map { LyricLine("$it",it*4000L,"歌詞の行 $it") }.toPersistentList()
+        val app=PreviewFixtures.app.copy(lyrics=LyricsUiState(Phase.Ready,PreviewFixtures.app.player.entry?.track?.id,lines,"測試歌詞"))
+        compose.setContent {
+            // A phone held upright (about 400 × 870 dp), whatever the test device's own screen is.
+            CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(1f,1f)) {
+                Box(Modifier.requiredSize(400.dp,870.dp)) {
+                    MonologueTheme {NowPlayingScreen(app,remember {mutableStateOf(PlaybackProgress(positionMs=0))},remember {VinylClock()},false,{},{},{},{},{},{},{})}
+                }
+            }
+        }
+        compose.onNodeWithText("歌詞").performClick()
+        compose.waitForIdle()
+        // Several lines show, with the full-screen button below them and the tool row still on screen.
+        (1..6).forEach { compose.onNodeWithText("歌詞の行 $it").assertIsDisplayed() }
+        compose.onNodeWithContentDescription("全螢幕歌詞").assertIsDisplayed()
+        compose.onNodeWithText("隊列").assertIsDisplayed()
+        screenshot("09-upright-lyrics")
+    }
     @Test fun largeTextPlayerKeepsControlsReachable() {
         compose.setContent {
             val density=androidx.compose.ui.platform.LocalDensity.current
