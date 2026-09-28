@@ -58,6 +58,7 @@ import java.time.format.DateTimeFormatter
 @Composable fun NowPlayingScreen(state: AppUiState, progress: State<PlaybackProgress>, clock: VinylClock, visible: Boolean, onEvent: (UiEvent)->Unit, collapse: ()->Unit, queue: ()->Unit, equalizer: ()->Unit, sleep: ()->Unit, more: ()->Unit, importLyrics: (Boolean)->Unit) {
     val player=state.player; val track=player.entry?.track
     var lyrics by rememberSaveable { mutableStateOf(false) }
+    var fullLyrics by rememberSaveable { mutableStateOf(false) }
     var askOnlineLyrics by rememberSaveable { mutableStateOf(false) }; var askNetEase by rememberSaveable { mutableStateOf(false) }
     var drag by remember { mutableFloatStateOf(0f) }; var dragging by remember { mutableStateOf(false) }
     val displayDrag by animateFloatAsState(if(dragging) drag else 0f,spring(),label="collapse")
@@ -77,7 +78,7 @@ import java.time.format.DateTimeFormatter
             val cover: @Composable (Modifier)->Unit = { modifier ->
                 BoxWithConstraints(modifier,contentAlignment=Alignment.Center) {
                     val discSide=minOf(maxWidth,maxHeight)
-                    if(lyrics) LyricsPanel(state.lyrics,progress,state.settings,onEvent)
+                    if(lyrics) LyricsPanel(state.lyrics,progress,state.settings,onEvent,onFullScreen={fullLyrics=true})
                     else Box(Modifier.size(discSide).then(dismissGesture).clickable { lyrics=true }.padding(vertical=8.dp)) {
                         Vinyl(clock,player.isPlaying,visible && !lyrics,state.settings.bool("vinyl",true) && !state.settings.bool("reduceMotion"),track,Modifier.fillMaxWidth())
                     }
@@ -86,6 +87,8 @@ import java.time.format.DateTimeFormatter
             val controls: @Composable (Modifier)->Unit = { modifier ->
                 Column(modifier.padding(horizontal=24.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                     Row(verticalAlignment=Alignment.CenterVertically) {
+                        // The lyrics replace the record, so keep the cover in sight next to the title.
+                        if(lyrics) Art(track,64.dp,Modifier.padding(end=12.dp))
                         Column(Modifier.weight(1f)) { Text(track?.title ?: "未有播放歌曲",style=MaterialTheme.typography.headlineMedium,maxLines=2,overflow=TextOverflow.Ellipsis); Text(track?.artist ?: "從媒體庫開始聆聽",style=MaterialTheme.typography.bodyLarge,color=MaterialTheme.colorScheme.onSurfaceVariant) }
                         ActionIcon(if(track?.favorite==true) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,"收藏歌曲",track!=null) { track?.let { onEvent(UiEvent.Favorite(it)) } }
                     }
@@ -120,6 +123,7 @@ import java.time.format.DateTimeFormatter
             else Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) { cover(Modifier.fillMaxWidth().heightIn(max=380.dp).padding(horizontal=16.dp)); controls(Modifier.fillMaxWidth()) }
         }
     }
+    if(fullLyrics) FullScreenLyrics(state,progress,onEvent) {fullLyrics=false}
     if(askNetEase) AlertDialog(onDismissRequest={askNetEase=false},title={Text("開啟網易雲音樂歌詞？")},
         text={Text("網易雲音樂沒有公開的官方 API，這裡用的是它網頁播放器使用的非官方介面：可能隨時失效，也不符合網易雲的服務條款。開啟後會把目前歌曲的歌名和歌手傳送到網易雲音樂（中國大陸的服務）。它通常有中文翻譯和羅馬拼音。要開啟嗎？")},
         confirmButton={TextButton(onClick={askNetEase=false;onEvent(UiEvent.SetLyricsProvider("netease",true))}) {Text("開啟並搜尋")}},
@@ -129,6 +133,37 @@ import java.time.format.DateTimeFormatter
         confirmButton={TextButton(onClick={askOnlineLyrics=false;onEvent(UiEvent.Setting("onlineLyrics","true"))}) {Text("開始搜尋")}},
         dismissButton={TextButton(onClick={askOnlineLyrics=false}) {Text("取消")}})
 }
+/** Lyrics over the whole screen with larger text, the cover and title on top and play controls below; the screen stays on. */
+@Composable private fun FullScreenLyrics(state: AppUiState, progress: State<PlaybackProgress>, onEvent: (UiEvent)->Unit, close: ()->Unit) {
+    val track=state.player.entry?.track
+    androidx.compose.ui.window.Dialog(onDismissRequest=close,properties=androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth=false,decorFitsSystemWindows=false)) {
+        val view=androidx.compose.ui.platform.LocalView.current
+        DisposableEffect(view) {
+            view.keepScreenOn=true
+            // No dimmed strip over the status bar: this dialog is a screen of its own, not a popup.
+            (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.setDimAmount(0f)
+            onDispose { view.keepScreenOn=false }
+        }
+        Surface(Modifier.fillMaxSize(),color=MaterialTheme.colorScheme.background) {
+            Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+                Row(Modifier.fillMaxWidth().padding(start=24.dp,end=12.dp,top=12.dp,bottom=8.dp),verticalAlignment=Alignment.CenterVertically) {
+                    Art(track,56.dp)
+                    Column(Modifier.weight(1f).padding(horizontal=12.dp)) {
+                        Text(track?.title ?: "未有播放歌曲",style=MaterialTheme.typography.titleLarge,maxLines=1,overflow=TextOverflow.Ellipsis)
+                        Text(track?.artist ?: "",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,overflow=TextOverflow.Ellipsis)
+                    }
+                    ActionIcon(Icons.Outlined.FullscreenExit,"結束全螢幕歌詞",action=close)
+                }
+                LyricsPanel(state.lyrics,progress,state.settings,onEvent,modifier=Modifier.fillMaxWidth().weight(1f),textScale=1.3f)
+                Row(Modifier.fillMaxWidth().padding(vertical=8.dp),horizontalArrangement=Arrangement.spacedBy(24.dp,Alignment.CenterHorizontally),verticalAlignment=Alignment.CenterVertically) {
+                    ActionIcon(Icons.Outlined.SkipPrevious,"上一首",track!=null) {onEvent(UiEvent.Previous)}
+                    FilledIconButton(onClick={onEvent(UiEvent.TogglePlay)},enabled=track!=null,modifier=Modifier.size(64.dp),shape=CircleShape) { Icon(if(state.player.isPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,if(state.player.isPlaying) "暫停" else "播放",Modifier.size(32.dp)) }
+                    ActionIcon(Icons.Outlined.SkipNext,"下一首",track!=null) {onEvent(UiEvent.Next)}
+                }
+            }
+        }
+    }
+}
 @Composable private fun ToolButton(icon: androidx.compose.ui.graphics.vector.ImageVector,text: String,click: ()->Unit) { Column(Modifier.widthIn(min=56.dp).clickable(onClick=click).padding(8.dp),horizontalAlignment=Alignment.CenterHorizontally) {Icon(icon,text); Text(text,style=MaterialTheme.typography.labelMedium,modifier=Modifier.padding(top=4.dp))} }
 @Composable private fun Scrubber(player: NowPlayingUiState, progress: State<PlaybackProgress>, onEvent: (UiEvent)->Unit) {
     val current=progress.value; val shown=current.seekPreview ?: current.positionMs
@@ -137,10 +172,14 @@ import java.time.format.DateTimeFormatter
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {Text(formatTime(shown),style=TimeStyle);Text(if(player.durationMs>0) "−${formatTime(player.durationMs-shown)}" else "未知長度",style=TimeStyle)}
     }
 }
-@Composable fun LyricsPanel(state: LyricsUiState, progress: State<PlaybackProgress>, settings: AppSettingsUiState, onEvent: (UiEvent)->Unit) {
+@Composable fun LyricsPanel(state: LyricsUiState, progress: State<PlaybackProgress>, settings: AppSettingsUiState, onEvent: (UiEvent)->Unit,
+                             modifier: Modifier=Modifier.fillMaxWidth().height(338.dp), textScale: Float=1f, onFullScreen: (()->Unit)?=null) {
     val list=rememberLazyListState(); var manual by remember(state.trackId) { mutableStateOf(false) }; var autoScrolling by remember {mutableStateOf(false)}
     val position=progress.value.positionMs-settings.number("lyricOffset",0f).toLong()-settings.number(lyricOffsetKey(state.trackId),0f).toLong()
-    val active=state.lines.indexOfLast { it.timeMs!=null && it.timeMs<=position }
+    // With 隱藏括號內的和聲 on, bracketed backing vocals such as "(In this night)" are left out, and lines that are only that disappear.
+    val hideBracketed=settings.bool("hideBracketedVocals")
+    val shownLines=remember(state.lines,hideBracketed) { if(!hideBracketed) state.lines else state.lines.mapNotNull { l -> withoutBracketedVocals(l.text).takeIf { it.isNotBlank() }?.let { l.copy(text=it,romaji=l.romaji?.let(::withoutBracketedVocals),translation=l.translation?.let(::withoutBracketedVocals)) } } }
+    val active=shownLines.indexOfLast { it.timeMs!=null && it.timeMs<=position }
     LaunchedEffect(list) { snapshotFlow { list.isScrollInProgress }.collect { if(it && !autoScrolling) manual=true } }
     LaunchedEffect(active,manual,settings.bool("autoLyrics",true)) { if(active>=0 && !manual && settings.bool("autoLyrics",true)) { autoScrolling=true; try { list.animateScrollToItem(active) } finally {autoScrolling=false} } }
     val translations=settings.bool("translations"); val display=settings.text("lyricsDisplay","both")
@@ -148,8 +187,9 @@ import java.time.format.DateTimeFormatter
     val mode=when { display=="romaji" -> "romaji"; !translations -> "original"; else -> display }
     // Romaji above each line in the other views, when turned on in 設定 › 歌詞.
     val romajiAbove=settings.bool("showRomaji") && state.romajiAvailable && mode!="romaji"
-    Column(Modifier.fillMaxWidth().height(338.dp).padding(horizontal=24.dp)) {
-        if(state.lines.isNotEmpty()) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+    Column(modifier.padding(horizontal=24.dp)) {
+        if(state.lines.isNotEmpty()) Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+          Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             listOf("original" to "原文","romaji" to "原文＋羅馬拼音","both" to "原文＋翻譯","translation" to "翻譯").forEach { (id,label) ->
                 FilterChip(mode==id,{ when(id) {
                     "original" -> { if(display=="romaji") onEvent(UiEvent.Setting("lyricsDisplay","both")); onEvent(UiEvent.Setting("translations","false")) }
@@ -158,6 +198,8 @@ import java.time.format.DateTimeFormatter
                     else -> { onEvent(UiEvent.Setting("lyricsDisplay",id)); onEvent(UiEvent.Setting("translations","true")) }
                 } },label={Text(label)})
             }
+          }
+          onFullScreen?.let { ActionIcon(Icons.Outlined.Fullscreen,"全螢幕歌詞",action=it) }
         }
         if(state.lines.isNotEmpty()) {
             val romajiNote=when {
@@ -175,9 +217,9 @@ import java.time.format.DateTimeFormatter
         if(state.lines.isEmpty() && state.phase==Phase.Loading) EmptyPanel("正在搜尋歌詞…",state.source.removePrefix("正在查詢"))
         else if(state.lines.isEmpty()) EmptyPanel("未有歌詞",state.error ?: "這首歌沒有本機或已儲存的歌詞")
         else LazyColumn(state=list,modifier=Modifier.weight(1f),contentPadding=PaddingValues(vertical=24.dp),verticalArrangement=Arrangement.spacedBy(18.dp)) {
-            itemsIndexed(state.lines,key={_,line->line.id}) { index,line ->
+            itemsIndexed(shownLines,key={_,line->line.id}) { index,line ->
                 Column(Modifier.fillMaxWidth().clickable(enabled=line.timeMs!=null) { onEvent(UiEvent.PreviewSeek(line.timeMs));onEvent(UiEvent.CommitSeek) }.padding(vertical=6.dp)) {
-                    val size=settings.number("lyricSize",22f)
+                    val size=settings.number("lyricSize",22f)*textScale
                     if(romajiAbove) line.romaji?.let { Text(it,fontSize=(size*.6f).sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(bottom=4.dp)) }
                     val main=if(mode=="translation") line.translation ?: line.text else line.text
                     Text(main,fontSize=size.sp,color=if(index==active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,fontWeight=if(index==active) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal)

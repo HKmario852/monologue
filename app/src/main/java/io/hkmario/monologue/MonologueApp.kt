@@ -29,7 +29,7 @@ class AppGraph(val context: Context) {
     val downloads=DownloadCoordinator(this)
     val lyrics=LyricsClient(context)
     val romaji=RomajiGenerator()
-    val lyricsSources=LyricsSources(lyrics,NetEaseLyrics(),JLyricProvider(),UtaTenProvider(),BahamutLyrics(romaji))
+    val lyricsSources=LyricsSources(lyrics,NetEaseLyrics(),JLyricProvider(),UtaTenProvider(),BahamutLyrics(romaji),VocaDbLyrics())
     val translator=LyricsTranslator()
     val indexObserver=IndexObserver(this)
 }

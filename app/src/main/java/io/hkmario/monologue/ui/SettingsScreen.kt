@@ -125,6 +125,7 @@ val timeZones=listOf("Asia/Hong_Kong" to "香港","Asia/Taipei" to "台北","Asi
                 Choice("翻譯目標語言",s.text("translationLanguage","繁體中文"),listOf("繁體中文" to "繁體中文","English" to "English","日本語" to "日本語")) {setting("translationLanguage",it)}
                 Toggle("沒有翻譯時在裝置上翻譯","使用 ML Kit 離線翻譯；第一次使用會下載約 30 MB 的語言模型，歌詞不會傳送到翻譯伺服器",s.bool("autoTranslate",true)) {setting("autoTranslate",it.toString())}
                 Toggle("在其他顯示方式也顯示羅馬拼音","在「原文」「原文＋翻譯」「翻譯」的每行上方顯示；「原文＋羅馬拼音」總是顯示",s.bool("showRomaji")) {setting("showRomaji",it.toString())}
+                Toggle("隱藏括號內的和聲","括號裡的歌詞通常是和聲或另一位歌手唱的部分（例如 (In this night)），開啟後不顯示；只有括號的行也會隱藏",s.bool("hideBracketedVocals")) {setting("hideBracketedVocals",it.toString())}
                 Toggle("自動產生羅馬拼音","歌詞來源沒有羅馬拼音的日文歌，在手機上用日文詞典產生；不需網絡，漢字讀音可能有誤",s.bool("generateRomaji",true)) {setting("generateRomaji",it.toString())}
                 Toggle("自動捲動歌詞","手動捲動後可按返回目前歌詞",s.bool("autoLyrics",true)) {setting("autoLyrics",it.toString())}
                 EditSetting("全域時間偏移（毫秒）",s.text("lyricOffset","0"),"正數延後高亮；負數提早",true) {if(it.toLongOrNull()!=null) setting("lyricOffset",it)}
