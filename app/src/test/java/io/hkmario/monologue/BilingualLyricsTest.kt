@@ -83,6 +83,13 @@ class BilingualLyricsTest {
         assertEquals(looseTitleKey(generator.generate("Second Love♡二人の唇")), looseTitleKey(generator.generate("Second Love♥ふたりの唇")))
     }
 
+    @Test fun bracketedVocalsCanBeHidden() {
+        assertEquals("嘆きの夜に", withoutBracketedVocals("嘆きの夜に (In this night)"))
+        assertEquals("ずっと", withoutBracketedVocals("ずっと（For you）"))
+        assertEquals("", withoutBracketedVocals("(Can you hear me)"))
+        assertEquals("No brackets here", withoutBracketedVocals("No brackets here"))
+    }
+
     @Test fun postTitleMustNameTheSong() {
         assertTrue(postTitleMentionsSong("【東方Vocal】FELT｜Time and again (中文翻譯)", "Time and again"))
         assertTrue(postTitleMentionsSong("【中日歌詞】YOASOBI - アイドル 翻譯", "アイドル"))

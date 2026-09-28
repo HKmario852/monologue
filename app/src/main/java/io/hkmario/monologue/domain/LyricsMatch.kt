@@ -164,3 +164,7 @@ fun isSyncedLyrics(text: String): Boolean { val lines=Lrc.parse(text); return li
 fun lyricsRank(original: String, preferSynced: Boolean): Int =
     (if(looksLikeRomaji(original)) 0 else 2)+(if(preferSynced && isSyncedLyrics(original)) 1 else 0)
 fun bestLyricsRank(preferSynced: Boolean)=if(preferSynced) 3 else 2
+
+private val bracketedVocals=Regex("""\s*[(（][^()（）]*[)）]""")
+/** A lyric line without its bracketed parts, which usually hold backing or second vocals: "嘆きの色響く夜に (In this night)" → "嘆きの色響く夜に". */
+fun withoutBracketedVocals(line: String): String = line.replace(bracketedVocals,"").trim()
