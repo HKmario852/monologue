@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+: a plain paper splash, so the logo intro starts on the same cream without the icon flashing first. -->
+<resources><style name="Theme.Monologue" parent="android:style/Theme.Material.Light.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:windowLightStatusBar">true</item><item name="android:windowActionModeOverlay">true</item><item name="android:windowBackground">#F5EFE4</item><item name="android:colorAccent">#A74932</item><item name="android:windowSplashScreenBackground">#F5EFE4</item><item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item></style></resources>
