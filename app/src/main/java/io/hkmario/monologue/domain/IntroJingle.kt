@@ -10,25 +10,25 @@ object IntroTimeline {
     const val DURATION = 3.0f
     /** Paper and grain fade in. */
     const val PAPER_END = 0.25f
-    /** The record drops, lands (thump) and settles after a small bounce. */
-    const val DROP_START = 0.25f
-    const val LAND = 0.60f
-    const val SETTLE = 0.75f
+    /** The record is already falling in view on the first frame; it lands (thump) and settles after a small bounce. */
+    const val DROP_START = 0.0f
+    const val LAND = 0.40f
+    const val SETTLE = 0.55f
     /** Each groove ring starts drawing here, with one note of the arpeggio. */
-    val GROOVES = floatArrayOf(0.85f, 1.05f, 1.25f)
+    val GROOVES = floatArrayOf(0.65f, 0.85f, 1.05f)
     const val GROOVE_DRAW = 0.35f
     /** The label comes down and hits the record (chord). */
-    const val STAMP_START = 1.35f
-    const val STAMP = 1.45f
+    const val STAMP_START = 1.15f
+    const val STAMP = 1.25f
     /** The spindle hole punches through (tick) and a highlight sweeps across. */
-    const val PUNCH = 1.75f
+    const val PUNCH = 1.55f
     /** The record lifts and the wordmark writes in (held note). */
-    const val LIFT_START = 1.95f
-    const val LIFT_END = 2.55f
+    const val LIFT_START = 1.75f
+    const val LIFT_END = 2.35f
     /** Everything fades into the app. */
-    const val FADE_START = 2.70f
+    const val FADE_START = 2.60f
     /** The jingle is silent from here on. */
-    const val SOUND_END = 2.90f
+    const val SOUND_END = 2.80f
 }
 
 private fun hz(note: Int) = 440.0 * 2.0.pow((note - 69) / 12.0)

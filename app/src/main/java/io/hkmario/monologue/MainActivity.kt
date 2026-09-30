@@ -62,6 +62,9 @@ class MainActivity: ComponentActivity() {
         val coldStart=savedInstanceState==null
         setContent {
             var intro by rememberSaveable { mutableStateOf(coldStart) }
+            // On a cold start the intro's first frame goes up before the app is built, so the logo shows as early as possible.
+            var appBuilt by remember { mutableStateOf(!coldStart) }
+            LaunchedEffect(Unit) { withFrameNanos { }; appBuilt=true }
             val state by vm.state.collectAsStateWithLifecycle()
             val progress=vm.progress.collectAsStateWithLifecycle()
             val lifecycleState by lifecycle.currentStateFlow.collectAsState()
@@ -71,11 +74,11 @@ class MainActivity: ComponentActivity() {
                 enableEdgeToEdge(statusBarStyle=bar,navigationBarStyle=bar)
             }
             MonologueTheme(state.settings) { androidx.compose.foundation.layout.Box {
-                AppHost(state,progress,vm.vinyl,lifecycleState.isAtLeast(Lifecycle.State.STARTED) && systemAnimations,vm::dispatch,message,{message=null},{entry,index->vm.undoQueue(entry,index)},
+                if(appBuilt) AppHost(state,progress,vm.vinyl,lifecycleState.isAtLeast(Lifecycle.State.STARTED) && systemAnimations,vm::dispatch,message,{message=null},{entry,index->vm.undoQueue(entry,index)},
                     importLyrics={translation -> translationImport=translation;lyricPicker.launch(arrayOf("text/*","application/octet-stream","application/x-subrip"))},
                     systemSettings={startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:$packageName")))})
                 // Over the app, which loads underneath; off when turned off in 設定 or when motion is reduced.
-                if(intro && state.settings.bool("introAnimation",true) && !state.settings.bool("reduceMotion") && systemAnimations) IntroScreen { intro=false }
+                if(intro && state.settings.bool("introAnimation",true) && !state.settings.bool("reduceMotion") && systemAnimations) IntroScreen(start=appBuilt) { intro=false }
             } }
         }
     }
