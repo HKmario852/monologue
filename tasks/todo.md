@@ -37,7 +37,7 @@ on the label — deterministic, so every run looks the same.
 - [x] Device test that renders frames at 0/25/50/75/100 % to PNG; look at each and fix what looks off.
 - [x] Unit test: jingle is 3.0 s long, silent after 2.9 s, peaks at 0.8, and each sound starts on its keyframe.
 - [x] Build, lint, unit + device tests; commit on a branch.
-- [ ] Publish (only when the user says so).
+- [x] Published as v0.4.9.
 
 ## Review
 - `domain/IntroJingle.kt`: `IntroTimeline` keyframes shared by picture and sound; `synthesizeIntroJingle()` makes the
