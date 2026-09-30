@@ -18,6 +18,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.google.android.gms.auth.api.identity.Identity
 import io.hkmario.monologue.domain.*
 import io.hkmario.monologue.ui.*
@@ -57,7 +58,10 @@ class MainActivity: ComponentActivity() {
             is UiEffect.Export -> {exportText=effect.text;exportPicker.launch("monologue-${effect.kind}.${if(effect.kind=="statistics") "csv" else if(effect.kind=="settings") "json" else "txt"}")}
             else -> message=effect
         }}}}
+        // The logo intro plays once per cold start, not when the activity is recreated (rotation, theme change).
+        val coldStart=savedInstanceState==null
         setContent {
+            var intro by rememberSaveable { mutableStateOf(coldStart) }
             val state by vm.state.collectAsStateWithLifecycle()
             val progress=vm.progress.collectAsStateWithLifecycle()
             val lifecycleState by lifecycle.currentStateFlow.collectAsState()
@@ -66,11 +70,13 @@ class MainActivity: ComponentActivity() {
                 val bar=if(dark) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT) else SystemBarStyle.light(android.graphics.Color.TRANSPARENT,android.graphics.Color.TRANSPARENT)
                 enableEdgeToEdge(statusBarStyle=bar,navigationBarStyle=bar)
             }
-            MonologueTheme(state.settings) {
+            MonologueTheme(state.settings) { androidx.compose.foundation.layout.Box {
                 AppHost(state,progress,vm.vinyl,lifecycleState.isAtLeast(Lifecycle.State.STARTED) && systemAnimations,vm::dispatch,message,{message=null},{entry,index->vm.undoQueue(entry,index)},
                     importLyrics={translation -> translationImport=translation;lyricPicker.launch(arrayOf("text/*","application/octet-stream","application/x-subrip"))},
                     systemSettings={startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:$packageName")))})
-            }
+                // Over the app, which loads underneath; off when turned off in 設定 or when motion is reduced.
+                if(intro && state.settings.bool("introAnimation",true) && !state.settings.bool("reduceMotion") && systemAnimations) IntroScreen { intro=false }
+            } }
         }
     }
     override fun onNewIntent(intent: Intent) {super.onNewIntent(intent);setIntent(intent);intent.data?.takeIf {vm.graph.spotify.accepts(it)}?.let(vm::spotifyCallback)}

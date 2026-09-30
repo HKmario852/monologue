@@ -58,7 +58,8 @@ val timeZones=listOf("Asia/Hong_Kong" to "香港","Asia/Taipei" to "台北","Asi
                 Toggle("動態主題色","Android 12 或以上；保留黑膠結構與排版",s.bool("dynamic")) {setting("dynamic",it.toString())}
                 Choice("導航樣式",s.text("navigation","bottom"),listOf("bottom" to "底部導覽列","drawer" to "側邊選單")) {setting("navigation",it)}
                 Toggle("黑膠旋轉","24 秒一圈；暫停時定格",s.bool("vinyl",true)) {setting("vinyl",it.toString())}
-                Toggle("減少動態效果","關閉旋轉；亦尊重系統動畫設定",s.bool("reduceMotion")) {setting("reduceMotion",it.toString())}
+                Toggle("減少動態效果","關閉旋轉及開啟動畫；亦尊重系統動畫設定",s.bool("reduceMotion")) {setting("reduceMotion",it.toString())}
+                Toggle("開啟時播放動畫","每次開啟 App 播放 3 秒標誌動畫；輕按畫面可略過，聲音預設靜音",s.bool("introAnimation",true)) {setting("introAnimation",it.toString())}
                 Choice("顯示語言",s.text("language","zh-Hant"),listOf("zh-Hant" to "繁體中文","system" to "跟隨系統（未支援語言用繁體中文）")) {setting("language",it)}
                 Info("文字大小會跟隨 Android 系統字體設定。")
             }
