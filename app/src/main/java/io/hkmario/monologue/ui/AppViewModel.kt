@@ -63,7 +63,8 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             }
             mutable.update { it.copy(settings=settings, drive=it.drive.copy(sort=settings.text("driveSort","name")), listenBrainz=it.listenBrainz.copy(connection=if(settings.bool("lbAuthInvalid")) Connection.InvalidToken else it.listenBrainz.connection,syncEnabled=settings.bool("lbSync"),lastSuccess=settings.text("lbLastSuccess").toLongOrNull(),error=settings.text("lbError").ifBlank { null })) }
             updateSearch(false); updateRanks(); lastTrack?.let { loadLyrics(it) }
-            WorkScheduler.periodicSync(app,settings.bool("lbSync")); WorkScheduler.incremental(app,settings)
+            // Off the main thread: the first call also starts WorkManager.
+            viewModelScope.launch(Dispatchers.IO) { WorkScheduler.periodicSync(app,settings.bool("lbSync")); WorkScheduler.incremental(app,settings) }
         } }
         viewModelScope.launch { dao.observeTracks().collect { rows ->
             allTracks=rows.map { it.model() }.toPersistentList(); graph.playback.refreshTracks(allTracks)

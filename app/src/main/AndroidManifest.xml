@@ -1,4 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
@@ -19,5 +19,10 @@
             <intent-filter><action android:name="androidx.media3.session.MediaSessionService" /></intent-filter>
         </service>
         <service android:name="androidx.work.impl.foreground.SystemForegroundService" android:foregroundServiceType="dataSync" xmlns:tools="http://schemas.android.com/tools" tools:node="merge" />
+        <!-- Faster start: ML Kit starts on first translation and WorkManager on first use (see MonologueApp), not before the app. -->
+        <provider android:name="com.google.mlkit.common.internal.MlKitInitProvider" android:authorities="${applicationId}.mlkitinitprovider" tools:node="remove" />
+        <provider android:name="androidx.startup.InitializationProvider" android:authorities="${applicationId}.androidx-startup" android:exported="false" tools:node="merge">
+            <meta-data android:name="androidx.work.WorkManagerInitializer" android:value="androidx.startup" tools:node="remove" />
+        </provider>
     </application>
 </manifest>

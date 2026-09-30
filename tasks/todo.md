@@ -52,3 +52,26 @@ on the label — deterministic, so every run looks the same.
 - Verified on MuMu: plays on cold start, fades into the library, tap skips, unmuting starts a 44.1 kHz static track
   in audio_flinger (emulator music volume is muted, so not audible there).
 - 59 unit + 31 device tests pass, lint clean.
+
+---
+
+# Faster start (user saw ~1.5 s of blank screen before the intro)
+
+## Findings (MuMu, cold start, ms from process start)
+- 0 → ~530: process start plus ML Kit's and WorkManager's own start-up providers, before any app code.
+- ~530 → ~650: app graph and ViewModel (~0.1 s).
+- ~650 → ~1080: the whole app composed and laid out together with the intro; intro's first frame at ~1080.
+- ~1080 → ~1360: data arriving, recompositions, skipped frames.
+- The intro's first ~0.4 s was paper only (record started above the screen).
+
+## Plan
+- [x] Remove ML Kit's and WorkManager's start-up providers; start ML Kit on the first translation and WorkManager on
+      first use (`Configuration.Provider`), with scheduling off the main thread.
+- [x] Intro: the record is in view from the first frame; keyframes 0.2 s earlier.
+- [x] Draw the intro first, build the app one frame later, and start the intro clock only after that.
+- [x] Device tests: ML Kit starts on first use; WorkManager starts on first use.
+
+## Review
+- First frame (with the record already visible) now at 0.85–0.93 s on MuMu, from 1.0–1.5 s of paper before;
+  no "Skipped frames" warnings during the intro.
+- 59 unit + 33 device tests pass, lint clean.

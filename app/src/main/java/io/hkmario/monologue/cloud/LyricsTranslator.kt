@@ -29,7 +29,9 @@ fun lyricsLanguage(lines: List<String>): String? {
  * On-device machine translation of lyrics with ML Kit. The language model (about 30 MB) is downloaded
  * once inside the app; after that, lyrics are translated offline and never sent to a translation server.
  */
-class LyricsTranslator {
+class LyricsTranslator(private val context: android.content.Context) {
+    /** ML Kit starts here, on the first translation, instead of while the app launches (its start-up provider is removed). */
+    private val mlKit by lazy { com.google.mlkit.common.MlKit.initialize(context.applicationContext); true }
     private fun target(language: String)=when(language) { "English"->TranslateLanguage.ENGLISH; "日本語"->TranslateLanguage.JAPANESE; else->TranslateLanguage.CHINESE }
 
     /** Returns an LRC with the same timestamps as [lrc], or null when the lyrics are already in [language]. */
@@ -39,6 +41,7 @@ class LyricsTranslator {
         val source=lyricsLanguage(lines.map { it.text }) ?: return null
         val target=target(language)
         if(source==target) return null
+        withContext(Dispatchers.Default) { mlKit }
         val translator=Translation.getClient(TranslatorOptions.Builder().setSourceLanguage(source).setTargetLanguage(target).build())
         try {
             translator.downloadModelIfNeeded().await()

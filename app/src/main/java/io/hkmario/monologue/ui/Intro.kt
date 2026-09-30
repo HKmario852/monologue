@@ -134,7 +134,8 @@ fun DrawScope.renderIntro(t: Float, texture: IntroTexture, text: TextMeasurer) {
     // Drop with gravity, then one small bounce.
     val dropP = ramp(s, k.DROP_START, k.LAND)
     val bounce = ramp(s, k.LAND, k.SETTLE)
-    val fallY = if(s < k.LAND) -(1 - dropP * dropP) * (h * 0.5f + recordR) else -0.06f * recordR * sin(PI.toFloat() * bounce) * (1 - bounce)
+    // Falls from high on the screen, never from outside it, so the logo is there from the first frame.
+    val fallY = if(s < k.LAND) -(1 - dropP * dropP) * h * 0.3f else -0.06f * recordR * sin(PI.toFloat() * bounce) * (1 - bounce)
     val impact = if(s >= k.LAND) exp(-(s - k.LAND) * 22f) else 0f
     val center = Offset(home.x, home.y + fallY)
     val spin = if(s < k.SETTLE) 0f else { val dt = s - k.SETTLE; val ramp = min(dt, 0.5f); (0.55f * ramp * ramp + 0.55f * 2 * 0.5f * max(0f, dt - 0.5f)) * 2 * PI.toFloat() }
@@ -205,7 +206,7 @@ fun DrawScope.renderIntro(t: Float, texture: IntroTexture, text: TextMeasurer) {
         val layout = text.measure("Monologue", TextStyle(fontFamily = FontFamily.Serif, fontSize = (min(w, h) * 0.105f).toSp(), color = IntroInk))
         val top = Offset(w / 2 - layout.size.width / 2f, home.y + recordR + min(w, h) * 0.07f)
         clipRect(top.x - 4, top.y - 8, top.x + layout.size.width * write + 4, top.y + layout.size.height + 8) { drawText(layout, topLeft = top) }
-        val line = easeOut(ramp(s, 2.25f, k.LIFT_END + 0.1f))
+        val line = easeOut(ramp(s, k.LIFT_END - 0.3f, k.LIFT_END + 0.1f))
         if(line > 0f) {
             val y = top.y + layout.size.height + 4 * density
             val path = Path().apply {
@@ -244,14 +245,20 @@ private class IntroSound {
  * The 3-second startup intro over the app: the record drops, the grooves draw, the label stamps and the hole punches,
  * then "Monologue" writes in and everything fades into the app. Tap anywhere (or Back) to skip. The sound starts muted.
  */
-@Composable fun IntroScreen(onDone: () -> Unit) {
+@Composable fun IntroScreen(start: Boolean = true, onDone: () -> Unit) {
     val texture = remember { IntroTexture() }
     val measurer = rememberTextMeasurer()
     val progress = remember { Animatable(0f) }
     var muted by remember { mutableStateOf(true) }
     val sound = remember { IntroSound() }
     val done by rememberUpdatedState(onDone)
-    LaunchedEffect(Unit) { progress.animateTo(1f, tween((IntroTimeline.DURATION * 1000).toInt(), easing = LinearEasing)); done() }
+    // The clock starts once the app behind has been built ([start]) and one more frame has passed, so no motion is lost
+    // to that work; until then the first frame holds.
+    LaunchedEffect(start) {
+        if(!start) return@LaunchedEffect
+        withFrameNanos { }
+        progress.animateTo(1f, tween((IntroTimeline.DURATION * 1000).toInt(), easing = LinearEasing)); done()
+    }
     LaunchedEffect(muted) { if(muted) sound.mute() else sound.play(progress.value * IntroTimeline.DURATION) }
     DisposableEffect(Unit) { onDispose { sound.release() } }
     BackHandler { done() }
