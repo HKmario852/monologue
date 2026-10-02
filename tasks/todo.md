@@ -89,7 +89,7 @@ on the label — deterministic, so every run looks the same.
       shorter than 30 minutes. Folded into the existing 設定 › 播放「中斷後恢復播放」 (on by default) instead of a second toggle.
 - [x] Tests: unit tests for the history order and the gap timing; device check on MuMu (play a video in another app).
 - [x] Build, lint, unit + device tests; commit on a branch.
-- [ ] Publish (only when the user says so).
+- [x] Published as v0.4.11.
 
 ## Review
 - Gap: ExoPlayer pauses at the end of each song (`pauseAtEndOfMediaItems`), the next one starts after the gap; the app
