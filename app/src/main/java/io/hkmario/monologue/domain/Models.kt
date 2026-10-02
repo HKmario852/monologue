@@ -37,7 +37,9 @@ data class DownloadManagerUiState(val phase: DownloadPhase = DownloadPhase.Idle,
     val current get() = items.firstOrNull { it.status == DownloadStatus.Downloading }
 }
 data class RankedTrack(val track: Track, val count: Int, val listenedMs: Long)
-data class LeaderboardUiState(val phase: Phase = Phase.Empty, val period: Period = Period.Week, val offset: Int = 0, val startMs: Long = 0, val endExclusiveMs: Long = 0, val zone: String = "Asia/Hong_Kong", val sortByTime: Boolean = false, val rows: PersistentList<RankedTrack> = persistentListOf(), val hours: Double = 0.0, val count: Int = 0)
+data class LeaderboardUiState(val phase: Phase = Phase.Empty, val period: Period = Period.Week, val offset: Int = 0, val startMs: Long = 0, val endExclusiveMs: Long = 0, val zone: String = "Asia/Hong_Kong", val sortByTime: Boolean = false, val rows: PersistentList<RankedTrack> = persistentListOf(), val hours: Double = 0.0, val count: Int = 0,
+    /** 按最近播放: every library song, last heard first; not limited to the period. */
+    val recent: Boolean = false, val history: PersistentList<HistoryEntry> = persistentListOf())
 data class ListenBrainzUiState(val connection: Connection = Connection.Unconfigured, val username: String? = null, val pending: Int = 0, val syncEnabled: Boolean = false, val lastSuccess: Long? = null, val error: String? = null)
 data class Recommendation(val id: String, val title: String, val artist: String, val match: Track? = null, val artwork: String? = null, val recordingMbid: String? = null)
 data class ListeningStatsUiState(val all: PersistentList<RankedTrack> = persistentListOf(), val month: PersistentList<RankedTrack> = persistentListOf(), val detail: PersistentList<RankedTrack> = persistentListOf(), val period: Period = Period.All, val offset: Int = 0, val startMs: Long = 0, val endMs: Long = 0, val zone: String = "Asia/Hong_Kong")
@@ -105,7 +107,7 @@ sealed interface UiEvent {
     data object ContinueDownloads : UiEvent
     data object CancelDownloads : UiEvent
     data object RetryDownloads : UiEvent
-    data class Leaderboard(val period: Period, val offset: Int = 0, val byTime: Boolean = false) : UiEvent
+    data class Leaderboard(val period: Period, val offset: Int = 0, val byTime: Boolean = false, val recent: Boolean = false) : UiEvent
     data class VerifyToken(val token: String) : UiEvent
     data class DisconnectListenBrainz(val discardPending: Boolean) : UiEvent
     data object SyncNow : UiEvent
