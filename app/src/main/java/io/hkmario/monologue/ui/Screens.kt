@@ -267,7 +267,7 @@ val periodLabels=listOf("本週","本月","全部")
 /** 聆聽回顧: ranking, listening totals and the support estimate under one period switcher. */
 @Composable fun RecapScreen(state: LeaderboardUiState,onEvent: (UiEvent)->Unit,onMore: (Track)->Unit,openSupport: ()->Unit={}) {
     // One switcher drives both the ranking and the statistics behind 支持金額, so they never show different periods.
-    fun period(p: Period,offset: Int=0,byTime: Boolean=state.sortByTime) { onEvent(UiEvent.Leaderboard(p,offset,byTime)); onEvent(UiEvent.Statistics(p,offset)) }
+    fun period(p: Period,offset: Int=0,byTime: Boolean=state.sortByTime) { onEvent(UiEvent.Leaderboard(p,offset,byTime,state.recent)); onEvent(UiEvent.Statistics(p,offset)) }
     LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(24.dp)) {
         item { TabRow(state.period.ordinal,containerColor=Color.Transparent) { Period.entries.forEachIndexed { i,p -> Tab(p==state.period,{period(p)},text={Text(periodLabels[i])}) } } }
         if(state.period!=Period.All) item {
@@ -275,9 +275,18 @@ val periodLabels=listOf("本週","本月","全部")
             Row(Modifier.fillMaxWidth().padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween) {ActionIcon(Icons.Outlined.ChevronLeft,"上一期") {period(state.period,state.offset-1)};Text("${Instant.ofEpochMilli(state.startMs).atZone(zone).format(format)}\n— ${Instant.ofEpochMilli(state.endExclusiveMs-1).atZone(zone).format(format)}",style=MaterialTheme.typography.bodyMedium,textAlign=androidx.compose.ui.text.style.TextAlign.Center);ActionIcon(Icons.Outlined.ChevronRight,"下一期",state.offset<0) {period(state.period,state.offset+1)}}
         }
         item {Row(Modifier.fillMaxWidth().padding(vertical=24.dp),horizontalArrangement=Arrangement.SpaceBetween) {Column {Text("%.1f 小時".format(state.hours),style=MaterialTheme.typography.headlineLarge,color=MaterialTheme.colorScheme.primary);Text("聆聽時數",style=MaterialTheme.typography.bodySmall)};Column {Text("${state.count} 次",style=MaterialTheme.typography.headlineLarge,color=MaterialTheme.colorScheme.primary);Text("播放次數",style=MaterialTheme.typography.bodySmall)}}}
-        item {Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {FilterChip(!state.sortByTime,{onEvent(UiEvent.Leaderboard(state.period,state.offset,false))},label={Text("按播放次數")});FilterChip(state.sortByTime,{onEvent(UiEvent.Leaderboard(state.period,state.offset,true))},label={Text("按聆聽時間")})}}
-        if(state.rows.isEmpty()) item {EmptyPanel("這段期間未有紀錄","一首歌聽滿 30 秒（短歌則一半長度）才計一次播放；暫停與緩衝不計算在內。")}
-        itemsIndexed(state.rows,key={_,it->it.track.id}) { i,row ->
+        item {Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            FilterChip(!state.recent && !state.sortByTime,{onEvent(UiEvent.Leaderboard(state.period,state.offset,false))},label={Text("按播放次數")})
+            FilterChip(!state.recent && state.sortByTime,{onEvent(UiEvent.Leaderboard(state.period,state.offset,true))},label={Text("按聆聽時間")})
+            FilterChip(state.recent,{onEvent(UiEvent.Leaderboard(state.period,state.offset,state.sortByTime,true))},label={Text("按最近播放")})
+        }}
+        if(state.recent) {
+            item {Text("所有歌曲，最近聽過的排先，從未播放的排最後；不受上面的期間影響。",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=8.dp))}
+            val zone=runCatching { ZoneId.of(state.zone) }.getOrDefault(ZoneId.systemDefault()); val now=System.currentTimeMillis()
+            items(state.history,key={"h-"+it.track.id}) { entry -> TrackRow(entry.track,lastPlayedLabel(entry.lastPlayedMs,now,zone),{onEvent(UiEvent.Play(entry.track))},{onMore(entry.track)}) }
+        }
+        else if(state.rows.isEmpty()) item {EmptyPanel("這段期間未有紀錄","一首歌聽滿 30 秒（短歌則一半長度）才計一次播放；暫停與緩衝不計算在內。")}
+        if(!state.recent) itemsIndexed(state.rows,key={_,it->it.track.id}) { i,row ->
             Surface(Modifier.fillMaxWidth().padding(top=8.dp),shape=RoundedCornerShape(12.dp),color=if(i==0) MaterialTheme.colorScheme.surface else Color.Transparent,border=if(i==0) BorderStroke(1.dp,MaterialTheme.colorScheme.primary) else null) {Box(Modifier.padding(horizontal=if(i==0) 12.dp else 0.dp)) {TrackRow(row.track,"${row.count} 次播放 · ${row.listenedMs/60000} 分鐘",{onEvent(UiEvent.Play(row.track))},{onMore(row.track)},"${i+1}${if(i<3) " ·" else ""}")}}
         }
         item {SectionTitle("支持歌手")}

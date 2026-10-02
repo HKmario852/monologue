@@ -66,7 +66,8 @@ val timeZones=listOf("Asia/Hong_Kong" to "香港","Asia/Taipei" to "台北","Asi
             1 -> {
                 Toggle("恢復上次播放隊列","啟動時還原歌曲與位置",s.bool("restoreQueue",true)) {setting("restoreQueue",it.toString())}
                 Toggle("啟動時自動播放","預設關閉",s.bool("autoplay")) {setting("autoplay",it.toString())}
-                Toggle("中斷後恢復播放","仍須遵循 Android 音訊焦點規則",s.bool("resumeInterruption",true)) {setting("resumeInterruption",it.toString())}
+                Toggle("中斷後恢復播放","通知或導航提示後繼續；其他 App 播放音樂或影片時先暫停，對方停止後自動繼續（30 分鐘內）",s.bool("resumeInterruption",true)) {setting("resumeInterruption",it.toString())}
+                Choice("歌曲之間的靜音",s.text("gapSeconds","0"),listOf("0" to "關閉","2" to "2 秒","3" to "3 秒","5" to "5 秒","10" to "10 秒")) {setting("gapSeconds",it)}
                 Toggle("耳機拔除時暫停","避免聲音突然由揚聲器播放",s.bool("noisyPause",true)) {setting("noisyPause",it.toString())}
                 Choice("播放速度",s.text("speed","1.0"),listOf("0.5" to "0.5×","0.75" to "0.75×","1.0" to "1.0×","1.25" to "1.25×","1.5" to "1.5×","2.0" to "2.0×")) {setting("speed",it)}
                 SettingAction("等化器","可調頻段視乎裝置支援",openEq)

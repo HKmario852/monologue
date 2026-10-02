@@ -176,7 +176,7 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             UiEvent.ContinueDownloads -> launch { val c=dao.control() ?: DownloadControl(); dao.control(c.copy(phase="Running",cancelled=false)); WorkScheduler.download(getApplication(),state.value.settings.bool("wifiOnly",true)) }
             UiEvent.CancelDownloads -> launch { dao.control((dao.control() ?: DownloadControl()).copy(phase="Cancelled",cancelled=true)); WorkManager.getInstance(getApplication()).cancelUniqueWork("monologue-downloads"); dao.cancelDownloads() }
             UiEvent.RetryDownloads -> launch { dao.retryFailed(); dao.control((dao.control() ?: DownloadControl()).copy(phase="Running",cancelled=false)); WorkScheduler.download(getApplication(),state.value.settings.bool("wifiOnly",true)) }
-            is UiEvent.Leaderboard -> { mutable.update { it.copy(leaderboard=it.leaderboard.copy(period=event.period,offset=event.offset,sortByTime=event.byTime)) }; updateRanks() }
+            is UiEvent.Leaderboard -> { mutable.update { it.copy(leaderboard=it.leaderboard.copy(period=event.period,offset=event.offset,sortByTime=event.byTime,recent=event.recent)) }; updateRanks() }
             is UiEvent.VerifyToken -> verifyToken(event.token)
             is UiEvent.DisconnectListenBrainz -> launch { graph.listenBrainz.disconnect(event.discardPending); mutable.update { it.copy(listenBrainz=ListenBrainzUiState(),discover=DiscoverUiState()) } }
             UiEvent.SyncNow -> { WorkScheduler.sync(getApplication()) }
@@ -422,7 +422,10 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             if(count==0 && ms==0L) null else RankedTrack(track,count,ms)
         }
         val rows=(if(old.sortByTime) totals.sortedWith(compareByDescending<RankedTrack> { it.listenedMs }.thenBy { it.track.id }) else totals.sortedWith(compareByDescending<RankedTrack> { it.count }.thenByDescending { it.listenedMs }.thenBy { it.track.id })).toPersistentList()
-        mutable.update { it.copy(leaderboard=old.copy(phase=if(rows.isEmpty()) Phase.Empty else Phase.Ready,startMs=start,endExclusiveMs=end,zone=zone.id,rows=rows,hours=rows.sumOf { r -> r.listenedMs }/3600000.0,count=rows.sumOf { r -> r.count })) }
+        // History: library songs plus anything else that was played, by when each was last heard.
+        val lastPlayed=HashMap<String,Long>().also { m -> allEvents.forEach { e -> if(e.endMs>(m[e.trackId] ?: 0L)) m[e.trackId]=e.endMs } }
+        val history=listeningHistory(libraryTracks()+allTracks.filter { it.id in lastPlayed },lastPlayed).toPersistentList()
+        mutable.update { it.copy(leaderboard=old.copy(history=history,phase=if(rows.isEmpty()) Phase.Empty else Phase.Ready,startMs=start,endExclusiveMs=end,zone=zone.id,rows=rows,hours=rows.sumOf { r -> r.listenedMs }/3600000.0,count=rows.sumOf { r -> r.count })) }
     }
     private fun updateStats() {
         val old=state.value.stats

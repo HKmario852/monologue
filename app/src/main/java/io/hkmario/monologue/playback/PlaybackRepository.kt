@@ -48,6 +48,35 @@ class PlaybackRepository(private val graph: AppGraph) {
     private var lastCheckpoint=0L
     private var restoring=false
     private var timerOriginalVolume=1f
+    /** A song just ended and the next waits out 歌曲之間的靜音; the app shows it as still playing. */
+    private var gapPending=false
+    private val endGap=Runnable { if(gapPending) { gapPending=false; player?.play(); publish() } }
+    /** Another app's music or video took the audio away at this time (0: not waiting). */
+    private var focusLostAt=0L
+    private var otherSeenPlaying=false
+    private var otherQuietSince=0L
+    private val audio by lazy { graph.context.getSystemService(android.media.AudioManager::class.java) }
+    /**
+     * Android gives no signal when another app's media stops after it has taken the audio away for good, so check once a
+     * second whether anything is still playing. After the other app has played and then been quiet for 1.5 s, carry on.
+     * Gives up after 30 minutes, so music never starts out of nowhere much later.
+     */
+    private val watchOtherMedia=object: Runnable {
+        override fun run() {
+            val p=player ?: return
+            if(focusLostAt==0L) return
+            val now=SystemClock.elapsedRealtime()
+            if(now-focusLostAt>30*60_000L) { focusLostAt=0L; return }
+            if(audio.isMusicActive) { otherSeenPlaying=true; otherQuietSince=0L }
+            else if(otherSeenPlaying) {
+                if(otherQuietSince==0L) otherQuietSince=now
+                else if(now-otherQuietSince>=1500) { focusLostAt=0L; p.play(); return }
+            }
+            handler.postDelayed(this,1000)
+        }
+    }
+    private fun stopWatchingOtherMedia() { focusLostAt=0L; handler.removeCallbacks(watchOtherMedia) }
+    private fun cancelGap() { gapPending=false; handler.removeCallbacks(endGap) }
     init { scope.launch { for(write in writes) runCatching { write() } } }
     fun connect() {
         if(controllerFuture!=null) return
@@ -61,6 +90,8 @@ class PlaybackRepository(private val graph: AppGraph) {
         preferenceJob=scope.launch {
             graph.settings.state.collect { p ->
                 preferences=p; exo.setPlaybackSpeed(p.number("speed",1f).coerceIn(0.25f,2f)); exo.setHandleAudioBecomingNoisy(p.bool("noisyPause",true))
+                // Silence between songs: pause at the end of each song and start the next after the gap.
+                exo.pauseAtEndOfMediaItems=gapMs()>0
                 vinyl.configure(System.nanoTime(),allowed=p.bool("vinyl",true) && !p.bool("reduceMotion"))
                 if(eq!=null) runCatching { eq?.enabled=p.bool("eqEnabled") }; refreshEq()
             }
@@ -71,6 +102,7 @@ class PlaybackRepository(private val graph: AppGraph) {
     fun detach() {
         sample(); saveQueue(); vinyl.configure(System.nanoTime(),playing=false,visible=false)
         preferenceJob?.cancel(); handler.removeCallbacks(tick); eq?.release(); eq=null
+        cancelGap(); stopWatchingOtherMedia()
         player?.removeListener(listener); player=null; lastPlaying=false
     }
     private val tick=object: Runnable {
@@ -125,6 +157,22 @@ class PlaybackRepository(private val graph: AppGraph) {
             }
             saveQueue(); publish()
         }
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            when {
+                // Another app's music or video took the audio away: wait for it to stop, then carry on.
+                !playWhenReady && reason==Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS && preferences.bool("resumeInterruption",true) -> {
+                    focusLostAt=SystemClock.elapsedRealtime(); otherSeenPlaying=false; otherQuietSince=0L
+                    handler.removeCallbacks(watchOtherMedia); handler.postDelayed(watchOtherMedia,1000)
+                }
+                playWhenReady || reason==Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST -> stopWatchingOtherMedia()
+            }
+            // The song ended with 歌曲之間的靜音 on: wait, then play on (unless it was the last song).
+            if(!playWhenReady && reason==Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) {
+                val p=player ?: return
+                if(!p.hasNextMediaItem()) { p.play(); return }
+                gapPending=true; handler.removeCallbacks(endGap); handler.postDelayed(endGap,gapMs().coerceAtLeast(1)); publish()
+            }
+        }
         override fun onPlaybackSuppressionReasonChanged(reason: Int) {
             if(reason!=Player.PLAYBACK_SUPPRESSION_REASON_NONE && !preferences.bool("resumeInterruption",true)) player?.pause()
         }
@@ -162,7 +210,7 @@ class PlaybackRepository(private val graph: AppGraph) {
         progress.value=progress.value.copy(entryId=entry?.id,positionMs=p.currentPosition,bufferedMs=p.bufferedPosition)
         val format=p.audioFormat
         val quality=format?.let {f->listOfNotNull(f.sampleMimeType, f.bitrate.takeIf {it>0}?.let {"${it/1000} kbps"}, f.sampleRate.takeIf {it>0}?.let {"$it Hz"}, f.channelCount.takeIf {it>0}?.let {"$it 聲道"}).joinToString(" · ")}
-        state.value=NowPlayingUiState(if(p.playerError!=null) Phase.Error else if(entry==null) Phase.Empty else Phase.Ready,entry,p.isPlaying,p.playbackState==Player.STATE_BUFFERING,p.isCurrentMediaItemSeekable,p.duration.coerceAtLeast(0),p.shuffleModeEnabled,p.repeatMode,p.playbackParameters.speed,if(p.playerError!=null) state.value.error else null,audioFormat=quality)
+        state.value=NowPlayingUiState(if(p.playerError!=null) Phase.Error else if(entry==null) Phase.Empty else Phase.Ready,entry,p.isPlaying || gapPending,p.playbackState==Player.STATE_BUFFERING,p.isCurrentMediaItemSeekable,p.duration.coerceAtLeast(0),p.shuffleModeEnabled,p.repeatMode,p.playbackParameters.speed,if(p.playerError!=null) state.value.error else null,audioFormat=quality)
     }
     private fun item(entry: QueueEntry): MediaItem {
         val t=entry.track
@@ -174,7 +222,7 @@ class PlaybackRepository(private val graph: AppGraph) {
     fun play(tracks: List<Track>) {
         val p=player ?: return
         if(tracks.isEmpty()) return
-        entries=tracks.map { QueueEntry(track=it) }.toPersistentList()
+        cancelGap(); entries=tracks.map { QueueEntry(track=it) }.toPersistentList()
         p.setMediaItems(entries.map(::item)); p.prepare(); p.play(); saveQueue(); publish()
     }
     fun enqueue(track: Track, next: Boolean) {
@@ -182,14 +230,20 @@ class PlaybackRepository(private val graph: AppGraph) {
         val index=if(next) (p.currentMediaItemIndex+1).coerceIn(0,entries.size) else entries.size
         entries=entries.add(index,e); p.addMediaItem(index,item(e)); if(p.playbackState==Player.STATE_IDLE) p.prepare(); saveQueue(); publish()
     }
-    fun toggle() { player?.let { if(it.isPlaying) it.pause() else { if(it.playbackState==Player.STATE_IDLE) it.prepare(); it.play() } } }
-    fun next() { player?.seekToNextMediaItem() }
-    fun previous() { player?.seekToPrevious() }
+    private fun gapMs()=(preferences.text("gapSeconds","0").toIntOrNull() ?: 0).coerceIn(0,30)*1000L
+    fun toggle() {
+        // Pausing during the gap keeps the next song from starting.
+        if(gapPending) { cancelGap(); publish(); return }
+        player?.let { if(it.isPlaying) it.pause() else { if(it.playbackState==Player.STATE_IDLE) it.prepare(); it.play() } }
+    }
+    // Skipping during the gap starts the chosen song right away, as if it had been playing.
+    fun next() { val resume=gapPending; cancelGap(); player?.seekToNextMediaItem(); if(resume) player?.play() }
+    fun previous() { val resume=gapPending; cancelGap(); player?.seekToPrevious(); if(resume) player?.play() }
     fun shuffle() { player?.let { it.shuffleModeEnabled=!it.shuffleModeEnabled }; saveQueue() }
     fun repeat() { player?.let { it.repeatMode=when(it.repeatMode) {Player.REPEAT_MODE_OFF->Player.REPEAT_MODE_ONE;Player.REPEAT_MODE_ONE->Player.REPEAT_MODE_ALL;else->Player.REPEAT_MODE_OFF} }; saveQueue() }
     fun seekPreview(ms: Long?) { progress.value=progress.value.copy(seekPreview=ms) }
     fun seekCommit() { val s=progress.value; if(s.entryId==state.value.entry?.id && state.value.seekable) s.seekPreview?.let { player?.seekTo(it) }; seekPreview(null) }
-    fun playEntry(id: String) { val index=entries.indexOfFirst { it.id==id }; if(index>=0) { player?.seekToDefaultPosition(index); player?.play() } }
+    fun playEntry(id: String) { val index=entries.indexOfFirst { it.id==id }; if(index>=0) { cancelGap(); player?.seekToDefaultPosition(index); player?.play() } }
     fun move(id: String, destination: Int) {
         val from=entries.indexOfFirst { it.id==id }; if(from<0) return
         val to=destination.coerceIn(0,entries.lastIndex); val e=entries[from]

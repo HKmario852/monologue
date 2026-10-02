@@ -75,3 +75,30 @@ on the label — deterministic, so every run looks the same.
 - First frame (with the record already visible) now at 0.85–0.93 s on MuMu, from 1.0–1.5 s of paper before;
   no "Skipped frames" warnings during the intro.
 - 59 unit + 33 device tests pass, lint clean.
+
+---
+
+# Three playback / recap features (requested 2026-10-02)
+
+## Plan (user chose: add silence between songs)
+- [x] **Silence between songs** — 設定 › 播放「歌曲之間的靜音」: 關閉 / 2 / 3 / 5 / 10 秒.
+- [x] **Listening history** — 聆聽回顧 gets a third chip「按最近播放」: every library song, last played first, never-played
+      songs last, each row showing when it was last played. Not limited to the selected period.
+- [x] **Resume after other media** — when another app's music or video takes audio focus, pause; when no other app is
+      playing any more (AudioManager playback callback), take focus back and resume. Only if the interruption was
+      shorter than 30 minutes. Folded into the existing 設定 › 播放「中斷後恢復播放」 (on by default) instead of a second toggle.
+- [x] Tests: unit tests for the history order and the gap timing; device check on MuMu (play a video in another app).
+- [x] Build, lint, unit + device tests; commit on a branch.
+- [ ] Publish (only when the user says so).
+
+## Review
+- Gap: ExoPlayer pauses at the end of each song (`pauseAtEndOfMediaItems`), the next one starts after the gap; the app
+  shows "playing" during the gap; pause during the gap stops the next song; skip starts the chosen song at once.
+- Resume: on `PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS`, poll `AudioManager.isMusicActive` each second; resume once
+  the other app has played and then been quiet for 1.5 s; give up after 30 min or on any user play/pause.
+- History: `listeningHistory()` (unit-tested) orders library + played songs by last listen; never-played last;
+  labels 剛剛 / N 分鐘前 / N 小時前 / N 日前 / date / 從未播放.
+- GapAndFocusDeviceTest (real audio): next song only after the gap; another player taking focus pauses Monologue and it
+  resumes when that player stops. It cleans up its fixtures (first version left counted plays that broke
+  PlaybackDeviceTest).
+- 61 unit + 35 device tests pass (twice), lint clean.
