@@ -132,3 +132,14 @@ on the label — deterministic, so every run looks the same.
 - [ ] Typing works as today (媒體庫, Google Drive, 線上).
 - [ ] Tile colours: to be chosen by the user.
 - [ ] UI test at phone size; build, lint, unit + device tests; commit on a branch; ask before publishing.
+- Decisions: warm palette; tiles are online categories (YouTube Music), not the user's own songs; all 16 categories;
+  covers load when 搜尋 opens (only category words are sent; cached a day).
+
+## Review
+- 16 tiles (熱門新歌 … 放鬆) in a 2-column grid under a solid search box; each tile's cover is its top song's album art,
+  tilted into the corner. Tapping opens a category page (coloured header, songs; tap to play, arrow to download).
+- `OnlineRepository.browse()` uses YouTube Music's song search (falls back to ordinary YouTube search when empty),
+  cached 24 h in `online-browse`; "J-Pop" returned no songs, so its query is "jpop hits"; empty results count as
+  failures so the tile retries when opened.
+- Checked on MuMu: all covers load, 日本樂曲 lists 30 songs, tapping 夜に駆ける plays it, switching tabs returns to the
+  grid, typing still searches 媒體庫/Drive/線上. Phone-size UI test checks the two-column layout and tile tap.
