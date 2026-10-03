@@ -167,7 +167,7 @@ private fun sizeLabel(bytes: Long)=if(bytes>=1_000_000_000) "%.1f GB".format(byt
     val q=normalize(state.query)
     val folders=if(q.isEmpty()) index.children(current).filter {index.stat(it.id).tracks>0} else emptyList()
     val listed=(if(q.isNotEmpty()) under.filter {normalize(it.title) .contains(q) || normalize(it.artist).contains(q) || normalize(it.album).contains(q)} else direct.ifEmpty {under}).let { t ->
-        when(state.sort) {"size"->t.sortedByDescending {it.bytes};"nameDesc"->t.sortedByDescending {normalize(it.title)};"artist"->t.sortedBy {normalize(it.artist)+normalize(it.title)};else->t.sortedBy {normalize(it.title)}}
+        when(state.sort) {"size"->t.sortedByDescending {it.bytes};"added"->sortLibrary(t,"added");"nameDesc"->t.sortedByDescending {normalize(it.title)};"artist"->t.sortedBy {normalize(it.artist)+normalize(it.title)};else->t.sortedBy {normalize(it.title)}}
     }
     val album=listed.map {it.album}.distinct().singleOrNull()?.takeIf {it!="未知專輯" && listed.size>1}
     val unsaved=under.count {it.offlinePath==null}
@@ -265,7 +265,7 @@ private fun sizeLabel(bytes: Long)=if(bytes>=1_000_000_000) "%.1f GB".format(byt
         }
     }
 }
-private val sortLabels=linkedMapOf("name" to "名稱 A–Z","nameDesc" to "名稱 Z–A","artist" to "歌手","size" to "大小，由大至小")
+private val sortLabels=linkedMapOf("name" to "名稱 A–Z","nameDesc" to "名稱 Z–A","artist" to "歌手","size" to "大小，由大至小","added" to "加入時間，由新至舊")
 
 @Composable private fun DriveTrackRow(number: Int,t: Track,albumView: Boolean,job: DownloadItem?,offline: Boolean,onEvent: (UiEvent)->Unit,onMore: (Track)->Unit) {
     val saved=t.offlinePath!=null

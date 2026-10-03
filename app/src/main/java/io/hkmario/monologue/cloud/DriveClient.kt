@@ -73,14 +73,14 @@ class DriveClient(private val context: Context, private val dao: MusicDao) {
         }
     }
     suspend fun account(): String { val u=get("about",mapOf("fields" to "user(displayName,emailAddress)")).getJSONObject("user"); return u.optString("emailAddress",u.optString("displayName")) }
-    private val fileFields="nextPageToken,files(id,name,mimeType,size,modifiedTime,version,md5Checksum,parents,ownedByMe,capabilities(canDownload))"
+    private val fileFields="nextPageToken,files(id,name,mimeType,size,createdTime,modifiedTime,version,md5Checksum,parents,ownedByMe,capabilities(canDownload))"
     private val tagged=context.getSharedPreferences("drive-metadata",Context.MODE_PRIVATE)
     private suspend fun track(f: JSONObject, folder: String): Track {
         val id=f.getString("id"); val name=f.getString("name"); val old=dao.track("drive:$id")
         val version=f.optString("version",f.optString("modifiedTime"))
         // Keep tags read earlier unless the file changed; otherwise every listing would reset them to the file name.
         val keep=old!=null && tagged.getString("drive:$id",null)==version
-        val t=Track("drive:$id",if(keep) old!!.title else name.substringBeforeLast('.'),old?.artist ?: "未知歌手",old?.album ?: "未知專輯",folder,"https://www.googleapis.com/drive/v3/files/$id?alt=media",old?.durationMs ?: 0,artwork=if(keep) old!!.artwork else null,source=Source.Drive,favorite=old?.favorite ?: false,offlinePath=old?.offlinePath,downloadedVersion=old?.downloadedVersion,remoteVersion=version,bytes=f.optString("size").toLongOrNull() ?: 0,checksum=f.optString("md5Checksum").ifBlank { null },mime=f.getString("mimeType"))
+        val t=Track("drive:$id",if(keep) old!!.title else name.substringBeforeLast('.'),old?.artist ?: "未知歌手",old?.album ?: "未知專輯",folder,"https://www.googleapis.com/drive/v3/files/$id?alt=media",old?.durationMs ?: 0,artwork=if(keep) old!!.artwork else null,source=Source.Drive,favorite=old?.favorite ?: false,offlinePath=old?.offlinePath,downloadedVersion=old?.downloadedVersion,remoteVersion=version,bytes=f.optString("size").toLongOrNull() ?: 0,checksum=f.optString("md5Checksum").ifBlank { null },mime=f.getString("mimeType"),addedMs=driveTimeMs(f.optString("createdTime")).takeIf { it>0 } ?: old?.addedMs ?: 0)
         return t
     }
     private val library=context.getSharedPreferences("drive-library",Context.MODE_PRIVATE)

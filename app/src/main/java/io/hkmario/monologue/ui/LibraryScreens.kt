@@ -219,7 +219,7 @@ private fun displayPath(folder: String): String { val (label,prefix)=displayRoot
     }
 }
 /** Sort options shared by the 媒體庫 menus and 設定 › 媒體庫, so both always offer the same choices under the same names. */
-val songSorts=linkedMapOf("title" to "依標題排列","artist" to "依歌手排列","duration" to "依長度排列（由長至短）")
+val songSorts=linkedMapOf("title" to "依標題排列","artist" to "依歌手排列","duration" to "依長度排列（由長至短）","added" to "依加入時間（由新至舊）")
 val albumSorts=linkedMapOf("name" to "依專輯名稱","artist" to "依歌手","count" to "依歌曲數")
 @Composable private fun SongOrderBar(settings: AppSettingsUiState,tracks: List<Track>,onEvent: (UiEvent)->Unit) {
     var menu by remember { mutableStateOf(false) }

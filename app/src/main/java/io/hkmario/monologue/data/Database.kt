@@ -5,10 +5,10 @@ import kotlinx.coroutines.flow.Flow
 import io.hkmario.monologue.domain.*
 
 @Entity(tableName="tracks")
-data class TrackRow(@PrimaryKey val id: String, val title: String, val artist: String, val album: String, val folder: String, val uri: String, val durationMs: Long, val artwork: String?, val source: String, val favorite: Boolean = false, val offlinePath: String? = null, val remoteVersion: String? = null, val downloadedVersion: String? = null, val bytes: Long = 0, val checksum: String? = null, val mime: String = "audio/mpeg", val scanGeneration: Long = 0) {
-    fun model() = Track(id,title,artist,album,folder,uri,durationMs,artwork,Source.valueOf(source),favorite,offlinePath,remoteVersion,downloadedVersion,bytes,checksum,mime)
+data class TrackRow(@PrimaryKey val id: String, val title: String, val artist: String, val album: String, val folder: String, val uri: String, val durationMs: Long, val artwork: String?, val source: String, val favorite: Boolean = false, val offlinePath: String? = null, val remoteVersion: String? = null, val downloadedVersion: String? = null, val bytes: Long = 0, val checksum: String? = null, val mime: String = "audio/mpeg", val scanGeneration: Long = 0, @androidx.room.ColumnInfo(defaultValue="0") val addedMs: Long = 0) {
+    fun model() = Track(id,title,artist,album,folder,uri,durationMs,artwork,Source.valueOf(source),favorite,offlinePath,remoteVersion,downloadedVersion,bytes,checksum,mime,addedMs)
 }
-fun Track.row(generation: Long = 0) = TrackRow(id,title,artist,album,folder,uri,durationMs,artwork,source.name,favorite,offlinePath,remoteVersion,downloadedVersion,bytes,checksum,mime,generation)
+fun Track.row(generation: Long = 0) = TrackRow(id,title,artist,album,folder,uri,durationMs,artwork,source.name,favorite,offlinePath,remoteVersion,downloadedVersion,bytes,checksum,mime,generation,addedMs)
 @Entity(tableName="playlists") data class PlaylistRow(@PrimaryKey val id: String, val name: String)
 @Entity(tableName="playlist_entries", indices=[Index("playlistId")], foreignKeys=[ForeignKey(entity=PlaylistRow::class,parentColumns=["id"],childColumns=["playlistId"],onDelete=ForeignKey.CASCADE)])
 data class PlaylistEntryRow(@PrimaryKey val id: String, val playlistId: String, val trackId: String, val position: Int)
@@ -72,7 +72,9 @@ data class ListenEvent(@PrimaryKey val id: String, val instanceId: String, val t
     @Query("DELETE FROM lyrics WHERE trackId=:id") suspend fun deleteLyrics(id: String)
     @Query("SELECT SUM(LENGTH(CAST(original AS BLOB))+COALESCE(LENGTH(CAST(translation AS BLOB)),0)) FROM lyrics") suspend fun lyricsBytes(): Long?
 }
-@Database(entities=[TrackRow::class,PlaylistRow::class,PlaylistEntryRow::class,QueueRow::class,PlaybackCheckpoint::class,ListenEvent::class,OutboxRow::class,DownloadRow::class,DownloadControl::class,LyricsRow::class], version=2, exportSchema=true)
+@Database(entities=[TrackRow::class,PlaylistRow::class,PlaylistEntryRow::class,QueueRow::class,PlaybackCheckpoint::class,ListenEvent::class,OutboxRow::class,DownloadRow::class,DownloadControl::class,LyricsRow::class], version=3, exportSchema=true)
 abstract class MusicDatabase: RoomDatabase() { abstract fun dao(): MusicDao }
 /** 2: lyrics gain an optional romanised (romaji) LRC. Existing lyrics stay as they are. */
 val MIGRATION_1_2=object: androidx.room.migration.Migration(1,2) { override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) { db.execSQL("ALTER TABLE lyrics ADD COLUMN romaji TEXT") } }
+/** 加入時間: filled in by the next Drive listing and library scan. */
+val MIGRATION_2_3=object: androidx.room.migration.Migration(2,3) { override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) { db.execSQL("ALTER TABLE tracks ADD COLUMN addedMs INTEGER NOT NULL DEFAULT 0") } }

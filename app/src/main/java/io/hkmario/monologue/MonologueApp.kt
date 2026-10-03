@@ -17,7 +17,7 @@ class MonologueApp: Application(), coil.ImageLoaderFactory, androidx.work.Config
 }
 class AppGraph(val context: Context) {
     val scope=CoroutineScope(SupervisorJob()+Dispatchers.Main.immediate)
-    val db=Room.databaseBuilder(context,MusicDatabase::class.java,"monologue.db").addMigrations(MIGRATION_1_2).build()
+    val db=Room.databaseBuilder(context,MusicDatabase::class.java,"monologue.db").addMigrations(MIGRATION_1_2,MIGRATION_2_3).build()
     val settings=SettingsRepository(context)
     val secrets=SecretStore(context)
     val spotify=SpotifyClient(secrets)

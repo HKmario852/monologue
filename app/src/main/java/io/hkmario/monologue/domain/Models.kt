@@ -10,7 +10,9 @@ enum class DownloadStatus { Queued, Downloading, Complete, Failed, Cancelled }
 enum class DownloadPhase { Idle, Running, Waiting, Complete, Cancelled }
 enum class Connection { Unconfigured, Verifying, Connected, InvalidToken, NetworkError, AuthorizationRequired }
 enum class Period { Week, Month, All }
-data class Track(val id: String, val title: String, val artist: String = "未知歌手", val album: String = "未知專輯", val folder: String = "", val uri: String, val durationMs: Long = 0, val artwork: String? = null, val source: Source = Source.Local, val favorite: Boolean = false, val offlinePath: String? = null, val remoteVersion: String? = null, val downloadedVersion: String? = null, val bytes: Long = 0, val checksum: String? = null, val mime: String = "audio/mpeg")
+data class Track(val id: String, val title: String, val artist: String = "未知歌手", val album: String = "未知專輯", val folder: String = "", val uri: String, val durationMs: Long = 0, val artwork: String? = null, val source: Source = Source.Local, val favorite: Boolean = false, val offlinePath: String? = null, val remoteVersion: String? = null, val downloadedVersion: String? = null, val bytes: Long = 0, val checksum: String? = null, val mime: String = "audio/mpeg",
+    /** When the file was added: uploaded to Drive or added to the phone (epoch ms); 0 when unknown. */
+    val addedMs: Long = 0)
 data class QueueEntry(val id: String = UUID.randomUUID().toString(), val track: Track, val removeAfterPlaying: Boolean = false)
 data class GroupItem(val id: String, val title: String, val tracks: PersistentList<Track>)
 data class Playlist(val id: String, val name: String, val tracks: PersistentList<Track> = persistentListOf(), val entryIds: PersistentList<String> = persistentListOf())
