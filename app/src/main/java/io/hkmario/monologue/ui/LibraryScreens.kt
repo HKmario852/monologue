@@ -220,14 +220,22 @@ private fun displayPath(folder: String): String { val (label,prefix)=displayRoot
 }
 /** Sort options shared by the 媒體庫 menus and 設定 › 媒體庫, so both always offer the same choices under the same names. */
 val songSorts=linkedMapOf("title" to "依標題排列","artist" to "依歌手排列","duration" to "依長度排列（由長至短）","added" to "依加入時間（由新至舊）")
+/** Labels for the reversed direction of a sort that flips when chosen again. */
+val songSortsReversed=mapOf("addedAsc" to "依加入時間（由舊至新）")
+fun songSortLabel(id: String)=songSorts[id] ?: songSortsReversed[id] ?: "依標題排列"
 val albumSorts=linkedMapOf("name" to "依專輯名稱","artist" to "依歌手","count" to "依歌曲數")
 @Composable private fun SongOrderBar(settings: AppSettingsUiState,tracks: List<Track>,onEvent: (UiEvent)->Unit) {
     var menu by remember { mutableStateOf(false) }
     val sorts=songSorts
     Row(Modifier.fillMaxWidth().padding(top=12.dp,bottom=4.dp),verticalAlignment=Alignment.CenterVertically) {
         Box(Modifier.weight(1f)) {
-            Text("${sorts[settings.text("sort","title")] ?: "依標題排列"} ⌄",Modifier.clickable {menu=true}.padding(vertical=8.dp),style=SerifItalic.copy(fontSize=13.sp),color=Muted)
-            DropdownMenu(menu,{menu=false}) { sorts.forEach { (id,label) -> DropdownMenuItem(text={Text(label)},onClick={menu=false;onEvent(UiEvent.Setting("sort",id))}) } }
+            val current=settings.text("sort","title")
+            Text("${songSortLabel(current)} ⌄",Modifier.clickable {menu=true}.padding(vertical=8.dp),style=SerifItalic.copy(fontSize=13.sp),color=Muted)
+            // Choosing the order that is already on flips its direction (加入時間: 由新至舊 ↔ 由舊至新).
+            DropdownMenu(menu,{menu=false}) { sorts.keys.forEach { id ->
+                val on=baseSort(current)==id
+                DropdownMenuItem(text={Text(if(on) songSortLabel(current) else songSortLabel(id),color=if(on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)},onClick={menu=false;onEvent(UiEvent.Setting("sort",nextSort(current,id)))})
+            } }
         }
         Row(Modifier.clickable(enabled=tracks.isNotEmpty()) {onEvent(UiEvent.PlayList(tracks.shuffled().toPersistentList()))}.padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
             Text("隨機播放全部",style=MaterialTheme.typography.bodyMedium,color=Ink)

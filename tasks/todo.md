@@ -117,3 +117,5 @@ on the label — deterministic, so every run looks the same.
 - MuMu: database upgraded to version 3 in place; after the Drive refresh all 329 songs had dates (2023-08 → today),
   and both lists showed the newest upload first, matching the database.
 - 63 unit + 35 device tests pass, lint clean.
+- 2026-10-03 follow-up: choosing 大小 (雲端) or 加入時間 (both) again flips the direction (`nextSort`, `baseSort`);
+  labels show the direction in use (由新至舊 ↔ 由舊至新, 由大至小 ↔ 由小至大). Checked on MuMu against the database.
