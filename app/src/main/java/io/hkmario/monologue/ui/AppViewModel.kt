@@ -102,7 +102,7 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
     private fun libraryTracks(): PersistentList<Track> {
         val cloud=graph.drive.libraryIds
         val tracks=allTracks.filter { it.source==Source.Local || it.offlinePath!=null || it.source==Source.Online && it.favorite || it.source==Source.Drive && it.id in cloud }
-        return when(state.value.settings.text("sort","title")) { "artist" -> tracks.sortedBy { normalize(it.artist) }; "duration" -> tracks.sortedByDescending { it.durationMs }; else -> tracks.sortedBy { normalize(it.title) } }.toPersistentList()
+        return sortLibrary(tracks,state.value.settings.text("sort","title")).toPersistentList()
     }
     fun hasAudioPermission()=ContextCompat.checkSelfPermission(getApplication(),if(Build.VERSION.SDK_INT>=33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE)==PackageManager.PERMISSION_GRANTED
     private fun launch(block: suspend () -> Unit) { viewModelScope.launch { try { block() } catch(e: CancellationException) { throw e } catch(e: Exception) { effectsChannel.send(UiEffect.Message(e.message ?: "操作未完成")) } } }

@@ -102,3 +102,18 @@ on the label — deterministic, so every run looks the same.
   resumes when that player stops. It cleans up its fixtures (first version left counted plays that broke
   PlaybackDeviceTest).
 - 61 unit + 35 device tests pass (twice), lint clean.
+
+---
+
+# 加入時間 sort in 媒體庫 and 雲端 (requested 2026-10-03)
+
+## Plan
+- [x] `Track.addedMs` + database column (version 3, `MIGRATION_2_3`, default 0).
+- [x] Drive: request `createdTime` (when the file was uploaded); local: MediaStore `DATE_ADDED`; chosen folders: last modified.
+- [x] 媒體庫「依加入時間（由新至舊）」 and 雲端「加入時間，由新至舊」; songs without a date last, by title.
+- [x] Unit tests (`sortLibrary`, `driveTimeMs`); migration checked on MuMu by installing over the version-2 database.
+
+## Review
+- MuMu: database upgraded to version 3 in place; after the Drive refresh all 329 songs had dates (2023-08 → today),
+  and both lists showed the newest upload first, matching the database.
+- 63 unit + 35 device tests pass, lint clean.
