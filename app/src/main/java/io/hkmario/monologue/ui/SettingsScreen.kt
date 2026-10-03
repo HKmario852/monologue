@@ -86,7 +86,7 @@ val timeZones=listOf("Asia/Hong_Kong" to "香港","Asia/Taipei" to "台北","Asi
                 EditSetting("最短音訊長度（秒）",s.text("minDuration","0"),"0 表示不排除；重新掃描後套用",numeric=true) {if(it.toFloatOrNull()?.let { n -> n>=0 }==true) setting("minDuration",it)}
                 Choice("預設 Tab",s.text("defaultTab","Tracks"),LibraryTab.entries.map {it.name to it.label}) {setting("defaultTab",it)}
                 // Same options and names as the sort menus in 媒體庫.
-                Choice("歌曲排序",s.text("sort","title"),songSorts.toList()) {setting("sort",it)}
+                Choice("歌曲排序",s.text("sort","title"),songSorts.toList()+songSortsReversed.toList()) {setting("sort",it)}
                 Choice("專輯排序",s.text("groupSort.Albums","name"),albumSorts.toList()) {setting("groupSort.Albums",it)}
                 Toggle("記錄搜尋歷史","按分類保存最近 10 個已提交搜尋",s.bool("searchHistory",true)) {setting("searchHistory",it.toString())}
                 SettingAction("清空目前 Tab 搜尋紀錄","") {onEvent(UiEvent.ClearSearchHistory)}
