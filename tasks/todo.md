@@ -119,3 +119,16 @@ on the label — deterministic, so every run looks the same.
 - 63 unit + 35 device tests pass, lint clean.
 - 2026-10-03 follow-up: choosing 大小 (雲端) or 加入時間 (both) again flips the direction (`nextSort`, `baseSort`);
   labels show the direction in use (由新至舊 ↔ 由舊至新, 由大至小 ↔ 由小至大). Checked on MuMu against the database.
+
+---
+
+# 搜尋 page like Spotify's browse grid (requested 2026-10-03, screenshot)
+
+## Plan (waiting for the user's choices)
+- [ ] Before typing: the search box on top, then a 2-column grid of coloured tiles; each tile has a bold title top-left
+      and one of the user's album covers tilted in the bottom-right corner, clipped by the tile.
+- [ ] Tiles come from the user's own music (only ones with songs show): 最近加入, 最近播放, 最愛, 未聽過,
+      日文歌, 中文歌, 英文歌 (by the script of title/artist), 已下載. Tapping opens the list with 播放全部 / 隨機播放.
+- [ ] Typing works as today (媒體庫, Google Drive, 線上).
+- [ ] Tile colours: to be chosen by the user.
+- [ ] UI test at phone size; build, lint, unit + device tests; commit on a branch; ask before publishing.
