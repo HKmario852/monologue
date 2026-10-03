@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package io.hkmario.monologue.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.*
@@ -13,6 +15,12 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.hkmario.monologue.BuildConfig
@@ -22,15 +30,8 @@ import coil.compose.AsyncImage
 /** Whether this build can sign in to Spotify; when it cannot, Spotify is hidden rather than offered as an option that fails. */
 val spotifyAvailable get()=BuildConfig.SPOTIFY_CLIENT_ID.isNotBlank() && !BuildConfig.SPOTIFY_REDIRECT_URI.contains(".invalid/")
 
-@Composable private fun SearchSourceHint(icon: androidx.compose.ui.graphics.vector.ImageVector,title: String,detail: String) {
-    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(16.dp)) {
-        Icon(icon,null,tint=MaterialTheme.colorScheme.primary)
-        Column { Text(title,style=MaterialTheme.typography.titleSmall); Text(detail,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant) }
-    }
-}
-
 /** One search box for everything: 媒體庫 and Google Drive answer while typing; an online source is asked only when the user presses search. */
-@Composable fun SearchScreen(library: LocalLibraryUiState,online: OnlineUiState,plugins: PluginUiState,settings: AppSettingsUiState,onEvent: (UiEvent)->Unit,onMore: (Track)->Unit={},playingId: String?=null,openSources: ()->Unit={}) {
+@Composable fun SearchScreen(library: LocalLibraryUiState,online: OnlineUiState,plugins: PluginUiState,settings: AppSettingsUiState,onEvent: (UiEvent)->Unit,onMore: (Track)->Unit={},playingId: String?=null,openSources: ()->Unit={},openCategory: (String)->Unit={}) {
     var playlist by rememberSaveable {mutableStateOf("")}
     var allLocal by rememberSaveable(online.query) {mutableStateOf(false)}
     var allCloud by rememberSaveable(online.query) {mutableStateOf(false)}
@@ -41,17 +42,23 @@ val spotifyAvailable get()=BuildConfig.SPOTIFY_CLIENT_ID.isNotBlank() && !BuildC
     val sources=plugins.plugins.filter {settings.bool("plugin.${it.id}.enabled",true) && (it.id!="spotify" || online.spotifyConnected)}
     LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(start=24.dp,end=24.dp,bottom=24.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
         item {
-            OutlinedTextField(online.query,{act(OnlineAction.Query(it))},Modifier.fillMaxWidth(),placeholder={Text("歌名、歌手或專輯")},leadingIcon={Icon(Icons.Outlined.Search,null)},
-                trailingIcon={if(online.query.isNotEmpty()) ActionIcon(Icons.Outlined.Close,"清除搜尋") {act(OnlineAction.Query(""))}},singleLine=true,shape=RoundedCornerShape(28.dp),
+            // A plain, solid search box at the top, as in the reference: no outline, square-ish corners.
+            val field=MaterialTheme.colorScheme.surfaceContainerLowest
+            TextField(online.query,{act(OnlineAction.Query(it))},Modifier.fillMaxWidth().padding(top=8.dp),placeholder={Text("你想聽什麼？")},leadingIcon={Icon(Icons.Outlined.Search,null)},
+                trailingIcon={if(online.query.isNotEmpty()) ActionIcon(Icons.Outlined.Close,"清除搜尋") {act(OnlineAction.Query(""))}},singleLine=true,shape=RoundedCornerShape(8.dp),
+                colors=TextFieldDefaults.colors(focusedContainerColor=field,unfocusedContainerColor=field,focusedIndicatorColor=Color.Transparent,unfocusedIndicatorColor=Color.Transparent),
                 keyboardOptions=KeyboardOptions(imeAction=ImeAction.Search),keyboardActions=KeyboardActions(onSearch={if(online.query.isNotBlank()) act(OnlineAction.Search)}))
         }
-        if(q.isEmpty()) item {
-            Column(Modifier.padding(top=16.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
-                Text("一個搜尋框，找遍你的音樂",style=MaterialTheme.typography.titleMedium)
-                SearchSourceHint(Icons.Outlined.LibraryMusic,"媒體庫","手機上的歌曲、收藏及離線下載；輸入時即時顯示")
-                SearchSourceHint(Icons.Outlined.Cloud,"Google Drive","已加入音樂庫的雲端歌曲")
-                SearchSourceHint(Icons.Outlined.TravelExplore,"線上",sources.joinToString("・") {it.name}.ifBlank {"未啟用線上音源"}+"；按搜尋才會傳送文字")
+        if(q.isEmpty()) {
+            item { LaunchedEffect(Unit) { act(OnlineAction.BrowseCovers) } }
+            // Two tiles a row: a category from YouTube Music, its top song's cover tilted in the corner.
+            items(browseCategories.chunked(2),key={row -> row.first().id}) { row ->
+                Row(Modifier.fillMaxWidth().padding(top=8.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                    row.forEach { c -> BrowseTile(c,online.browse.songs[c.id]?.firstOrNull()?.artwork,Modifier.weight(1f)) { openCategory(c.id) } }
+                    if(row.size==1) Spacer(Modifier.weight(1f))
+                }
             }
+            item { Text("分類歌曲由 YouTube Music 提供；載入時只傳送分類名稱，結果保留一日。輸入文字時，媒體庫與雲端即時顯示，線上則按搜尋才會傳送。",Modifier.padding(top=12.dp),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant) }
         } else {
             item {SectionTitle("媒體庫 · ${local.size} 首")}
             if(local.isEmpty()) item {Text("媒體庫沒有符合的歌曲",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
@@ -104,6 +111,53 @@ val spotifyAvailable get()=BuildConfig.SPOTIFY_CLIENT_ID.isNotBlank() && !BuildC
             }
         }
             if(online.results.isNotEmpty() && online.results.none {it.audio}) item {Info("這些結果提供歌曲資料；尋找音源後由你確認演出者及版本，不會把不同錄音自動當成同一首。")}
+        }
+    }
+}
+
+/** A coloured category tile: bold title top-left, the cover tilted into the bottom-right corner and clipped by the tile. */
+@Composable private fun BrowseTile(category: BrowseCategory,cover: String?,modifier: Modifier,open: ()->Unit) {
+    Box(modifier.height(104.dp).clip(RoundedCornerShape(8.dp)).background(Color(category.color)).clickable(onClickLabel="開啟${category.title}",onClick=open)) {
+        Text(category.title,Modifier.padding(12.dp).fillMaxWidth(0.68f),color=Color.White,style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.Bold),maxLines=2,overflow=TextOverflow.Ellipsis)
+        if(cover!=null) AsyncImage(cover,null,Modifier.align(Alignment.BottomEnd).offset(x=14.dp,y=10.dp).size(72.dp).graphicsLayer { rotationZ=25f }.shadow(6.dp,RoundedCornerShape(4.dp)).clip(RoundedCornerShape(4.dp)),contentScale=ContentScale.Crop)
+    }
+}
+
+/** A 搜尋 tile opened: the category's songs from YouTube Music. Tap a song to play it; the arrow saves it offline. */
+@Composable fun BrowseCategoryScreen(id: String,online: OnlineUiState,onEvent: (UiEvent)->Unit,playingId: String?=null) {
+    val category=browseCategories.find { it.id==id } ?: return
+    fun act(a: OnlineAction)=onEvent(UiEvent.Online(a))
+    LaunchedEffect(id) { act(OnlineAction.Browse(id)) }
+    val songs=online.browse.songs[id].orEmpty()
+    LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(bottom=24.dp)) {
+        item {
+            Box(Modifier.fillMaxWidth().height(132.dp).background(Color(category.color))) {
+                Column(Modifier.align(Alignment.BottomStart).padding(24.dp)) {
+                    Text(category.title,color=Color.White,style=MaterialTheme.typography.headlineLarge.copy(fontWeight=FontWeight.Bold))
+                    Text(if(songs.isEmpty()) "YouTube Music" else "${songs.size} 首 · YouTube Music",color=Color.White.copy(alpha=0.8f),style=MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
+        if(id in online.browse.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+        online.browse.errors[id]?.let { message -> item {
+            Column(Modifier.padding(24.dp)) {
+                Text("未能載入：$message",color=MaterialTheme.colorScheme.error)
+                TextButton(onClick={act(OnlineAction.Browse(id))}) { Text("再試一次") }
+            }
+        } }
+        online.error?.let { message -> item { Text(message,Modifier.padding(horizontal=24.dp,vertical=8.dp),color=MaterialTheme.colorScheme.error) } }
+        items(songs,key={it.id}) { song ->
+            val resolving=online.resolvingId==song.id
+            Row(Modifier.fillMaxWidth().clickable(enabled=online.resolvingId==null,onClickLabel="播放") { act(OnlineAction.Play(song)) }.padding(horizontal=24.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
+                if(song.artwork!=null) AsyncImage(song.artwork,null,Modifier.size(52.dp).clip(RoundedCornerShape(4.dp)),contentScale=ContentScale.Crop)
+                else Icon(Icons.Outlined.MusicNote,null,Modifier.size(52.dp),tint=MaterialTheme.colorScheme.primary)
+                Column(Modifier.weight(1f).padding(horizontal=16.dp)) {
+                    Text(song.title,style=MaterialTheme.typography.bodyLarge,maxLines=1,overflow=TextOverflow.Ellipsis,color=if(song.id==playingId) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+                    Text(listOf(song.artist,if(song.durationMs>0) formatTime(song.durationMs) else "").filter { it.isNotBlank() }.joinToString(" · "),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,overflow=TextOverflow.Ellipsis)
+                }
+                if(resolving) CircularProgressIndicator(Modifier.size(24.dp),strokeWidth=2.dp)
+                else ActionIcon(Icons.Outlined.Download,"離線下載 ${song.title}",online.resolvingId==null) { act(OnlineAction.Download(song)) }
+            }
         }
     }
 }

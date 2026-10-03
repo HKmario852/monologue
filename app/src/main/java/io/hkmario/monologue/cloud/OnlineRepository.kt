@@ -18,7 +18,33 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /** Native adapters plus declarative HTTP providers. No downloaded executable code. */
-class OnlineRepository(private val settings: SettingsRepository,val spotify: SpotifyClient) {
+class OnlineRepository(private val settings: SettingsRepository,val spotify: SpotifyClient,context: android.content.Context) {
+    /** 搜尋 tiles' songs, kept for a day so opening 搜尋 does not ask YouTube every time. */
+    private val browseCache=context.getSharedPreferences("online-browse",android.content.Context.MODE_PRIVATE)
+    private fun OnlineSong.json()=JSONObject().put("id",id).put("title",title).put("artist",artist).put("album",album).put("durationMs",durationMs).put("artwork",artwork).put("url",url)
+    private fun songFrom(o: JSONObject)=OnlineSong(o.getString("id"),o.getString("title"),o.optString("artist"),o.optString("album"),o.optLong("durationMs"),o.optString("artwork").takeIf { it.isNotBlank() },provider="youtube",url=o.optString("url"),audio=true)
+
+    /**
+     * Songs for a 搜尋 tile from YouTube Music's song search, which gives artists and square album covers.
+     * Only the category's words (such as "J-Pop") are sent. Results are reused for 24 hours.
+     */
+    suspend fun browse(category: BrowseCategory): PersistentList<OnlineSong> = withContext(Dispatchers.IO) {
+        require(settings.snapshot().bool("plugin.youtube.enabled",true)) {"YouTube 音源已停用，可在 設定 › 線上音源 啟用"}
+        val cached=browseCache.getString(category.id,null)?.let { runCatching { JSONObject(it) }.getOrNull() }
+        if(cached!=null && System.currentTimeMillis()-cached.optLong("time")<24*3_600_000L) {
+            val items=cached.getJSONArray("songs")
+            return@withContext (0 until items.length()).map { songFrom(items.getJSONObject(it)) }.toPersistentList()
+        }
+        fun search(filter: String)=ServiceList.YouTube.getSearchExtractor(category.query,listOf(filter),"").also { it.fetchPage() }.initialPage.items.filterIsInstance<StreamInfoItem>()
+        // YouTube Music's song search; when it has nothing for the words, YouTube's ordinary search instead.
+        val songs=search("music_songs").ifEmpty { search("videos") }.take(30).mapNotNull { s ->
+            val id=Uri.parse(s.url).getQueryParameter("v") ?: return@mapNotNull null
+            // The largest picture is the album cover at full size.
+            OnlineSong("youtube:$id",s.name,s.uploaderName ?: "YouTube Music",durationMs=s.duration.coerceAtLeast(0)*1000,artwork=s.thumbnails.maxByOrNull { it.height }?.url,provider="youtube",url=s.url,audio=true)
+        }.toPersistentList()
+        if(songs.isNotEmpty()) browseCache.edit().putString(category.id,JSONObject().put("time",System.currentTimeMillis()).put("songs",JSONArray().apply { songs.forEach { put(it.json()) } }).toString()).apply()
+        songs
+    }
     val http=OkHttpClient.Builder().connectTimeout(20,TimeUnit.SECONDS).readTimeout(35,TimeUnit.SECONDS).build()
     private val mbLock=Any();private var mbLast=0L
     private val resolved=java.util.concurrent.ConcurrentHashMap<String,Pair<Long,AudioChoice>>()

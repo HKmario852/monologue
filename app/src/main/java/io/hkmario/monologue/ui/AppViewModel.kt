@@ -212,8 +212,32 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             is UiEvent.RevokeFolder -> launch {getApplication<Application>().contentResolver.releasePersistableUriPermission(Uri.parse(event.uri),android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);refreshSystemStatus();scan()}
         }
     }
+    private var browseJob: Job?=null
+    /** Loads one 搜尋 tile's songs; failures are kept per tile so the others still show. */
+    private suspend fun loadBrowse(category: BrowseCategory) {
+        if(state.value.online.browse.songs.containsKey(category.id) || category.id in state.value.online.browse.loading) return
+        mutable.update { it.copy(online=it.online.copy(browse=it.online.browse.copy(loading=it.online.browse.loading.add(category.id),errors=it.online.browse.errors.remove(category.id)))) }
+        try {
+            val songs=graph.online.browse(category)
+            // Nothing found counts as a failure, so opening the tile tries again.
+            if(songs.isEmpty()) error("沒有找到歌曲")
+            mutable.update { it.copy(online=it.online.copy(browse=it.online.browse.copy(songs=it.online.browse.songs.put(category.id,songs),loading=it.online.browse.loading.remove(category.id)))) }
+        } catch(e: CancellationException) { mutable.update { it.copy(online=it.online.copy(browse=it.online.browse.copy(loading=it.online.browse.loading.remove(category.id)))) }; throw e }
+        catch(e: Exception) {
+            mutable.update { it.copy(online=it.online.copy(browse=it.online.browse.copy(loading=it.online.browse.loading.remove(category.id),errors=it.online.browse.errors.put(category.id,e.message ?: "無法連線")))) }
+        }
+    }
     private fun onlineDispatch(action: OnlineAction) {
         when(action) {
+            // Covers for all tiles, three at a time, in the order they appear.
+            OnlineAction.BrowseCovers -> if(browseJob?.isActive!=true) browseJob=viewModelScope.launch {
+                browseCategories.chunked(3).forEach { group -> group.map { c -> launch { loadBrowse(c) } }.joinAll() }
+            }
+            is OnlineAction.Browse -> browseCategories.find { it.id==action.id }?.let { c -> viewModelScope.launch {
+                // A tile that failed before is tried again when opened.
+                if(state.value.online.browse.errors.containsKey(c.id)) mutable.update { it.copy(online=it.online.copy(browse=it.online.browse.copy(errors=it.online.browse.errors.remove(c.id)))) }
+                loadBrowse(c)
+            } }
             is OnlineAction.Query -> {onlineJob?.cancel();mutable.update {it.copy(online=it.online.copy(query=action.value,results=persistentListOf(),phase=Phase.Empty,error=null,searched=false))}}
             is OnlineAction.Provider -> {onlineJob?.cancel();mutable.update {it.copy(online=it.online.copy(provider=action.id,results=persistentListOf(),phase=Phase.Empty,error=null,searched=false))}}
             OnlineAction.Search -> onlineSearch()

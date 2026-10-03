@@ -88,7 +88,7 @@ import kotlinx.coroutines.launch
     }}) {
         Scaffold(containerColor=MaterialTheme.colorScheme.background,contentWindowInsets=WindowInsets(0,0,0,0),snackbarHost={SnackbarHost(snackbar)},topBar={
             // 媒體庫 and 雲端 draw their own compact wordmark header.
-            if(!now && !(route in setOf("library","drive") && !drawerMode)) TopAppBar(title={Text(when {route=="library"->"monologue";route=="drive"->"Google Drive";route=="search"->"搜尋";route=="discover"->"探索";route=="recap"->"聆聽回顧";route=="settings"->"設定";route=="support"->"支持金額估算";route=="settings/{group}"->settingsGroups.getOrElse(stack?.arguments?.getString("group")?.toIntOrNull() ?: 0) {"設定"};route=="offline"->"離線下載";route=="group"->groupTracks?.title?.substringAfterLast('/') ?: "歌曲";else->"播放清單"},style=MaterialTheme.typography.headlineMedium)},navigationIcon={if(route !in destinations.map {it.first}) ActionIcon(Icons.Outlined.ArrowBack,"返回") {nav.popBackStack()} else if(drawerMode) ActionIcon(Icons.Outlined.Menu,"開啟選單") {scope.launch {drawer.open()}}},colors=TopAppBarDefaults.topAppBarColors(containerColor=MaterialTheme.colorScheme.background))
+            if(!now && !(route in setOf("library","drive") && !drawerMode)) TopAppBar(title={Text(when {route=="library"->"monologue";route=="drive"->"Google Drive";route=="search"->"搜尋";route=="discover"->"探索";route=="recap"->"聆聽回顧";route=="settings"->"設定";route=="support"->"支持金額估算";route=="settings/{group}"->settingsGroups.getOrElse(stack?.arguments?.getString("group")?.toIntOrNull() ?: 0) {"設定"};route=="offline"->"離線下載";route=="browse/{id}"->"";route=="group"->groupTracks?.title?.substringAfterLast('/') ?: "歌曲";else->"播放清單"},style=MaterialTheme.typography.headlineMedium)},navigationIcon={if(route !in destinations.map {it.first}) ActionIcon(Icons.Outlined.ArrowBack,"返回") {nav.popBackStack()} else if(drawerMode) ActionIcon(Icons.Outlined.Menu,"開啟選單") {scope.launch {drawer.open()}}},colors=TopAppBarDefaults.topAppBarColors(containerColor=MaterialTheme.colorScheme.background))
         },bottomBar={
             if(!now) Column(Modifier.background(MaterialTheme.colorScheme.background)) {
                 MiniPlayer(state.player,progress,onEvent,{nav.navigate("playing") {launchSingleTop=true}},{sheet="queue"})
@@ -106,7 +106,8 @@ import kotlinx.coroutines.launch
                     composable("playlist/{id}") {b -> val id=b.arguments?.getString("id");val playlist=state.library.playlists.find {it.id==id};val tracks=if(id=="favorites") state.library.tracks.filter {it.favorite}.toPersistentList() else playlist?.tracks ?: persistentListOf();DetailScreen(if(id=="favorites") "收藏歌曲" else playlist?.name ?: "播放清單",tracks,playlist,onEvent,::more,{nav.popBackStack()})}
                 }
                 navigation(startDestination="search",route="tab/search") {
-                    composable("search") {SearchScreen(state.library,state.online,state.plugins,state.settings,onEvent,::more,state.player.entry?.track?.id) {openIn("settings","settings/10")}}
+                    composable("search") {SearchScreen(state.library,state.online,state.plugins,state.settings,onEvent,::more,state.player.entry?.track?.id,{openIn("settings","settings/10")}) {nav.navigate("browse/$it")}}
+                    composable("browse/{id}") {b -> BrowseCategoryScreen(b.arguments?.getString("id") ?: "",state.online,onEvent,state.player.entry?.track?.id)}
                 }
                 navigation(startDestination="discover",route="tab/discover") {
                     composable("discover") {DiscoverScreen(state.listenBrainz,state.discover,onEvent,state.stats,{openIn("settings","settings/7")},

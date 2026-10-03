@@ -188,6 +188,25 @@ class UiAcceptanceTest {
         compose.onNodeWithText("隊列").assertIsDisplayed()
         screenshot("09-upright-lyrics")
     }
+    @Test fun searchShowsCategoryTilesTwoAcross() {
+        var opened: String?=null
+        compose.setContent {
+            CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(1f,1f)) {
+                Box(Modifier.requiredSize(400.dp,870.dp)) {
+                    MonologueTheme {SearchScreen(PreviewFixtures.app.library,OnlineUiState(),PluginUiState(),AppSettingsUiState(),{},openCategory={opened=it})}
+                }
+            }
+        }
+        // Two tiles share a row, as in the reference layout.
+        val left=compose.onNodeWithText("熱門新歌").fetchSemanticsNode().boundsInRoot
+        val right=compose.onNodeWithText("日本樂曲").fetchSemanticsNode().boundsInRoot
+        Assert.assertEquals(left.top,right.top,1f)
+        Assert.assertTrue(right.left>left.right)
+        compose.onNodeWithText("你想聽什麼？").assertIsDisplayed()
+        screenshot("10-search-tiles")
+        compose.onNodeWithText("日本樂曲").performClick()
+        Assert.assertEquals("jpop",opened)
+    }
     @Test fun largeTextPlayerKeepsControlsReachable() {
         compose.setContent {
             val density=androidx.compose.ui.platform.LocalDensity.current

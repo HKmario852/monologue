@@ -21,7 +21,7 @@ class AppGraph(val context: Context) {
     val settings=SettingsRepository(context)
     val secrets=SecretStore(context)
     val spotify=SpotifyClient(secrets)
-    val online=OnlineRepository(settings,spotify)
+    val online=OnlineRepository(settings,spotify,context)
     val updates=UpdateRepository(context,settings)
     val drive=DriveClient(context,db.dao())
     val listenBrainz=ListenBrainzClient(secrets,db.dao(),settings)
