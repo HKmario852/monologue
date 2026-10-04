@@ -131,7 +131,7 @@ on the label — deterministic, so every run looks the same.
       日文歌, 中文歌, 英文歌 (by the script of title/artist), 已下載. Tapping opens the list with 播放全部 / 隨機播放.
 - [ ] Typing works as today (媒體庫, Google Drive, 線上).
 - [ ] Tile colours: to be chosen by the user.
-- [ ] UI test at phone size; build, lint, unit + device tests; commit on a branch; ask before publishing.
+- [x] UI test at phone size; build, lint, unit + device tests; published as v0.4.12.
 - Decisions: warm palette; tiles are online categories (YouTube Music), not the user's own songs; all 16 categories;
   covers load when 搜尋 opens (only category words are sent; cached a day).
 
