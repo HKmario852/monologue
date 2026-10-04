@@ -155,8 +155,10 @@ val spotifyAvailable get()=BuildConfig.SPOTIFY_CLIENT_ID.isNotBlank() && !BuildC
                     Text(song.title,style=MaterialTheme.typography.bodyLarge,maxLines=1,overflow=TextOverflow.Ellipsis,color=if(song.id==playingId) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
                     Text(listOf(song.artist,if(song.durationMs>0) formatTime(song.durationMs) else "").filter { it.isNotBlank() }.joinToString(" · "),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,overflow=TextOverflow.Ellipsis)
                 }
-                if(resolving) CircularProgressIndicator(Modifier.size(24.dp),strokeWidth=2.dp)
-                else ActionIcon(Icons.Outlined.Download,"離線下載 ${song.title}",online.resolvingId==null) { act(OnlineAction.Download(song)) }
+                // Play and download side by side; the progress takes the play button's place while the audio is found.
+                if(resolving) Box(Modifier.size(48.dp),contentAlignment=Alignment.Center) { CircularProgressIndicator(Modifier.size(24.dp),strokeWidth=2.dp) }
+                else ActionIcon(Icons.Outlined.PlayArrow,"播放 ${song.title}",online.resolvingId==null) { act(OnlineAction.Play(song)) }
+                ActionIcon(Icons.Outlined.Download,"離線下載 ${song.title}",online.resolvingId==null) { act(OnlineAction.Download(song)) }
             }
         }
     }
