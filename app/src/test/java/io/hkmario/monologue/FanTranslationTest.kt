@@ -1,6 +1,7 @@
 package io.hkmario.monologue
 
 import io.hkmario.monologue.domain.*
+import io.hkmario.monologue.cloud.parseThbLyrics
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -116,6 +117,44 @@ class FanTranslationTest {
         assertEquals(listOf("朝の光", "君の声", "Oh yeah", "遠くまで"), song.original)
         assertEquals(listOf("早晨的光", "你的聲音", "Oh yeah", "直到遠方"), song.chinese)
         assertNull(io.hkmario.monologue.cloud.parseKanogomaSong("<h1>x</h1>"))
+    }
+
+    @Test fun thbWikiPagesGiveSyncedLyricsAndTranslation() {
+        // Laid out like a THBWiki 歌词 page (made-up lines).
+        val page = """
+            __LYRICS__
+
+            {{歌词信息|
+            | 语言 = 日文，英文
+            | 翻译 = 中文
+            | 译者 = [[用户:某译者|译者甲]]
+            }}
+
+            lyrics=
+
+            time=00:00.65
+            ja=朝の光が窓を照らす
+            zh=晨光照亮窗户
+
+            time=00:05.55
+            ja={{ruby|君|きみ}}の声が聞こえる
+            zh=听见你的声音
+
+            sep=00:10.00
+
+            time=00:11.11
+            en=(again and again)
+            zh=（一次又一次）
+
+            time=00:16.42
+            ja=[[夢]]の中で待っている
+            zh=在梦中等待
+        """.trimIndent()
+        val lyrics = parseThbLyrics(page)!!
+        assertEquals(listOf("[00:00.65]朝の光が窓を照らす", "[00:05.55]君の声が聞こえる", "[00:10.00]", "[00:11.11](again and again)", "[00:16.42]夢の中で待っている"), lyrics.original.lines())
+        assertEquals(listOf("[00:00.65]晨光照亮窗户", "[00:05.55]听见你的声音", "[00:11.11]（一次又一次）", "[00:16.42]在梦中等待"), lyrics.translation!!.lines())
+        assertEquals("译者甲", lyrics.translator)
+        assertNull(parseThbLyrics("{{歌词信息}}"))
     }
 
     @Test fun plainLyricsNeedEveryLine() {

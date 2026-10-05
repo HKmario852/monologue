@@ -37,12 +37,12 @@ class LyricsImprovementsTest {
 
     @Test fun providerListMigratesOldSettingsAndAddsNewSourcesOff() {
         val old = lyricsProviders(AppSettingsUiState(persistentMapOf("neteaseLyrics" to "true", "lyricsOrder" to "netease")))
-        assertEquals(listOf("netease", "lrclib", "jlyric", "utaten", "vocadb", "bahamut", "kanogoma"), old.map { it.info.id })
-        assertEquals(listOf(true, true, false, false, false, false, false), old.map { it.enabled })
+        assertEquals(listOf("netease", "lrclib", "jlyric", "utaten", "vocadb", "bahamut", "kanogoma", "thbwiki"), old.map { it.info.id })
+        assertEquals(listOf(true, true, false, false, false, false, false, false), old.map { it.enabled })
         val fresh = lyricsProviders(AppSettingsUiState())
-        assertEquals(listOf(true, false, false, false, false, false, false), fresh.map { it.enabled })
-        assertEquals("lrclib:1,netease:0,jlyric:0,utaten:0,vocadb:0,bahamut:0,kanogoma:0", encodeLyricsProviders(fresh))
+        assertEquals(listOf(true, false, false, false, false, false, false, false), fresh.map { it.enabled })
+        assertEquals("lrclib:1,netease:0,jlyric:0,utaten:0,vocadb:0,bahamut:0,kanogoma:0,thbwiki:0", encodeLyricsProviders(fresh))
         val stored = lyricsProviders(AppSettingsUiState(persistentMapOf("lyricsProviders" to "utaten:1,lrclib:1")))
-        assertEquals(listOf("utaten", "lrclib", "netease", "jlyric", "vocadb", "bahamut", "kanogoma"), stored.map { it.info.id })
+        assertEquals(listOf("utaten", "lrclib", "netease", "jlyric", "vocadb", "bahamut", "kanogoma", "thbwiki"), stored.map { it.info.id })
     }
 }

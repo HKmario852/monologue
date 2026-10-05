@@ -195,3 +195,26 @@ on the label — deterministic, so every run looks the same.
   offline: 57 of 77 lines get a translation (the rest are lines Kanogoma writes joined with the line before).
   agony and 君にふれて are not on Kanogoma.
 - 73 unit + 39 device tests pass, no lint errors.
+
+---
+
+# More online translation sources (requested 2026-10-05: "95% of the time I won't use ML Kit")
+
+## Looked at
+- **THBWiki** (thwiki.cc, Touhou doujin songs): public MediaWiki API, 歌词 pages with timestamps, Japanese and a named
+  translator's Chinese, CC BY-NC-SA 3.0 → added.
+- 萌娘百科: API answers "Unauthorized API call" to anonymous use → not used (would mean getting past a block).
+- QQ音樂: lyric API refuses without its own site's Referer (-1310) → not used.
+- 酷狗: lyrics are encrypted (KRC) → not used.
+- UtaTime (was Lyrical Nonsense): English translations only.
+- Other LRCLIB uploads of the same song: none carried Chinese for agony / 君にふれて / アイドル.
+
+## Review
+- `ThbWikiLyrics`: search the 歌词 namespace for the title; a page counts when the circle in its title, or an album
+  page linking to it (制作方 / 演唱 …), names one of the artists or the album; last timestamp within the file's length.
+  Off by default (new sources are added off); also used by the translation lookup.
+- MuMu: FELT "Time and again" and "OUR SHIP" found in 0.7 s / 0.3 s, synced, translation on 41/41 and 40/40 lines,
+  translator credited, converted to 繁體中文.
+- First device run failed: Android's regex engine rejects a bare "}" / "]" that the desktop JVM accepts, so the unit
+  tests passed. Escaped, and `LyricsParsersDeviceTest` now runs every lyric parser on the device.
+- 74 unit + 40 device tests pass, no lint errors.

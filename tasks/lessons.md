@@ -12,3 +12,6 @@ Rules learned from the user's corrections in this project.
   use a UI test with a phone-sized box).
 - **Only push or publish when asked** ("publish" / "發布"); commit on a branch otherwise.
 - **The startup intro is 3 seconds**, not 5. Keep intros short; always skippable.
+- **Run new regexes on the device, not only in unit tests.** Android's ICU regex engine rejects a bare `}` or `]`
+  that the desktop JVM accepts; a top-level `Regex` then breaks the whole class with ExceptionInInitializerError.
+  Escape brackets and keep `LyricsParsersDeviceTest` covering every lyric parser.

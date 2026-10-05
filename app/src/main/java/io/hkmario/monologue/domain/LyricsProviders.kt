@@ -17,6 +17,7 @@ val lyricsProviderCatalog = listOf(
         "巴哈姆特沒有提供歌詞 API，這裡是用它的站內標籤搜尋找網友發表的歌詞翻譯創作，再讀取文章網頁：只有純文字歌詞（不會跟著播放捲動），譯文屬於各譯者，來源會顯示譯者名稱；網站改版就會失效。開啟後會把歌手名稱和歌名傳送到 gamer.com.tw。"),
     LyricsProviderInfo("kanogoma", "Kanogoma 歌の胡麻", "非官方 · 讀取網頁 · 人手中文翻譯、純文字", false,
         "Kanogoma 是個人經營的中日歌詞翻譯網（約 400 首，全部人手翻譯，靠廣告維持）。這裡用它網站的搜尋找歌，再讀取歌曲網頁：只有純文字歌詞（不會跟著播放捲動），譯文屬於網站作者；網站改版就會失效。開啟後會把歌名和歌手名稱傳送到 kanogoma.com。"),
+    LyricsProviderInfo("thbwiki", "THBWiki", "公開 API · 東方同人歌 · 同步歌詞、中文翻譯", true),
 )
 
 /**
