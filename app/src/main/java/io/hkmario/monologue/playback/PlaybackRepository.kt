@@ -55,6 +55,8 @@ class PlaybackRepository(private val graph: AppGraph) {
     private var focusLostAt=0L
     private var otherSeenPlaying=false
     private var otherQuietSince=0L
+    /** The player's playWhenReady before its latest change. */
+    private var playWhenReadyBefore=false
     private val audio by lazy { graph.context.getSystemService(android.media.AudioManager::class.java) }
     /**
      * Android gives no signal when another app's media stops after it has taken the audio away for good, so check once a
@@ -86,7 +88,7 @@ class PlaybackRepository(private val graph: AppGraph) {
     }
     fun attach(exo: ExoPlayer) {
         player=exo
-        exo.addListener(listener)
+        exo.addListener(listener); playWhenReadyBefore=exo.playWhenReady
         preferenceJob=scope.launch {
             graph.settings.state.collect { p ->
                 preferences=p; exo.setPlaybackSpeed(p.number("speed",1f).coerceIn(0.25f,2f)); exo.setHandleAudioBecomingNoisy(p.bool("noisyPause",true))
@@ -158,11 +160,17 @@ class PlaybackRepository(private val graph: AppGraph) {
             saveQueue(); publish()
         }
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            // Media3 keeps the audio focus while paused and reports losing it as a pause too, so only music that was
+            // playing (or waiting in the silence between songs) when another app took the audio carries on afterwards.
+            val wasPlaying=playWhenReadyBefore || gapPending; playWhenReadyBefore=playWhenReady
             when {
                 // Another app's music or video took the audio away: wait for it to stop, then carry on.
-                !playWhenReady && reason==Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS && preferences.bool("resumeInterruption",true) -> {
-                    focusLostAt=SystemClock.elapsedRealtime(); otherSeenPlaying=false; otherQuietSince=0L
-                    handler.removeCallbacks(watchOtherMedia); handler.postDelayed(watchOtherMedia,1000)
+                !playWhenReady && reason==Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS -> {
+                    if(gapPending) { cancelGap(); publish() }
+                    if(wasPlaying && preferences.bool("resumeInterruption",true)) {
+                        focusLostAt=SystemClock.elapsedRealtime(); otherSeenPlaying=false; otherQuietSince=0L
+                        handler.removeCallbacks(watchOtherMedia); handler.postDelayed(watchOtherMedia,1000)
+                    }
                 }
                 playWhenReady || reason==Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST -> stopWatchingOtherMedia()
             }

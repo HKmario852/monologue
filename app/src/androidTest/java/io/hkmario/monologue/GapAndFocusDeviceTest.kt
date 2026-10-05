@@ -74,7 +74,32 @@ class GapAndFocusDeviceTest {
         compose.runOnUiThread { graph.playback.play(tracks(20)) }
         compose.waitUntil(15000) { graph.playback.state.value.isPlaying }
 
-        // Another "app": takes the audio away for good and plays a tone for 3 s.
+        anotherAppPlays(3000) { Assert.assertFalse("paused while the other app plays", graph.playback.state.value.isPlaying) }
+
+        // The other app stops: Monologue carries on by itself.
+        compose.waitUntil(8000) { graph.playback.state.value.isPlaying }
+        compose.runOnUiThread { graph.playback.toggle() }
+    }
+
+    @Test fun staysPausedWhenItWasPausedBeforeAnotherAppPlayed() {
+        val graph = app.graph
+        runBlocking { graph.settings.set("resumeInterruption", "true") }
+        compose.runOnUiThread { graph.playback.play(tracks(20)) }
+        compose.waitUntil(15000) { graph.playback.state.value.isPlaying }
+        // The user pauses first, then watches a video in another app and stops it.
+        compose.runOnUiThread { graph.playback.toggle() }
+        compose.waitUntil(5000) { !graph.playback.state.value.isPlaying }
+        Thread.sleep(1000)
+        anotherAppPlays(3000) { }
+        val until = SystemClock.elapsedRealtime() + 6000
+        while(SystemClock.elapsedRealtime() < until) {
+            Assert.assertFalse("stayed paused after the other app stopped", graph.playback.state.value.isPlaying)
+            Thread.sleep(200)
+        }
+    }
+
+    /** Another "app": takes the audio away for good, plays a tone for [ms] (running [whilePlaying] near the end), then stops. */
+    private fun anotherAppPlays(ms: Long, whilePlaying: () -> Unit) {
         val audio = app.getSystemService(AudioManager::class.java)
         val attributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
         val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).setAudioAttributes(attributes).setOnAudioFocusChangeListener { }.build()
@@ -85,13 +110,9 @@ class GapAndFocusDeviceTest {
             .setTransferMode(AudioTrack.MODE_STREAM).build()
         val tone = ShortArray(rate / 10) { n -> (kotlin.math.sin(n * 2 * Math.PI * 330 / rate) * 300).toInt().toShort() }
         other.play()
-        val until = SystemClock.elapsedRealtime() + 3000
+        val until = SystemClock.elapsedRealtime() + ms
         while(SystemClock.elapsedRealtime() < until) other.write(tone, 0, tone.size)
-        Assert.assertFalse("paused while the other app plays", graph.playback.state.value.isPlaying)
-
-        // The other app stops: Monologue carries on by itself.
+        whilePlaying()
         other.stop(); other.release(); audio.abandonAudioFocusRequest(request)
-        compose.waitUntil(8000) { graph.playback.state.value.isPlaying }
-        compose.runOnUiThread { graph.playback.toggle() }
     }
 }
