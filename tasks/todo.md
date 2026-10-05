@@ -218,3 +218,19 @@ on the label — deterministic, so every run looks the same.
 - First device run failed: Android's regex engine rejects a bare "}" / "]" that the desktop JVM accepts, so the unit
   tests passed. Escaped, and `LyricsParsersDeviceTest` now runs every lyric parser on the device.
 - 74 unit + 40 device tests pass, no lint errors.
+
+---
+
+# 設定 with icons instead of 01 02 03 (requested 2026-10-05)
+
+## Plan (user chose: coloured icon list on the home; an icon on every row)
+- [x] Home: each group gets a white icon on a disc of its colour (the 搜尋 tiles' warm palette) and a one-line summary.
+- [x] Rows: every Toggle / Choice / SettingAction / EditSetting in 設定 gets a small icon tile in theme colours
+      (reads in light and dark), looked up by title in `SettingsIcons.kt`; song-menu rows sharing SettingAction get none.
+- [x] Toggle rows use the same 16 dp side padding as the other rows so icons line up.
+
+## Review
+- All 85 settings titles have an icon (checked by comparing every row title in the code against the map).
+- Screenshots at phone size, light and dark: home, 外觀與導航, 歌詞.
+- 74 unit + 41 device tests pass, no lint errors. One full device run had 1 failure that four reruns did not repeat;
+  the failing test's name was not kept (logcat had rotated).

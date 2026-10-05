@@ -161,6 +161,28 @@ class UiAcceptanceTest {
         compose.onNodeWithText("ListenBrainz").assertIsDisplayed()
         compose.onNodeWithText("播放").assertDoesNotExist()
     }
+    @Test fun settingsShowGroupIconsAndRowIcons() {
+        // (dark theme, group or -1 for the home)
+        var screen by mutableStateOf(false to -1)
+        compose.setContent {
+            CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(1f,1f)) {
+                Box(Modifier.requiredSize(400.dp,870.dp)) {
+                    MonologueTheme(AppSettingsUiState(persistentMapOf("theme" to if(screen.first) "dark" else "paper"))) {
+                        Surface(Modifier.fillMaxSize()) {
+                            if(screen.second<0) SettingsHome {} else SettingsDetail(screen.second,PreviewFixtures.app,{},{},{},{},{},{},{},{})
+                        }
+                    }
+                }
+            }
+        }
+        // Each group says what it holds instead of a number.
+        compose.onNodeWithText("主題、導航樣式、黑膠與開啟動畫").assertIsDisplayed()
+        compose.onNodeWithText("01").assertDoesNotExist()
+        screenshot("11-settings-home")
+        screen=false to 0; compose.waitForIdle(); compose.onNodeWithText("黑膠旋轉").assertIsDisplayed(); screenshot("12-settings-appearance")
+        screen=true to -1; compose.waitForIdle(); screenshot("13-settings-home-dark")
+        screen=true to 5; compose.waitForIdle(); screenshot("14-settings-lyrics-dark")
+    }
     @Test fun downloadWaitingDoesNotResumeOnToggle() {
         var last: UiEvent?=null
         val state=DownloadManagerUiState(DownloadPhase.Waiting,persistentListOf(DownloadItem("a","a","Example",DownloadStatus.Queued)),true)
