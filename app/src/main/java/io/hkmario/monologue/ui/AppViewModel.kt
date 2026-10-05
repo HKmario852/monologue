@@ -200,7 +200,7 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
                 if(from>=0 && to!=from) { list.add(to,list.removeAt(from)); graph.settings.set("lyricsProviders",encodeLyricsProviders(list)) }
             }
             // Drop the stored online lyrics for this song and search the enabled sources again.
-            UiEvent.RefetchLyrics -> lastTrack?.let { id -> launch { dao.deleteLyrics(id); translationFailed-=id; loadLyrics(id) } }
+            UiEvent.RefetchLyrics -> lastTrack?.let { id -> launch { dao.deleteLyrics(id); translationFailed-=id; translationSearched-=id; loadLyrics(id) } }
             UiEvent.ClearLyricsCache -> launch { dao.clearLyrics(); lastTrack?.let(::loadLyrics); storage() }
             UiEvent.ClearIndex -> launch { dao.clearLocalIndex() }
             is UiEvent.ClearStatistics -> launch { clearStatistics(event.start,event.end) }
@@ -489,6 +489,8 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
     }
     /** Tracks whose stored romaji-only or plain-text lyrics were already re-checked for a better version in this session. */
     private val lyricsRechecked=mutableSetOf<String>()
+    /** Tracks already looked up for a person's translation in this session (on the sources that carry translations). */
+    private val translationSearched=mutableSetOf<String>()
     /** Tracks whose machine translation already failed in this session, so it is not retried on every settings change. */
     private val translationFailed=mutableSetOf<String>()
     /** Romaji made on the device this session, by track and lyrics text. */
@@ -529,7 +531,7 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             }
             val lines=build(row)
             mutable.update { it.copy(lyrics=LyricsUiState(if(lines.isEmpty()) Phase.Empty else Phase.Ready,trackId,lines,row?.source ?: "未有歌詞；可匯入本機 LRC",row?.translationSource,romajiAvailable=row?.romaji!=null)) }
-            val current=row ?: return@launch
+            var current=row ?: return@launch
             // No romaji from the source: make it on the device for Japanese lyrics when romaji is to be shown.
             // Kept in memory only, so it never passes for the source's own romaji.
             val wantsRomaji=settings.text("lyricsDisplay","both")=="romaji" || settings.bool("showRomaji")
@@ -541,6 +543,21 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
                 } catch(e: CancellationException) { throw e } catch(e: Throwable) { null }
                 val withRomaji=build(current)
                 mutable.update { s -> if(s.lyrics.trackId==trackId) s.copy(lyrics=s.lyrics.copy(lines=withRomaji,romajiAvailable=generatedRomaji!=null,romajiGenerated=generatedRomaji!=null,romajiLoading=false)) else s }
+            }
+            // No translation by a person yet (none, or only the device's machine translation): ask the sources that carry
+            // Chinese translations once per session, before translating on the device.
+            val byPerson=current.translationSource?.let { it.endsWith(language) && !it.startsWith("裝置上機器翻譯") } ?: false
+            if(lines.isNotEmpty() && settings.bool("translations") && settings.bool("onlineLyrics") && !byPerson && trackId !in translationSearched && graph.lyricsSources.canFindTranslation(settings)) {
+                val before=current
+                // Show the search only when there is no translation on screen yet.
+                if(before.translation==null) mutable.update { s -> if(s.lyrics.trackId==trackId) s.copy(lyrics=s.lyrics.copy(translationSource="正在搜尋網友翻譯…")) else s }
+                val found=try { allTracks.find { it.id==trackId }?.let { graph.lyricsSources.findTranslation(it,before.original,settings) } } catch(e: CancellationException) { throw e } catch(e: Exception) { null }
+                // Marked only once the search has run: a settings change cancels this job and starts it again.
+                translationSearched+=trackId
+                val updated=found?.let { (translation,label) -> before.copy(translation=translation,translationSource=label) }
+                if(updated!=null) { dao.lyrics(updated); current=updated }
+                val shown=if(updated!=null) build(updated) else null
+                mutable.update { s -> if(s.lyrics.trackId!=trackId) s else s.copy(lyrics=s.lyrics.copy(lines=shown ?: s.lyrics.lines,translationSource=current.translationSource)) }
             }
             // No translation in the chosen language: translate on the device when the user asked for translations.
             if(lines.isNotEmpty() && settings.bool("translations") && settings.bool("autoTranslate",true) && current.translationSource?.endsWith(language)!=true && trackId !in translationFailed) {

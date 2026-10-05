@@ -188,6 +188,19 @@ class UiAcceptanceTest {
         compose.onNodeWithText("隊列").assertIsDisplayed()
         screenshot("09-upright-lyrics")
     }
+    @Test fun aTranslationFoundElsewhereNamesItsTranslator() {
+        val lines=(1..6).map { LyricLine("$it",it*4000L,"歌詞の行 $it",translation="歌詞第 $it 行") }.toPersistentList()
+        val settings=AppSettingsUiState(persistentMapOf("translations" to "true"))
+        var state by mutableStateOf(LyricsUiState(Phase.Ready,"t",lines,"LRCLIB · 歌手 · 歌名","巴哈姆特 · 網友翻譯（純文字） · 譯者 · 歌名 · 中文翻譯：繁體中文"))
+        compose.setContent { MonologueTheme { Surface { LyricsPanel(state,remember {mutableStateOf(PlaybackProgress(positionMs=4000))},settings,{}) } } }
+        compose.onNodeWithText("歌詞第 1 行").assertIsDisplayed()
+        compose.onNodeWithText("LRCLIB · 歌手 · 歌名\n翻譯：巴哈姆特 · 網友翻譯（純文字） · 譯者 · 歌名").assertIsDisplayed()
+        screenshot("10-translation-credit")
+        // A translation that came with the lyrics is already named by the source line.
+        state=state.copy(source="網易雲音樂 · 歌手 · 歌名",translationSource="網易雲音樂中文翻譯：繁體中文")
+        compose.waitForIdle()
+        compose.onNodeWithText("翻譯：",substring=true).assertDoesNotExist()
+    }
     @Test fun searchShowsCategoryTilesTwoAcross() {
         var opened: String?=null
         compose.setContent {

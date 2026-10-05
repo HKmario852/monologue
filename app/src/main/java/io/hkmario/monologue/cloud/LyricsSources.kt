@@ -54,4 +54,32 @@ class LyricsSources(private val lrclib: LyricsClient,private val netEase: NetEas
         if(!answered && failure!=null) throw failure
         return null
     }
+
+    /** Sources that can carry a person's Chinese translation, besides the one found with the lyrics. */
+    private val translationSources=setOf("netease","bahamut","vocadb")
+    fun canFindTranslation(settings: AppSettingsUiState)=settings.text("translationLanguage","繁體中文")=="繁體中文" &&
+        lyricsProviders(settings).any { it.enabled && it.info.id in translationSources }
+
+    /**
+     * A Chinese translation for lyrics that came without one: the first enabled source (in the user's order) whose
+     * translation lines up with [original] by the lines' text. Returns the translation and its label, or null.
+     */
+    suspend fun findTranslation(track: Track,original: String,settings: AppSettingsUiState): Pair<String,String>? {
+        if(!canFindTranslation(settings)) return null
+        val artists=creditedArtists(track.artist)
+        for(provider in lyricsProviders(settings).filter { it.enabled && it.info.id in translationSources }) {
+            val result=try {
+                when(provider.info.id) {
+                    "netease" -> netEase.find(track,artists)
+                    "bahamut" -> bahamut.find(track,artists)
+                    else -> vocaDb.find(track,artists)
+                }
+            } catch(e: CancellationException) { throw e } catch(e: Exception) { null }
+            val translation=result?.translation ?: continue
+            val borrowed=borrowTranslation(original,result.original,translation) ?: continue
+            // The whole source, so a fan translation keeps its translator's name.
+            return toTraditional(borrowed) to "${result.source} · 中文翻譯：繁體中文"
+        }
+        return null
+    }
 }

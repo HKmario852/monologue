@@ -142,6 +142,13 @@ fun hasJapaneseScript(text: String) = text.count { it in '\u3040'..'\u30ff' } >=
 /** A Hepburn-style word: consonant(+y)+vowel syllables, syllabic n, and doubled consonants (makka, motto). */
 private val romajiWord = Regex("""^(?:(?:kk|ss|tt|pp|cch|ssh|tch)?(?:sh|ch|ts|[kgsztdnhbpmyrwfjv])?y?[aiueo]|n)+$""")
 
+/** One line written wholly in romaji ("i tsu ka mi ta yu me"), as some posts put under each Japanese line. */
+fun isRomajiLine(line: String): Boolean {
+    if(line.any { it in '぀'..'ヿ' || it in '一'..'鿿' }) return false
+    val words = Regex("""[A-Za-z]+""").findAll(line).map { it.value.lowercase() }.toList()
+    return words.size >= 2 && words.all { romajiWord.matches(it) }
+}
+
 /**
  * True for Japanese lyrics written only in Latin letters ("Higashi no sora wo makka ni someru…").
  * English lyrics fail because most English words ("the", "road", "is") are not built from these syllables:

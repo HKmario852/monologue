@@ -143,3 +143,37 @@ on the label — deterministic, so every run looks the same.
   failures so the tile retries when opened.
 - Checked on MuMu: all covers load, 日本樂曲 lists 30 songs, tapping 夜に駆ける plays it, switching tabs returns to the
   grid, typing still searches 媒體庫/Drive/線上. Phone-size UI test checks the two-column layout and tile tap.
+
+---
+
+# Fan translations not found (agony / KOTOKO, 君にふれて / 安月名莉子; reported 2026-10-05)
+
+## Findings
+- The search stops at the first good original (usually LRCLIB synced Japanese), so 網易雲 / 巴哈姆特 / VocaDB are never
+  asked for their translation; songs already saved are never looked at again either.
+- 巴哈姆特 agony post (sn=2160052): title has no artist (KOTOKO is only in the text and tags), and each line comes as
+  Japanese / kana reading / romaji / Chinese, so the pairing failed; credits (作詞：…, 歌：…, 線上試聽：…) at the top.
+- 巴哈姆特 君にふれて post (sn=5827854): the credit lines contain kana, so they counted as lyrics and broke the pairing.
+- marumaru-x.com: not usable — lyrics load through a token-protected script (403 to other clients) and robots.txt
+  disallows it.
+
+## Plan
+- [x] `splitBilingualLyrics`: skip the credit header (more labels: 歌, 翻譯, 線上試聽, 作詞．作曲 …) and credit lines;
+      strip inline furigana "俯(うつむ)"; when an original run is 2× or 3× its Chinese run and the extra lines are
+      readings (kana / romaji), keep only the lyric lines.
+- [x] `borrowTranslation`: put a translation from another source onto the shown lyrics by matching line text
+      (joined / split lines handled), keeping the shown lyrics' timestamps; only when ≥ 70 % of lines match.
+- [x] `LyricsSources.findTranslation`: ask 網易雲 / 巴哈姆特 / VocaDB (enabled ones, user's order) for a translation.
+- [x] ViewModel: when lyrics have no person-made translation (none or ML Kit), look once per session before ML Kit.
+- [x] 巴哈姆特: a post whose title names the song but not the artist counts when its text or tags name the artist.
+- [x] Unit tests with both posts' layouts; device check with agony and 君にふれて on MuMu.
+- [x] Translation credit under the lyrics when the translation came from elsewhere (translator's name kept).
+
+## Review
+- Real posts: agony (sn=2160052) now gives 43 lyric lines with 43 translations (readings and romaji left out);
+  君にふれて (sn=5827854 and sn=4315151) 27/27 and 16/16. Moved onto LRCLIB's synced lyrics: agony 42/43 lines,
+  君にふれて 16/16 (12/16 from the post that writes 掛け/始め in kanji where LRCLIB uses kana).
+- MuMu, only LRCLIB + 巴哈姆特 on: agony shows LRCLIB lyrics after ~1 s and the 巴哈姆特 translation (synced,
+  saved to the database) after ~3.5 s. With MuMu's own order 網易雲 already had agony's translation.
+- The search is marked done only after it runs, so a settings change mid-search doesn't skip the song.
+- 72 unit + 38 device tests pass, no lint errors.

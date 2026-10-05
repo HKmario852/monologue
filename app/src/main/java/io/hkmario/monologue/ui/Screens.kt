@@ -214,7 +214,7 @@ import java.time.format.DateTimeFormatter
             }
             romajiNote?.let { Text(it,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.tertiary,modifier=Modifier.padding(top=6.dp)) }
         }
-        state.translationSource?.takeIf { translations && (it.startsWith("正在翻譯") || it.startsWith("翻譯未完成")) }?.let { Text(it,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.tertiary,modifier=Modifier.padding(top=6.dp)) }
+        state.translationSource?.takeIf { translations && (it.startsWith("正在翻譯") || it.startsWith("正在搜尋") || it.startsWith("翻譯未完成")) }?.let { Text(it,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.tertiary,modifier=Modifier.padding(top=6.dp)) }
         if(state.lines.isEmpty() && state.phase==Phase.Loading) EmptyPanel("正在搜尋歌詞…",state.source.removePrefix("正在查詢"))
         else if(state.lines.isEmpty()) EmptyPanel("未有歌詞",state.error ?: "這首歌沒有本機或已儲存的歌詞")
         else LazyColumn(state=list,modifier=Modifier.weight(1f),contentPadding=PaddingValues(vertical=24.dp),verticalArrangement=Arrangement.spacedBy(18.dp)) {
@@ -237,7 +237,11 @@ import java.time.format.DateTimeFormatter
         }
         // The source line names where shown lyrics came from; with none shown the empty panel already says so.
         if(state.lines.isNotEmpty()) Row(Modifier.fillMaxWidth().padding(top=6.dp),verticalAlignment=Alignment.CenterVertically) {
-            Text(state.source,Modifier.weight(1f),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=2)
+            // A translation that did not come with these lyrics (a fan translation found later, the device's, an
+            // imported one) names its own source and translator; "網易雲音樂中文翻譯：…" with 網易雲 lyrics needs no second line.
+            val translationCredit=state.translationSource?.takeIf { translations && state.lines.any { l -> l.translation!=null } && !it.startsWith("正在") && !it.startsWith("翻譯未完成") }
+                ?.substringBeforeLast("：")?.takeIf { it.contains(" · ") || !state.source.startsWith(it.substringBefore("中文翻譯")) }?.removeSuffix(" · 中文翻譯")
+            Text(listOfNotNull(state.source,translationCredit?.let { "翻譯：$it" }).joinToString("\n"),Modifier.weight(1f),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=4)
             // Lyrics found online can be searched again, e.g. after turning on another source.
             if(!state.source.startsWith("使用者") && !state.source.startsWith("本機")) TextButton(onClick={onEvent(UiEvent.RefetchLyrics)}) {Text("重新搜尋")}
         }

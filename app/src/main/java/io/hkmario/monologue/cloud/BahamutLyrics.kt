@@ -40,9 +40,14 @@ class BahamutLyrics(private val romaji: RomajiGenerator) {
         }
     }
 
-    private fun read(post: Post): FoundLyrics? {
+    /** The post's lyrics; with [artists], only when its text or tags name one of them (for titles without the artist). */
+    private fun read(post: Post,artists: List<String>?=null): FoundLyrics? {
         val doc=page(post.url.toHttpUrl())
         val body=doc.selectFirst("#article_content") ?: return null
+        if(artists!=null) {
+            val tags=doc.select("a[href*=o=tag]").joinToString(" ") { it.text() }
+            if(artists.none { body.text().contains(it,ignoreCase=true) || tags.contains(it,ignoreCase=true) }) return null
+        }
         body.select("script, style").remove()
         body.select("br").forEach { it.after("\n") }
         body.select("p, div").forEach { it.appendText("\n") }
@@ -68,9 +73,10 @@ class BahamutLyrics(private val romaji: RomajiGenerator) {
         suspend fun firstReadable(posts: List<Post>,needArtist: Boolean): FoundLyrics? {
             for(post in posts) {
                 ensureActive()
-                if(post.url in tried || needArtist && !namesArtist(post) || !aboutSong(post)) continue
+                if(post.url in tried || !aboutSong(post)) continue
                 tried+=post.url
-                read(post)?.let { return it }
+                // A post titled with the song alone ("agony（神無月巫女）") counts when its text or tags name the artist.
+                read(post,if(needArtist && !namesArtist(post)) artists else null)?.let { return it }
             }
             return null
         }
