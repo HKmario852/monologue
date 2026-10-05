@@ -15,3 +15,8 @@ Rules learned from the user's corrections in this project.
 - **Run new regexes on the device, not only in unit tests.** Android's ICU regex engine rejects a bare `}` or `]`
   that the desktop JVM accepts; a top-level `Regex` then breaks the whole class with ExceptionInInitializerError.
   Escape brackets and keep `LyricsParsersDeviceTest` covering every lyric parser.
+- **Never write to the database at UI-tick rate.** Room re-runs every observing query on each write; a 500 ms
+  listening write grew to 43k rows and kept the phone's CPU above 100 %. Keep state in memory, write on change of
+  state (pause, song change) and at most every ~15 s.
+- **Publish release builds, not debug.** A debuggable APK skips ahead-of-time compilation and runs Compose with debug
+  checks; measure performance on the user's phone with the build that will ship.

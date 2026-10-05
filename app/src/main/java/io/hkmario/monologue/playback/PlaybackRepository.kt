@@ -102,7 +102,7 @@ class PlaybackRepository(private val graph: AppGraph) {
         handler.post(tick)
     }
     fun detach() {
-        sample(); saveQueue(); vinyl.configure(System.nanoTime(),playing=false,visible=false)
+        sample(); closeSegment(); saveQueue(); vinyl.configure(System.nanoTime(),playing=false,visible=false)
         preferenceJob?.cancel(); handler.removeCallbacks(tick); eq?.release(); eq=null
         cancelGap(); stopWatchingOtherMedia()
         player?.removeListener(listener); player=null; lastPlaying=false
@@ -126,6 +126,7 @@ class PlaybackRepository(private val graph: AppGraph) {
     private val listener=object: Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
             sample(); lastPlaying=player.isPlaying
+            if(!player.isPlaying) closeSegment()
             if(player.playbackState==Player.STATE_ENDED && sleep.value.endOfTrack) setSleep(0)
             if(player.playbackState==Player.STATE_ENDED) {
                 val endedId=player.currentMediaItem?.mediaId
@@ -140,7 +141,7 @@ class PlaybackRepository(private val graph: AppGraph) {
             publish()
         }
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-            sample()
+            sample(); closeSegment()
             val wasId=queue.value.currentId
             val deferred=entries.firstOrNull { it.id==wasId && it.removeAfterPlaying }
             if(sleep.value.endOfTrack && measuredTrack!=null && reason!=Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) { player?.pause(); setSleep(0) }
@@ -187,6 +188,12 @@ class PlaybackRepository(private val graph: AppGraph) {
         override fun onAudioSessionIdChanged(audioSessionId: Int) { attachEq(audioSessionId) }
         override fun onPlayerError(error: PlaybackException) { state.value=state.value.copy(phase=Phase.Error,error="播放失敗：${error.errorCodeName}。請檢查檔案、授權及音訊格式。") }
     }
+    /** The stretch of listening going on now, kept in memory between writes. */
+    private var segment: ListenEvent?=null
+    private var segmentWrittenAt=0L
+    private fun writeSegment() { val s=segment ?: return; segmentWrittenAt=SystemClock.elapsedRealtime(); writes.trySend { graph.db.dao().putEvent(s) } }
+    /** Saves the current stretch for good: on pause, song change, a gap in listening, or the player going away. */
+    private fun closeSegment() { writeSegment(); segment=null }
     private fun sample() {
         val track=measuredTrack
         val oldTotal=meter.totalMs
@@ -196,12 +203,15 @@ class PlaybackRepository(private val graph: AppGraph) {
         val shouldCount=meter.markCount(duration)
         val currentInstance=instanceId
         if(preferences.bool("statistics",true)) {
-            writes.trySend {
-                graph.db.dao().event(ListenEvent(UUID.randomUUID().toString(),currentInstance,track.id,slice.start,slice.end,slice.elapsed,false))
-                if(shouldCount) {
-                    val thresholdTime=slice.start+(countThreshold(duration)-oldTotal).coerceIn(0,slice.elapsed)
-                    graph.db.dao().event(ListenEvent("count:$currentInstance",currentInstance,track.id,thresholdTime,thresholdTime,0,true))
-                }
+            // One row per stretch of continuous listening, grown slice by slice, rather than a row every half second:
+            // every write makes the statistics re-read all events, so writes are kept to one every 15 s while playing.
+            val open=segment
+            if(open!=null && open.instanceId==currentInstance && slice.start-open.endMs in -1000L..1000L) segment=open.copy(endMs=slice.end,listenedMs=open.listenedMs+slice.elapsed)
+            else { closeSegment(); segment=ListenEvent(UUID.randomUUID().toString(),currentInstance,track.id,slice.start,slice.end,slice.elapsed,false) }
+            if(SystemClock.elapsedRealtime()-segmentWrittenAt>=15_000 || shouldCount) writeSegment()
+            if(shouldCount) writes.trySend {
+                val thresholdTime=slice.start+(countThreshold(duration)-oldTotal).coerceIn(0,slice.elapsed)
+                graph.db.dao().event(ListenEvent("count:$currentInstance",currentInstance,track.id,thresholdTime,thresholdTime,0,true))
             }
         }
         if(!lbSubmitted && preferences.bool("lbSync") && meter.totalMs>=listenBrainzThreshold(duration)) {

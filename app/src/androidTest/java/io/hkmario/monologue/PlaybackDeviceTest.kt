@@ -60,5 +60,7 @@ class PlaybackDeviceTest {
         val events=runBlocking {graph.db.dao().events().filter {it.trackId==track.id}}
         Assert.assertTrue(events.sumOf {it.listenedMs} in 2000L..8000L)
         Assert.assertEquals(0,events.count {it.counted})
+        // Two stretches of playing (paused in between) are two rows, not one row per half-second tick.
+        Assert.assertEquals(2,events.size)
     }
 }

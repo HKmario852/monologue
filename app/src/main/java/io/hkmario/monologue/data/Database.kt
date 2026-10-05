@@ -47,6 +47,8 @@ data class ListenEvent(@PrimaryKey val id: String, val instanceId: String, val t
     @Upsert suspend fun checkpoint(row: PlaybackCheckpoint)
     @Query("SELECT * FROM playback_checkpoint WHERE id=1") suspend fun checkpoint(): PlaybackCheckpoint?
     @Insert(onConflict=OnConflictStrategy.IGNORE) suspend fun event(row: ListenEvent)
+    /** Writes a listening segment again as it grows (same id). */
+    @Upsert suspend fun putEvent(row: ListenEvent)
     @Query("SELECT * FROM listening_events ORDER BY startMs DESC") fun observeEvents(): Flow<List<ListenEvent>>
     @Query("SELECT * FROM listening_events ORDER BY startMs") suspend fun events(): List<ListenEvent>
     @Query("DELETE FROM listening_events WHERE startMs>=:start AND startMs<:end") suspend fun clearEvents(start: Long, end: Long)

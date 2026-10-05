@@ -29,6 +29,13 @@ android {
         manifestPlaceholders["spotifyHost"] = spotifyUri.host
         manifestPlaceholders["spotifyPath"] = spotifyUri.path
     }
+    buildTypes {
+        // Published APKs are release builds: not debuggable, so Android compiles the app ahead of time and Compose runs
+        // without its debug checks (a debuggable APK runs far slower). Signed with the same key as every earlier
+        // release, so in-app updates and Google sign-in keep working. Code shrinking stays off: NewPipe, Rhino,
+        // jsoup and Kuromoji load classes by reflection.
+        getByName("release") { signingConfig = signingConfigs.getByName("debug") }
+    }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17; isCoreLibraryDesugaringEnabled = true }
     kotlinOptions { jvmTarget = "17" }

@@ -234,3 +234,33 @@ on the label — deterministic, so every run looks the same.
 - Screenshots at phone size, light and dark: home, 外觀與導航, 歌詞.
 - 74 unit + 41 device tests pass, no lint errors. One full device run had 1 failure that four reruns did not repeat;
   the failing test's name was not kept (logcat had rotated).
+
+---
+
+# App laggy on the phone (reported 2026-10-05; Galaxy A55, Android 15)
+
+## Findings (phone, 0.4.14)
+- While a song played the app used 112–135 % CPU: the main thread and Room's query thread were busy all the time.
+- Cause: a listening row was written every 500 ms tick. The phone had 43,504 rows (748 songs); every write made
+  the statistics re-read all of them and recompute ranks/history on the main thread — twice a second, growing with
+  every hour of listening.
+- Published APKs were debug builds (DEBUGGABLE, run-from-apk): no ahead-of-time compilation, Compose debug checks.
+
+## Fix
+- [x] One row per stretch of continuous listening (pause, song change, gap, or the player going away closes it),
+      written at most every 15 s while playing (`putEvent` upsert).
+- [x] One-time join of the old half-second rows (`joinListeningSlices`, rows ended before this launch only).
+      On the phone's data: 43,504 → 213 rows; plays identical; listening time 355 min, differs by 1.6 s in total.
+- [x] Release builds (not debuggable), signed with the same key so in-app updates and Google sign-in keep working;
+      no code shrinking (reflection in NewPipe/Rhino/jsoup/Kuromoji).
+
+## Review (phone, same script: play the first 雲端 song, then 12 swipes while it plays)
+| | 0.4.14 (debug) | fix (release, before ART compiles it) |
+|---|---|---|
+| CPU while playing | 112–135 % | 28–34 % (ExoPlayer + MediaCodec decoding) |
+| Janky frames while scrolling | 8.9 % | 0.85 % |
+| 95th percentile frame | 300 ms | 14 ms |
+| Frames rendered in the same swipes | 235 | 590 |
+- PlaybackDeviceTest now asserts two stretches of playing make two rows: old code made 13 (fails), fix makes 2.
+- 76 unit tests, lint clean. Device suite: 40/41 on one full run — GapAndFocusDeviceTest.silenceBetweenSongs timed out
+  waiting for playback to start; 4 isolated runs and 3 runs after ExpansionTest all pass (not reproduced).

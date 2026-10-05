@@ -13,7 +13,7 @@ class MonologueApp: Application(), coil.ImageLoaderFactory, androidx.work.Config
     override val workManagerConfiguration get()=androidx.work.Configuration.Builder().build()
     override fun newImageLoader()=coil.ImageLoader.Builder(this).components {add(EmbeddedArtworkFetcher.Factory(this@MonologueApp))}.build()
     val graph by lazy { AppGraph(this) }
-    override fun onCreate() { super.onCreate(); graph.indexObserver.register(); graph.scope.launch(Dispatchers.IO) { WorkScheduler.periodicSync(this@MonologueApp,graph.settings.snapshot().bool("lbSync")) } }
+    override fun onCreate() { super.onCreate(); graph.indexObserver.register(); val launchedAt=System.currentTimeMillis(); graph.scope.launch(Dispatchers.IO) { WorkScheduler.periodicSync(this@MonologueApp,graph.settings.snapshot().bool("lbSync")); runCatching { compactListeningEvents(graph.db,graph.settings,launchedAt) } } }
 }
 class AppGraph(val context: Context) {
     val scope=CoroutineScope(SupervisorJob()+Dispatchers.Main.immediate)
