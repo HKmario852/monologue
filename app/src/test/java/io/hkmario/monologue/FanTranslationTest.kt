@@ -98,6 +98,26 @@ class FanTranslationTest {
         assertNull(borrowTranslation(synced, other, "完全不同的歌詞\n另一首歌的一句\n又一句\n最後一句"))
     }
 
+    @Test fun kanogomaPagesGiveEachLineAndItsTranslation() {
+        // Laid out like a kanogoma.com song page: furigana in <rt>, romaji, then Chinese; one line has no Chinese.
+        val html = """
+            <h1>誰か - 夜明けの歌</h1>
+            <table class="info-table"><tr><th>唱:</th><td><a href="/artist/x">誰か</a></td></tr><tr><th>曲:</th><td>別の人</td></tr></table>
+            <div id="kngm">
+              <div data-i="0"><p class="ruby"><ruby>朝<rt>あさ</rt></ruby>の<ruby>光<rt>ひかり</rt></ruby></p><p class="rmj">asanohikari</p><p class="zh">早晨的光</p></div>
+              <div data-i="1"><p class="ruby"><ruby>君<rt>きみ</rt></ruby>の<ruby>声<rt>こえ</rt></ruby></p><p class="rmj">kiminokoe</p><p class="zh">你的聲音</p></div>
+              <div data-i="2"><p class="ruby">Oh yeah</p><p class="rmj">oh yeah</p><p class="zh"></p></div>
+              <div data-i="3"><p class="ruby"><ruby>遠<rt>とお</rt></ruby>くまで</p><p class="rmj">tookumade</p><p class="zh">直到遠方</p></div>
+            </div>
+        """.trimIndent()
+        val song = io.hkmario.monologue.cloud.parseKanogomaSong(html)!!
+        assertEquals("誰か - 夜明けの歌", song.heading)
+        assertEquals("誰か", song.singer)
+        assertEquals(listOf("朝の光", "君の声", "Oh yeah", "遠くまで"), song.original)
+        assertEquals(listOf("早晨的光", "你的聲音", "Oh yeah", "直到遠方"), song.chinese)
+        assertNull(io.hkmario.monologue.cloud.parseKanogomaSong("<h1>x</h1>"))
+    }
+
     @Test fun plainLyricsNeedEveryLine() {
         val plain = "朝の光が窓を照らす\n君の声が聞こえる\n遠くまで走ってゆく\n夢の中で待っている"
         assertEquals("早晨的光\n你的聲音\n奔跑而去\n等待著", borrowTranslation(plain, plain, "早晨的光\n你的聲音\n奔跑而去\n等待著"))

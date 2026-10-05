@@ -177,3 +177,21 @@ on the label — deterministic, so every run looks the same.
   saved to the database) after ~3.5 s. With MuMu's own order 網易雲 already had agony's translation.
 - The search is marked done only after it runs, so a settings change mid-search doesn't skip the song.
 - 72 unit + 38 device tests pass, no lint errors.
+
+---
+
+# Paused song resumed after a video (bug) + Kanogoma source (requested 2026-10-05)
+
+## Review
+- Bug: Media3 1.7.1 keeps the audio focus while paused and reports losing it as a pause (reason AUDIO_FOCUS_LOSS,
+  playWhenReady false → false), so the "resume after other media" watcher started for a song the user had paused.
+  Now it only starts when the song was playing (or in the silence between songs, which is cancelled) just before.
+  New device test `staysPausedWhenItWasPausedBeforeAnotherAppPlayed` failed before the fix and passes after; the
+  resume-when-playing test still passes.
+- Kanogoma 歌の胡麻 (kanogoma.com, ~400 hand translations): new source, off by default, also used for the translation
+  lookup. Songs found with the site's WordPress search API, lyrics read from the song page (`#kngm div[data-i]`:
+  furigana in `<rt>` dropped, `p.zh` is the translation). robots.txt allows it; no protection to get past.
+- Checked on MuMu: アイドル / YOASOBI found in 1.6 s (59 lines, all translated). Moved onto LRCLIB's synced lyrics
+  offline: 57 of 77 lines get a translation (the rest are lines Kanogoma writes joined with the line before).
+  agony and 君にふれて are not on Kanogoma.
+- 73 unit + 39 device tests pass, no lint errors.

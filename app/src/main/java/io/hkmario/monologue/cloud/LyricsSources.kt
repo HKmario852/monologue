@@ -9,7 +9,7 @@ import kotlinx.coroutines.CancellationException
  * result, or (with 優先同步歌詞) a plain-text one, only wins when no later source has something better.
  * LRCLIB is on by default; the unofficial sources only after the user turns them on.
  */
-class LyricsSources(private val lrclib: LyricsClient,private val netEase: NetEaseLyrics,private val jLyric: JLyricProvider,private val utaTen: UtaTenProvider,private val bahamut: BahamutLyrics,private val vocaDb: VocaDbLyrics) {
+class LyricsSources(private val lrclib: LyricsClient,private val netEase: NetEaseLyrics,private val jLyric: JLyricProvider,private val utaTen: UtaTenProvider,private val bahamut: BahamutLyrics,private val vocaDb: VocaDbLyrics,private val kanogoma: KanogomaLyrics) {
     fun enabledNames(settings: AppSettingsUiState)=lyricsProviders(settings).filter { it.enabled }.map { it.info.name }
 
     suspend fun find(track: Track,settings: AppSettingsUiState): LyricsRow? {
@@ -37,6 +37,7 @@ class LyricsSources(private val lrclib: LyricsClient,private val netEase: NetEas
                     "utaten" -> utaTen.find(track,artists)
                     "bahamut" -> bahamut.find(track,artists)
                     "vocadb" -> vocaDb.find(track,artists)
+                    "kanogoma" -> kanogoma.find(track,artists)
                     else -> null
                 }
                 answered=true
@@ -56,7 +57,7 @@ class LyricsSources(private val lrclib: LyricsClient,private val netEase: NetEas
     }
 
     /** Sources that can carry a person's Chinese translation, besides the one found with the lyrics. */
-    private val translationSources=setOf("netease","bahamut","vocadb")
+    private val translationSources=setOf("netease","bahamut","vocadb","kanogoma")
     fun canFindTranslation(settings: AppSettingsUiState)=settings.text("translationLanguage","繁體中文")=="繁體中文" &&
         lyricsProviders(settings).any { it.enabled && it.info.id in translationSources }
 
@@ -72,6 +73,7 @@ class LyricsSources(private val lrclib: LyricsClient,private val netEase: NetEas
                 when(provider.info.id) {
                     "netease" -> netEase.find(track,artists)
                     "bahamut" -> bahamut.find(track,artists)
+                    "kanogoma" -> kanogoma.find(track,artists)
                     else -> vocaDb.find(track,artists)
                 }
             } catch(e: CancellationException) { throw e } catch(e: Exception) { null }
