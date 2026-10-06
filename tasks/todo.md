@@ -264,3 +264,17 @@ on the label — deterministic, so every run looks the same.
 - PlaybackDeviceTest now asserts two stretches of playing make two rows: old code made 13 (fails), fix makes 2.
 - 76 unit tests, lint clean. Device suite: 40/41 on one full run — GapAndFocusDeviceTest.silenceBetweenSongs timed out
   waiting for playback to start; 4 isolated runs and 3 runs after ExpansionTest all pass (not reproduced).
+
+---
+
+# README for GitHub (requested 2026-10-07)
+
+## Review
+- README.md is now English, in the layout common on GitHub trending: centred logo, badges, language links,
+  screenshots, features, download, lyrics sources, build, privacy, disclaimer, license. Translations in
+  docs/i18n/: 繁體中文, 简体中文, 日本語, 한국어, Español.
+- Screenshots come from `UiAcceptanceTest.readmeScreenshots` (phone size, demo songs and made-up lyrics, no real
+  covers) → docs/screenshots/. Logo: docs/assets/logo.svg drawn from res/drawable/ic_monologue.xml.
+- The old Chinese README (architecture, dependency versions, Drive setup) moved to docs/DEVELOPMENT.md; the long
+  version-history paragraph was dropped (Releases has it). Release flow no longer bumps a version line in README.
+- All 108 relative links/images checked; rendered with GitHub's markdown API to check the layout.

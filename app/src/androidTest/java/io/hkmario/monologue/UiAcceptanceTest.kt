@@ -183,6 +183,41 @@ class UiAcceptanceTest {
         screen=true to -1; compose.waitForIdle(); screenshot("13-settings-home-dark")
         screen=true to 5; compose.waitForIdle(); screenshot("14-settings-lyrics-dark")
     }
+    /** The README's screenshots: phone-sized, demo data only (made-up songs and lyrics, no real covers). */
+    @Test fun readmeScreenshots() {
+        // Lyrics written for this demo, with their translation.
+        val lyrics=listOf("夜明けの窓に光が差す" to "黎明的窗邊照進光芒","君の声がまだ聞こえる" to "仍然聽得見你的聲音","遠くまで続くこの道を" to "這條延伸到遠方的路",
+            "二人で歩いていこう" to "讓我們一起走下去","忘れないで あの日の歌" to "別忘記 那一天的歌","心の中で鳴り続ける" to "在心中一直響著")
+            .mapIndexed { i,(ja,zh) -> LyricLine("$i",i*4000L,ja,translation=zh) }.toPersistentList()
+        val withLyrics=PreviewFixtures.app.copy(settings=AppSettingsUiState(persistentMapOf("translations" to "true")),
+            lyrics=LyricsUiState(Phase.Ready,PreviewFixtures.app.player.entry?.track?.id,lyrics,"示範歌詞"))
+        var screen by mutableStateOf(0)
+        compose.setContent {
+            CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(1f,1f)) {
+                Box(Modifier.requiredSize(400.dp,860.dp)) {
+                    MonologueTheme(AppSettingsUiState(persistentMapOf("theme" to if(screen==5) "dark" else "paper"))) {
+                        Surface(Modifier.fillMaxSize()) {
+                            val progress=remember(screen) {mutableStateOf(PlaybackProgress(positionMs=if(screen==1) 4500 else 102000))}
+                            when(screen) {
+                                0,5 -> NowPlayingScreen(PreviewFixtures.app,progress,remember {VinylClock()},false,{},{},{},{},{},{},{})
+                                1 -> NowPlayingScreen(withLyrics,progress,remember {VinylClock()},false,{},{},{},{},{},{},{})
+                                2 -> AppHost(PreviewFixtures.app,progress,remember {VinylClock()},false,{},null,{},{_,_->},{},{})
+                                3 -> SearchScreen(PreviewFixtures.app.library,OnlineUiState(),PluginUiState(),AppSettingsUiState(),{})
+                                else -> SettingsHome {}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        screenshot("readme-1-player")
+        screen=1; compose.waitForIdle(); compose.onNodeWithText("歌詞").performClick(); compose.waitForIdle()
+        compose.onNodeWithText("仍然聽得見你的聲音").assertIsDisplayed(); screenshot("readme-2-lyrics")
+        screen=2; compose.waitForIdle(); screenshot("readme-3-library")
+        screen=3; compose.waitForIdle(); screenshot("readme-4-search")
+        screen=4; compose.waitForIdle(); screenshot("readme-5-settings")
+        screen=5; compose.waitForIdle(); screenshot("readme-6-dark")
+    }
     @Test fun downloadWaitingDoesNotResumeOnToggle() {
         var last: UiEvent?=null
         val state=DownloadManagerUiState(DownloadPhase.Waiting,persistentListOf(DownloadItem("a","a","Example",DownloadStatus.Queued)),true)

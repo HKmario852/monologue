@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 48 48" role="img" aria-label="Monologue">
+  <!-- The app icon (res/drawable/ic_monologue.xml): cream square, black record, terracotta label, cream spindle hole. -->
+  <rect x="0.5" y="0.5" width="47" height="47" rx="11" fill="#F5EFE4" stroke="#E2D7CA"/>
+  <circle cx="24" cy="24" r="19" fill="#171717"/>
+  <circle cx="24" cy="24" r="15.5" fill="none" stroke="#262626" stroke-width="0.6"/>
+  <circle cx="24" cy="24" r="12" fill="none" stroke="#262626" stroke-width="0.6"/>
+  <circle cx="24" cy="24" r="7" fill="#A74932"/>
+  <circle cx="24" cy="24" r="2" fill="#F5EFE4"/>
+</svg>
