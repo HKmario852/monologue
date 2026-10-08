@@ -144,9 +144,10 @@ class DriveClient(private val context: Context, private val dao: MusicDao) {
         walk(folder); return result.distinctBy { it.id }
     }
     suspend fun version(trackId: String): String = get("files/${trackId.removePrefix("drive:")}",mapOf("fields" to "version")).getString("version")
-    suspend fun download(trackId: String): Response = withContext(Dispatchers.IO) {
+    /** Opens a whole-file download, kept on [network] when given (the download worker's Wi-Fi). */
+    suspend fun download(trackId: String,network: android.net.Network?=null): Response = withContext(Dispatchers.IO) {
         val id=trackId.removePrefix("drive:")
-        val response=plain.newCall(Request.Builder().url("https://www.googleapis.com/drive/v3/files/$id?alt=media").header("Authorization","Bearer ${accessToken()}").build()).execute()
+        val response=(network?.let(plain::on) ?: plain).newCall(Request.Builder().url("https://www.googleapis.com/drive/v3/files/$id?alt=media").header("Authorization","Bearer ${accessToken()}").build()).execute()
         if(!response.isSuccessful) { val code=response.code; val body=runCatching { response.body?.string() }.getOrNull(); response.close(); if(code==401) { token=null; throw AuthorizationNeeded() }; throw driveFailure(code,body) }
         response
     }

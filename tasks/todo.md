@@ -306,3 +306,14 @@ on the label — deterministic, so every run looks the same.
   dropped. All 8 Vietnamese uploads of 悪魔の子 → 49 Japanese lines, 0 Vietnamese. Stored rows re-fetched on load.
 - Resume: AudioPlaybackCallback triggers the check; carry on after 0.3 s of quiet (old code: 3,045 ms measured).
 - New tests fail on the old code: previous (timeout), resume (3,045 ms ≥ 1,500 ms). 78 unit + 46 device tests pass.
+
+## Phone data (connected 2026-10-08) — the real cause
+- netstats, uid 10443: 1,438 MB on mobile data 08:00–10:00 with mobile *not* the default network, 98 MB on mobile
+  as default (listening), 400 MB on Wi-Fi at 14:00; almost nothing on mobile on other days.
+- 下載中心: 成功 331 — the whole Drive library (~1.7 GB) was downloaded today by 每日檢查新歌曲 (on), whose first run
+  downloads every song not yet downloaded. 只用 Wi-Fi 下載 was on: WorkManager started it on Wi-Fi, then Samsung's
+  "switch to mobile data" (wifi_watchdog_poor_network_test_enabled=1) moved the traffic to mobile data while Wi-Fi
+  stayed the default network.
+- Fix: downloads bound to the worker's network (sockets + DNS) and checked unmetered before every song (retry
+  otherwise); 每日檢查新歌曲 now says it downloads every song not yet downloaded (all on the first run).
+- 78 unit + 47 device tests pass, no lint errors.

@@ -25,3 +25,6 @@ Rules learned from the user's corrections in this project.
   `TrafficStats.getUidRxBytes` before and after.
 - **Decide a text layer's language by the majority of its lines**, not "≥3 characters of a script anywhere": one credit
   line can flip the whole layer.
+- **A Wi-Fi-only constraint is not enough.** WorkManager checks the default network when work starts, but phones
+  that move traffic to mobile data on weak Wi-Fi (Samsung) send sockets over mobile data anyway. Bind downloads to
+  the worker's `network` and re-check NOT_METERED; and ask for the phone's `dumpsys netstats` before guessing.

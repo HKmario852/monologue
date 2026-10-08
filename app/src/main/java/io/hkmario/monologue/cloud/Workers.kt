@@ -18,6 +18,10 @@ import java.security.MessageDigest
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
+/** The same client with its connections and DNS kept on [network], whatever the phone's default network becomes. */
+fun okhttp3.OkHttpClient.on(network: android.net.Network): okhttp3.OkHttpClient = newBuilder().socketFactory(network.socketFactory)
+    .dns(object: okhttp3.Dns { override fun lookup(hostname: String) = network.getAllByName(hostname).toList() }).build()
+
 class DownloadWorker(context: Context, parameters: WorkerParameters): CoroutineWorker(context,parameters) {
     private val graph=(context.applicationContext as MonologueApp).graph
     override suspend fun getForegroundInfo(): ForegroundInfo {
@@ -32,6 +36,18 @@ class DownloadWorker(context: Context, parameters: WorkerParameters): CoroutineW
         val nm=applicationContext.getSystemService(NotificationManager::class.java)
         if(!nm.areNotificationsEnabled()) return
         nm.notify(43,NotificationCompat.Builder(applicationContext,"downloads").setSmallIcon(R.drawable.ic_monologue).setContentTitle("Monologue").setContentText("下載完成：$success 首成功，$failed 首失敗").setAutoCancel(true).build())
+    }
+    /**
+     * The network to download on: the one WorkManager started this work for, still unmetered when 只用 Wi-Fi 下載 is on.
+     * Downloads are bound to it. Unbound, a phone that moves traffic to mobile data when Wi-Fi is weak (Samsung's
+     * switch to mobile data) sent 1.4 GB of a "Wi-Fi only" library download over mobile data while Wi-Fi stayed the
+     * default network. Null: wait for Wi-Fi.
+     */
+    private fun downloadNetwork(wifiOnly: Boolean): android.net.Network? {
+        val connectivity=applicationContext.getSystemService(android.net.ConnectivityManager::class.java)
+        val chosen=(if(Build.VERSION.SDK_INT>=28) network else null) ?: connectivity.activeNetwork ?: return null
+        val unmetered=connectivity.getNetworkCapabilities(chosen)?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)==true
+        return if(wifiOnly && !unmetered) null else chosen
     }
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val dao=graph.db.dao()
@@ -49,6 +65,8 @@ class DownloadWorker(context: Context, parameters: WorkerParameters): CoroutineW
             ensureActive()
             if(dao.control()?.cancelled==true) return@withContext Result.success()
             val item=dao.downloads().firstOrNull { it.status==DownloadStatus.Queued.name } ?: break
+            // Checked before every song: if Wi-Fi is gone (or now metered) stop, and WorkManager runs again on Wi-Fi.
+            val net=downloadNetwork(graph.settings.snapshot().bool("wifiOnly",true)) ?: return@withContext Result.retry()
             dao.putDownload(item.copy(status=DownloadStatus.Downloading.name))
             val temporary=File(directory,"${item.id}.part")
             try {
@@ -56,7 +74,7 @@ class DownloadWorker(context: Context, parameters: WorkerParameters): CoroutineW
                 val digest=MessageDigest.getInstance("MD5")
                 var bytes=0L; var lastProgress=0L
                 val track=dao.track(item.trackId)?.model() ?: error("找不到待下載歌曲")
-                (if(track.source==Source.Online) graph.online.http.newCall(okhttp3.Request.Builder().url(graph.online.resolveUri(android.net.Uri.parse(track.uri)).toString()).build()).execute().also {if(!it.isSuccessful) {it.close();error("音源下載失敗 HTTP ${it.code}")}} else graph.drive.download(item.trackId)).use { response ->
+                (if(track.source==Source.Online) graph.online.http.on(net).newCall(okhttp3.Request.Builder().url(graph.online.resolveUri(android.net.Uri.parse(track.uri)).toString()).build()).execute().also {if(!it.isSuccessful) {it.close();error("音源下載失敗 HTTP ${it.code}")}} else graph.drive.download(item.trackId,net)).use { response ->
                     val body=response.body ?: error("下載回應沒有內容")
                     body.byteStream().use { input ->
                         java.io.FileOutputStream(temporary).use { output ->
