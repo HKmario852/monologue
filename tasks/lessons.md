@@ -20,3 +20,8 @@ Rules learned from the user's corrections in this project.
   state (pause, song change) and at most every ~15 s.
 - **Publish release builds, not debug.** A debuggable APK skips ahead-of-time compilation and runs Compose with debug
   checks; measure performance on the user's phone with the build that will ship.
+- **Never stream with one open-ended HTTP request.** The network fills socket buffers with the rest of the file while
+  the player waits, so a skipped song still costs its full size. Use bounded range requests and measure data with
+  `TrafficStats.getUidRxBytes` before and after.
+- **Decide a text layer's language by the majority of its lines**, not "≥3 characters of a script anywhere": one credit
+  line can flip the whole layer.

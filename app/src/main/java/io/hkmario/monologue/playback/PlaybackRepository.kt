@@ -58,9 +58,12 @@ class PlaybackRepository(private val graph: AppGraph) {
     /** The player's playWhenReady before its latest change. */
     private var playWhenReadyBefore=false
     private val audio by lazy { graph.context.getSystemService(android.media.AudioManager::class.java) }
+    /** Whether any player is playing now (this app's is paused while it waits). */
+    private fun otherMediaPlaying()=audio.isMusicActive
     /**
-     * Android gives no signal when another app's media stops after it has taken the audio away for good, so check once a
-     * second whether anything is still playing. After the other app has played and then been quiet for 1.5 s, carry on.
+     * Android gives no focus back after another app took it for good, so watch the other app's playback instead: Android
+     * reports each player starting or stopping, and once the other app has played and then stayed quiet for 0.3 s
+     * (a moment, so a short gap between its videos does not count), carry on. A once-a-second check backs this up.
      * Gives up after 30 minutes, so music never starts out of nowhere much later.
      */
     private val watchOtherMedia=object: Runnable {
@@ -68,16 +71,30 @@ class PlaybackRepository(private val graph: AppGraph) {
             val p=player ?: return
             if(focusLostAt==0L) return
             val now=SystemClock.elapsedRealtime()
-            if(now-focusLostAt>30*60_000L) { focusLostAt=0L; return }
-            if(audio.isMusicActive) { otherSeenPlaying=true; otherQuietSince=0L }
+            if(now-focusLostAt>30*60_000L) { stopWatchingOtherMedia(); return }
+            if(otherMediaPlaying()) { otherSeenPlaying=true; otherQuietSince=0L }
             else if(otherSeenPlaying) {
                 if(otherQuietSince==0L) otherQuietSince=now
-                else if(now-otherQuietSince>=1500) { focusLostAt=0L; p.play(); return }
+                if(now-otherQuietSince>=300) { stopWatchingOtherMedia(); p.play(); return }
+                handler.postDelayed(this,300-(now-otherQuietSince)); return
             }
             handler.postDelayed(this,1000)
         }
     }
-    private fun stopWatchingOtherMedia() { focusLostAt=0L; handler.removeCallbacks(watchOtherMedia) }
+    private val otherPlayback=object: android.media.AudioManager.AudioPlaybackCallback() {
+        override fun onPlaybackConfigChanged(configs: MutableList<android.media.AudioPlaybackConfiguration>?) {
+            if(focusLostAt!=0L) { handler.removeCallbacks(watchOtherMedia); handler.post(watchOtherMedia) }
+        }
+    }
+    private fun startWatchingOtherMedia() {
+        focusLostAt=SystemClock.elapsedRealtime(); otherSeenPlaying=false; otherQuietSince=0L
+        handler.removeCallbacks(watchOtherMedia); handler.postDelayed(watchOtherMedia,1000)
+        runCatching { audio.unregisterAudioPlaybackCallback(otherPlayback); audio.registerAudioPlaybackCallback(otherPlayback,handler) }
+    }
+    private fun stopWatchingOtherMedia() {
+        focusLostAt=0L; handler.removeCallbacks(watchOtherMedia)
+        runCatching { audio.unregisterAudioPlaybackCallback(otherPlayback) }
+    }
     private fun cancelGap() { gapPending=false; handler.removeCallbacks(endGap) }
     init { scope.launch { for(write in writes) runCatching { write() } } }
     fun connect() {
@@ -168,10 +185,7 @@ class PlaybackRepository(private val graph: AppGraph) {
                 // Another app's music or video took the audio away: wait for it to stop, then carry on.
                 !playWhenReady && reason==Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS -> {
                     if(gapPending) { cancelGap(); publish() }
-                    if(wasPlaying && preferences.bool("resumeInterruption",true)) {
-                        focusLostAt=SystemClock.elapsedRealtime(); otherSeenPlaying=false; otherQuietSince=0L
-                        handler.removeCallbacks(watchOtherMedia); handler.postDelayed(watchOtherMedia,1000)
-                    }
+                    if(wasPlaying && preferences.bool("resumeInterruption",true)) startWatchingOtherMedia()
                 }
                 playWhenReady || reason==Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST -> stopWatchingOtherMedia()
             }

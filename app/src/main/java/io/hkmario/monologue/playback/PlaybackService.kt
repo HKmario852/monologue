@@ -20,12 +20,19 @@ class PlaybackService: MediaSessionService() {
     private val graph get()=(application as MonologueApp).graph
     override fun onCreate() {
         super.onCreate()
-        val upstream=DefaultDataSource.Factory(this,OkHttpDataSource.Factory(graph.drive.streamingClient).setUserAgent("monologue/${BuildConfig.VERSION_NAME}"))
-        val resolved=androidx.media3.datasource.ResolvingDataSource.Factory(upstream) {spec->spec.withUri(graph.online.resolveUri(spec.uri))}
+        val http=OkHttpDataSource.Factory(graph.drive.streamingClient).setUserAgent("monologue/${BuildConfig.VERSION_NAME}")
+        val upstream=DefaultDataSource.Factory(this,http)
+        // Streams are fetched half a megabyte at a time, so a skipped song does not keep downloading in the background.
+        val network=DefaultDataSource.Factory(this,androidx.media3.datasource.DataSource.Factory {ChunkedDataSource(http.createDataSource())})
+        val resolved=androidx.media3.datasource.ResolvingDataSource.Factory(network) {spec->spec.withUri(graph.online.resolveUri(spec.uri))}
         val cached=CacheDataSource.Factory().setCache(graph.cache.cache).setUpstreamDataSourceFactory(resolved)
             .setCacheWriteDataSinkFactory {SafeCacheSink(graph.cache)}
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
-        val player=ExoPlayer.Builder(this).setMediaSourceFactory(DefaultMediaSourceFactory(androidx.media3.datasource.DataSource.Factory {RoutedDataSource(upstream,cached)})).build()
+        val player=ExoPlayer.Builder(this).setMediaSourceFactory(DefaultMediaSourceFactory(androidx.media3.datasource.DataSource.Factory {RoutedDataSource(upstream,cached)}))
+            // 上一首 always goes to the previous song (in the app, the notification and on headphones), never back to the start.
+            .setMaxSeekToPreviousPositionMs(Long.MAX_VALUE)
+            // Keep 20–30 s ahead rather than Media3's 50 s: enough to ride out a weak signal, and less wasted on a skip.
+            .setLoadControl(androidx.media3.exoplayer.DefaultLoadControl.Builder().setBufferDurationsMs(20_000,30_000,2_500,5_000).build()).build()
         player.setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(),true)
         player.setHandleAudioBecomingNoisy(true)
         player.setWakeMode(C.WAKE_MODE_NETWORK)

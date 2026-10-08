@@ -11,6 +11,34 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+import com.google.mlkit.nl.translate.TranslateLanguage
+
+/** The language most lines are written in, each line judged on its own, so a credit such as "Nhạc: ヒグチアイ" cannot decide it. */
+fun mainLanguage(lines: List<String>): String? = lines.mapNotNull { lyricsLanguage(listOf(it)) }.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key
+
+/** Lyrics to show, with the Chinese translation and romaji that came in the same upload. */
+data class LyricLayers(val original: String, val translation: String?, val romaji: String?)
+
+/**
+ * Uploads with a second line under each timestamp: a Chinese second line is a translation, a Japanese one under romaji
+ * means the lines are swapped. A Latin second line under Japanese, Chinese or Korean is romaji only when it reads as
+ * romaji; otherwise it is a translation into another language (Vietnamese, English …) and is left out, never mixed
+ * into the original.
+ */
+fun embeddedLayers(text: String): LyricLayers {
+    val split=splitEmbeddedTranslation(text) ?: return LyricLayers(text,null,null)
+    val first=mainLanguage(Lrc.parse(split.first).map { it.text })
+    return when(mainLanguage(Lrc.parse(split.second).map { it.text })) {
+        TranslateLanguage.CHINESE -> LyricLayers(split.first,split.second,null)
+        TranslateLanguage.JAPANESE -> if(looksLikeRomaji(split.first)) LyricLayers(split.second,null,split.first) else LyricLayers(text,null,null)
+        TranslateLanguage.ENGLISH -> when(first) {
+            TranslateLanguage.JAPANESE -> LyricLayers(split.first,null,split.second.takeIf(::looksLikeRomaji))
+            TranslateLanguage.CHINESE,TranslateLanguage.KOREAN -> LyricLayers(split.first,null,null)
+            else -> LyricLayers(text,null,null)
+        }
+        else -> LyricLayers(text,null,null)
+    }
+}
 
 /**
  * Optional explicit-consent lookup on LRCLIB, searched by title and artist.
@@ -71,17 +99,8 @@ class LyricsClient(context: android.content.Context) {
         val artists=creditedArtists(track.artist)
         fun found(pick: LyricsPick,via: String=""): FoundLyrics {
             val source="LRCLIB · ${pick.candidate.artist} · ${pick.candidate.track}$via"+if(pick.offsetSec>3) " · 長度相差 ${pick.offsetSec} 秒，時間可能略有偏差" else ""
-            // Uploads with a second line per timestamp: a Latin second line under Japanese is romaji, a Chinese one a translation.
-            val split=splitEmbeddedTranslation(pick.text) ?: return FoundLyrics(pick.text,null,null,source)
-            val second=Lrc.parse(split.second).map { it.text }
-            val first=Lrc.parse(split.first).map { it.text }
-            return when(lyricsLanguage(second)) {
-                com.google.mlkit.nl.translate.TranslateLanguage.CHINESE -> FoundLyrics(split.first,split.second,null,source)
-                // Romaji first, Japanese second: show the Japanese and keep the romaji as its own layer.
-                com.google.mlkit.nl.translate.TranslateLanguage.JAPANESE -> if(looksLikeRomaji(split.first)) FoundLyrics(split.second,null,split.first,source) else FoundLyrics(pick.text,null,null,source)
-                com.google.mlkit.nl.translate.TranslateLanguage.ENGLISH -> if(lyricsLanguage(first)==com.google.mlkit.nl.translate.TranslateLanguage.JAPANESE) FoundLyrics(split.first,null,split.second,source) else FoundLyrics(pick.text,null,null,source)
-                else -> FoundLyrics(pick.text,null,null,source)
-            }
+            val layers=embeddedLayers(pick.text)
+            return FoundLyrics(layers.original,layers.translation,layers.romaji,source)
         }
         // Search with the title as tagged, then without bracketed notes such as (Single Ver.) or (feat. X).
         val titles=listOfNotNull(track.title,searchTitleWithoutNotes(track.title))

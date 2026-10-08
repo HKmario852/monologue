@@ -76,8 +76,22 @@ class GapAndFocusDeviceTest {
 
         anotherAppPlays(3000) { Assert.assertFalse("paused while the other app plays", graph.playback.state.value.isPlaying) }
 
-        // The other app stops: Monologue carries on by itself.
+        // The other app stops: Monologue carries on by itself, right away (it used to wait 2–3 s).
+        val stopped = SystemClock.elapsedRealtime()
         compose.waitUntil(8000) { graph.playback.state.value.isPlaying }
+        val waited = SystemClock.elapsedRealtime() - stopped
+        Assert.assertTrue("carried on after $waited ms", waited < 1500)
+        compose.runOnUiThread { graph.playback.toggle() }
+    }
+
+    @Test fun previousGoesToThePreviousSongEvenAfterThreeSeconds() {
+        val graph = app.graph
+        val songs = tracks(20)
+        compose.runOnUiThread { graph.playback.play(songs); graph.playback.next() }
+        compose.waitUntil(15000) { graph.playback.state.value.isPlaying && graph.playback.queue.value.entries.indexOfFirst { it.id == graph.playback.queue.value.currentId } == 1 }
+        compose.waitUntil(10000) { graph.playback.progress.value.positionMs > 4000 }
+        compose.runOnUiThread { graph.playback.previous() }
+        compose.waitUntil(5000) { graph.playback.queue.value.entries.indexOfFirst { it.id == graph.playback.queue.value.currentId } == 0 }
         compose.runOnUiThread { graph.playback.toggle() }
     }
 

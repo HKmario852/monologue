@@ -278,3 +278,31 @@ on the label — deterministic, so every run looks the same.
 - The old Chinese README (architecture, dependency versions, Drive setup) moved to docs/DEVELOPMENT.md; the long
   version-history paragraph was dropped (Releases has it). Release flow no longer bumps a version line in README.
 - All 108 relative links/images checked; rendered with GitHub's markdown API to check the layout.
+
+---
+
+# Data use, 上一首, Vietnamese lyrics, resume delay (reported 2026-10-08)
+
+## Findings
+- Data (1.66 GB mobile data, Oct 1–8, all foreground): measured on MuMu with TrafficStats —
+  - Streaming opened one open-ended request per song: the whole file arrived within ~2 s (a 4.9 MB song cost 5.1 MB
+    even when skipped after 6 s). The stream cache works (a replay costs 0 KB) but holds 1 GB vs a 1.7 GB library.
+  - Translation / lyrics re-checks ran again on every launch: 80–180 KB per song each time.
+  - In-app updates are ~100 MB each (5 in October) — only when the user taps update.
+  - Not confirmed on the phone yet (it was not connected): which of these dominates there.
+- 上一首 restarted the song after 3 s (Media3 default) — user wants it to always go to the previous song.
+- Vietnamese lines: LRCLIB uploads of 悪魔の子 put a Vietnamese line under each Japanese one; the second layer was
+  judged Japanese because one credit line had katakana ("Nhạc: ヒグチアイ"), so nothing was split. A Latin layer under
+  Japanese was also always taken for romaji.
+- Resume after other media: polled once a second and waited 1.5 s of quiet → 3.0 s measured.
+
+## Review
+- `ChunkedDataSource`: 512 KB range requests (length from Content-Range; servers ignoring Range read once) +
+  buffer 20–30 s instead of 50 s. Skip after 6 s: 5,135 KB → 1,864 KB (rest is the MP3's ID3/cover and the buffer);
+  seeking near the end still works.
+- Translation and lyrics re-checks remembered for 14 days (`RecentLookups`), cleared by 重新搜尋.
+- `setMaxSeekToPreviousPositionMs(Long.MAX_VALUE)`: 上一首 always previous (app, notification, headphones).
+- `embeddedLayers`: language by majority of lines; a Latin layer is romaji only if it reads as romaji, otherwise
+  dropped. All 8 Vietnamese uploads of 悪魔の子 → 49 Japanese lines, 0 Vietnamese. Stored rows re-fetched on load.
+- Resume: AudioPlaybackCallback triggers the check; carry on after 0.3 s of quiet (old code: 3,045 ms measured).
+- New tests fail on the old code: previous (timeout), resume (3,045 ms ≥ 1,500 ms). 78 unit + 46 device tests pass.

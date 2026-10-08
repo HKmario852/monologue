@@ -200,7 +200,7 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
                 if(from>=0 && to!=from) { list.add(to,list.removeAt(from)); graph.settings.set("lyricsProviders",encodeLyricsProviders(list)) }
             }
             // Drop the stored online lyrics for this song and search the enabled sources again.
-            UiEvent.RefetchLyrics -> lastTrack?.let { id -> launch { dao.deleteLyrics(id); translationFailed-=id; translationSearched-=id; loadLyrics(id) } }
+            UiEvent.RefetchLyrics -> lastTrack?.let { id -> launch { dao.deleteLyrics(id); translationFailed-=id; translationSearched-=id; lyricsRechecked-=id; loadLyrics(id) } }
             UiEvent.ClearLyricsCache -> launch { dao.clearLyrics(); lastTrack?.let(::loadLyrics); storage() }
             UiEvent.ClearIndex -> launch { dao.clearLocalIndex() }
             is UiEvent.ClearStatistics -> launch { clearStatistics(event.start,event.end) }
@@ -487,10 +487,10 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             try { graph.lyricsSources.find(next,state.value.settings)?.let { dao.lyrics(it) } } catch(e: CancellationException) { throw e } catch(e: Exception) { /* The song's own lookup will try again and report. */ }
         }
     }
-    /** Tracks whose stored romaji-only or plain-text lyrics were already re-checked for a better version in this session. */
-    private val lyricsRechecked=mutableSetOf<String>()
-    /** Tracks already looked up for a person's translation in this session (on the sources that carry translations). */
-    private val translationSearched=mutableSetOf<String>()
+    /** Tracks whose stored romaji-only or plain-text lyrics were re-checked for a better version in the last 14 days. */
+    private val lyricsRechecked=RecentLookups(app,"lyrics-rechecked")
+    /** Tracks looked up for a person's translation in the last 14 days (on the sources that carry translations). */
+    private val translationSearched=RecentLookups(app,"translation-searched")
     /** Tracks whose machine translation already failed in this session, so it is not retried on every settings change. */
     private val translationFailed=mutableSetOf<String>()
     /** Romaji made on the device this session, by track and lyrics text. */
@@ -499,6 +499,8 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
         lyricsJob?.cancel(); lyricsJob=viewModelScope.launch {
             val settings=state.value.settings
             var row=dao.lyrics(trackId)
+            // Lyrics saved before 0.4.16 could have another language's lines (e.g. Vietnamese) mixed into the original: look them up again.
+            row?.takeIf { it.source.startsWith("LRCLIB") && it.translation==null && it.romaji==null && embeddedLayers(it.original).original!=it.original }?.let { dao.deleteLyrics(trackId); row=null }
             val names=graph.lyricsSources.enabledNames(settings); val sourceName=names.joinToString("、").ifBlank {"LRCLIB"}
             // Lyrics saved earlier as romaji only, or as plain text when synced lyrics are preferred: look once per session
             // for something better (the Japanese original, or a version that scrolls); keep the stored ones if nothing better turns up.
