@@ -23,7 +23,7 @@ val settingsKeywords=listOf(
     "主題 深色 暖白 動態 導航 底部 側邊 bottom drawer banner 黑膠 旋轉 動態效果 語言",
     "恢復 隊列 自動播放 中斷 耳機 速度 等化器 睡眠 淡出 下載優先 行動網絡 串流",
     "權限 資料夾 掃描 索引 隱藏 長度 tab 排序 搜尋歷史",
-    "google drive 雲端 連接 授權 斷開 根資料夾 下載位置 wi-fi 增量 暫停 下載中心",
+    "google drive 雲端 連接 授權 斷開 根資料夾 下載位置 wi-fi 暫停 下載中心",
     "快取 暫存 cache 儲存 空間 離線 永久下載 歌詞快取 封面",
     "歌詞 字體 翻譯 偏移 lrc lrclib",
     "統計 時區 排行榜 回顧 匯出 csv 清除",
@@ -100,7 +100,6 @@ val timeZones=listOf("Asia/Hong_Kong" to "香港","Asia/Taipei" to "台北","Asi
                 Choice("永久下載位置",s.text("downloadLocation","internal"),listOf("internal" to "App 內部私人空間","external" to "App 外置私人空間")) {setting("downloadLocation",it)}
                 Info("位置變更對下一個下載工作生效；舊檔仍可播放。兩種位置均與串流快取分開，解除安裝會移除。")
                 Toggle("只用 Wi-Fi 下載","對新排程工作生效",s.bool("wifiOnly",true)) {setting("wifiOnly",it.toString())}
-                Toggle("每日檢查新歌曲","每 24 小時把雲端音樂資料夾中未下載的歌曲下載到手機（第一次會下載全部）；需已連接",s.bool("autoIncremental")) {setting("autoIncremental",it.toString())}
                 Toggle("歌曲間暫停","正在下載時會先完成本曲",state.downloads.pauseBetween) {onEvent(UiEvent.PauseBetween(it))}
                 SettingAction("下載中心","成功 ${state.downloads.success}，失敗 ${state.downloads.failed}",openDownloads)
                 Info("下載失敗會保留原因，可一鍵重試；已下載的歌曲不會重複下載。手機空間不足時會暫停新的下載。")

@@ -300,13 +300,21 @@ val periodLabels=listOf("本週","本月","全部")
 }
 
 @Composable fun DiscoverScreen(account: ListenBrainzUiState,state: DiscoverUiState,onEvent: (UiEvent)->Unit,stats: ListeningStatsUiState = ListeningStatsUiState(),openAccount: ()->Unit = {},openRecap: ()->Unit = {},chooseVersion: (Recommendation)->Unit = {}) {
+    // The saved recommendations show as soon as 探索 opens; they are fetched again only when old.
+    LaunchedEffect(account.connection) { if(account.connection==Connection.Connected) onEvent(UiEvent.LoadRecommendations) }
     LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(start=24.dp,end=24.dp,bottom=24.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
         item {SectionTitle("你的聆聽足跡","聆聽回顧",openRecap)}
         item {StatCard("${stats.all.sumOf {it.listenedMs}/60000} 分鐘","累計聆聽 · ${stats.all.sumOf {it.count}} 次播放 · 排行與明細",openRecap)}
         item {SectionTitle("每週推薦","更新") {onEvent(UiEvent.Recommendations)}}
         if(account.connection!=Connection.Connected) item {SettingAction("連接 ListenBrainz","到設定管理帳號，取得個人推薦",openAccount)}
         if(state.phase==Phase.Loading) item {LinearProgressIndicator(Modifier.fillMaxWidth())}
-        state.generated?.let {item {Text("生成日期：$it",style=MaterialTheme.typography.bodySmall)}}
+        // Weekly Jams (每週精選: what you already like) and Weekly Exploration (每週探索: new to you).
+        if(state.lists.size>1) item {
+            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                state.lists.forEachIndexed { i,list -> FilterChip(selected=i==state.selected,onClick={onEvent(UiEvent.ShowRecommendationList(i))},label={Text(list.title)}) }
+            }
+        }
+        if(state.tracks.isNotEmpty()) item {Text(listOfNotNull("ListenBrainz",state.generated,"${state.tracks.size} 首").joinToString(" · "),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)}
         if(state.tracks.isEmpty()) item {EmptyPanel("等候新的發現",state.error ?: "尚未有推薦時不會加入示範歌曲。")}
         items(state.tracks,key={it.id}) { r -> RecommendationRow(r,state.resolving==r.id,state.resolving!=null,{onEvent(UiEvent.PlayRecommendation(r))}) { chooseVersion(r) } }
     }

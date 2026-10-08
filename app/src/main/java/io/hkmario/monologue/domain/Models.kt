@@ -45,7 +45,13 @@ data class LeaderboardUiState(val phase: Phase = Phase.Empty, val period: Period
 data class ListenBrainzUiState(val connection: Connection = Connection.Unconfigured, val username: String? = null, val pending: Int = 0, val syncEnabled: Boolean = false, val lastSuccess: Long? = null, val error: String? = null)
 data class Recommendation(val id: String, val title: String, val artist: String, val match: Track? = null, val artwork: String? = null, val recordingMbid: String? = null)
 data class ListeningStatsUiState(val all: PersistentList<RankedTrack> = persistentListOf(), val month: PersistentList<RankedTrack> = persistentListOf(), val detail: PersistentList<RankedTrack> = persistentListOf(), val period: Period = Period.All, val offset: Int = 0, val startMs: Long = 0, val endMs: Long = 0, val zone: String = "Asia/Hong_Kong")
-data class DiscoverUiState(val phase: Phase = Phase.Unconfigured, val title: String = "每週探索", val generated: String? = null, val tracks: PersistentList<Recommendation> = persistentListOf(), val error: String? = null, val resolving: String? = null)
+/** One playlist ListenBrainz made for the user: Weekly Jams (每週精選) or Weekly Exploration (每週探索), for the week starting [week]. */
+data class RecommendationList(val id: String, val title: String, val week: String?, val tracks: PersistentList<Recommendation>)
+/** 探索's 每週推薦: the playlists, and the one shown ([title], [generated] and [tracks] are that one's). */
+data class DiscoverUiState(val phase: Phase = Phase.Unconfigured, val title: String = "每週探索", val generated: String? = null, val tracks: PersistentList<Recommendation> = persistentListOf(), val error: String? = null, val resolving: String? = null,
+    val lists: PersistentList<RecommendationList> = persistentListOf(), val selected: Int = 0) {
+    fun showing(index: Int): DiscoverUiState = lists.getOrNull(index)?.let { copy(selected=index,title=it.title,generated=it.week,tracks=it.tracks) } ?: this
+}
 data class StorageUiState(val cacheBytes: Long = 0, val limitBytes: Long = 1_000_000_000, val offlineBytes: Long = 0, val freeBytes: Long = 0, val lyricsBytes: Long = 0, val artBytes: Long = 0, val deferredClear: Boolean = false)
 data class AppSettingsUiState(val values: PersistentMap<String, String> = persistentMapOf()) {
     fun text(key: String, default: String = "") = values[key] ?: default
@@ -114,6 +120,9 @@ sealed interface UiEvent {
     data class DisconnectListenBrainz(val discardPending: Boolean) : UiEvent
     data object SyncNow : UiEvent
     data object Recommendations : UiEvent
+    /** Shows the saved recommendations, fetching them again only when old (探索 opened). */
+    data object LoadRecommendations : UiEvent
+    data class ShowRecommendationList(val index: Int) : UiEvent
     data class PlayRecommendation(val item: Recommendation) : UiEvent
     data object ClearStreamCache : UiEvent
     data object RefreshStorage : UiEvent

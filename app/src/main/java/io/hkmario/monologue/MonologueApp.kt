@@ -24,7 +24,7 @@ class AppGraph(val context: Context) {
     val online=OnlineRepository(settings,spotify,context)
     val updates=UpdateRepository(context,settings)
     val drive=DriveClient(context,db.dao())
-    val listenBrainz=ListenBrainzClient(secrets,db.dao(),settings)
+    val listenBrainz=ListenBrainzClient(context,secrets,db.dao(),settings)
     val cache by lazy { StreamCache(context) }
     val scanner=MediaScanner(context,db.dao(),settings)
     val playback=PlaybackRepository(this)

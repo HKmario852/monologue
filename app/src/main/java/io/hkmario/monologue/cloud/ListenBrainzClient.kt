@@ -16,7 +16,7 @@ import java.net.URLEncoder
 private fun coverUrl(release: String?, image: Long?): String? =
     if(release.isNullOrBlank() || !release.matches(Regex("[0-9a-fA-F-]{36}")) || image==null || image<=0) null else "https://coverartarchive.org/release/$release/$image-250.jpg"
 
-class ListenBrainzClient(private val secrets: SecretStore, private val dao: MusicDao, private val settings: SettingsRepository) {
+class ListenBrainzClient(private val context: android.content.Context, private val secrets: SecretStore, private val dao: MusicDao, private val settings: SettingsRepository) {
     private val client=OkHttpClient.Builder().callTimeout(45,java.util.concurrent.TimeUnit.SECONDS).build()
     private val gate=Mutex()
     private var nextRequestAt=0L
@@ -69,32 +69,70 @@ class ListenBrainzClient(private val secrets: SecretStore, private val dao: Musi
         }
         rows.size
     }
-    suspend fun recommendations(tracks: List<Track>): DiscoverUiState = gate.withLock {
-        val user=secrets.get("lb-user") ?: return@withLock DiscoverUiState()
-        val data=request("user/${URLEncoder.encode(user,"UTF-8")}/playlists/recommendations",null)
-        val items=data.optJSONArray("playlists") ?: JSONArray()
-        val lists=(0 until items.length()).map { items.getJSONObject(it).optJSONObject("playlist") ?: items.getJSONObject(it) }
-        val selected=lists.filter { it.optString("title").contains("weekly",true) }.maxByOrNull { it.optString("date") }
-            ?: return@withLock DiscoverUiState(phase=Phase.Empty,error="此帳號未有每週推薦")
-        val identifier=selected.optString("identifier").substringAfterLast('/')
-        if(!identifier.matches(Regex("[0-9a-fA-F-]{36}"))) return@withLock DiscoverUiState(phase=Phase.Error,error="服務未提供可讀取的歌單 ID")
-        val playlist=request("playlist/$identifier",null).getJSONObject("playlist")
-        val songs=playlist.optJSONArray("track") ?: JSONArray()
-        val parsed=(0 until songs.length()).map { i ->
-            val t=songs.getJSONObject(i); val title=t.optString("title"); val artist=t.optString("creator")
-            val candidates=tracks.filter { normalize(it.title)==normalize(title) && normalize(it.artist)==normalize(artist) }
-            val ids=t.optJSONArray("identifier")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: listOf(t.optString("identifier"))
-            val mbid=ids.firstNotNullOfOrNull { Regex("recording/([0-9a-fA-F-]{36})").find(it)?.groupValues?.get(1) }
-            val extra=t.optJSONObject("extension")?.optJSONObject("https://musicbrainz.org/doc/jspf#track")?.optJSONObject("additional_metadata")
-            Recommendation("$identifier:$i",title,artist,candidates.singleOrNull(),coverUrl(extra?.optString("caa_release_mbid"),extra?.optLong("caa_id")),mbid)
+    private val cacheFile get()=java.io.File(context.filesDir,"lb-recommendations.json")
+    private val uuid=Regex("[0-9a-fA-F-]{36}")
+    /** "weekly-jams" or "weekly-exploration" for ListenBrainz's weekly playlists, from their source or title. */
+    private fun kindOf(p: JSONObject): String? {
+        val source=p.optJSONObject("extension")?.optJSONObject("https://musicbrainz.org/doc/jspf#playlist")?.optJSONObject("additional_metadata")?.optJSONObject("algorithm_metadata")?.optString("source_patch").orEmpty()
+        val title=p.optString("title")
+        return when { source=="weekly-jams" || title.contains("Weekly Jams",true) -> "weekly-jams"; source=="weekly-exploration" || title.contains("Weekly Exploration",true) -> "weekly-exploration"; else -> null }
+    }
+    /** The newest Weekly Jams and Weekly Exploration, each with its tracks and a cover for every recording that has one. */
+    private suspend fun fetchLists(user: String): JSONObject {
+        val items=request("user/${URLEncoder.encode(user,"UTF-8")}/playlists/recommendations",null).optJSONArray("playlists") ?: JSONArray()
+        val all=(0 until items.length()).map { items.getJSONObject(it).optJSONObject("playlist") ?: items.getJSONObject(it) }
+        val lists=JSONArray()
+        for(kind in listOf("weekly-jams","weekly-exploration")) {
+            val newest=all.filter { kindOf(it)==kind }.maxByOrNull { it.optString("date") } ?: continue
+            val id=newest.optString("identifier").substringAfterLast('/').takeIf { it.matches(uuid) } ?: continue
+            val playlist=request("playlist/$id",null).getJSONObject("playlist")
+            // Older playlists carry no cover fields; one metadata call fills them in for every recording at once.
+            val songs=playlist.optJSONArray("track") ?: JSONArray()
+            val missing=(0 until songs.length()).mapNotNull { i -> val t=songs.getJSONObject(i)
+                if(t.optJSONObject("extension")?.optJSONObject("https://musicbrainz.org/doc/jspf#track")?.optJSONObject("additional_metadata")?.has("caa_release_mbid")==true) null else recordingMbid(t) }.distinct()
+            val covers=JSONObject()
+            if(missing.isNotEmpty()) runCatching {
+                val meta=request("metadata/recording/?recording_mbids=${missing.joinToString(",")}&inc=release",null)
+                missing.forEach { m -> meta.optJSONObject(m)?.optJSONObject("release")?.let { r -> coverUrl(r.optString("caa_release_mbid"),r.optLong("caa_id"))?.let { covers.put(m,it) } } }
+            }
+            lists.put(JSONObject().put("kind",kind).put("id",id).put("playlist",playlist).put("covers",covers))
         }
-        // Older playlists carry no cover fields; one metadata call fills them in for every recording at once.
-        val missing=parsed.filter { it.artwork==null && it.recordingMbid!=null }.map { it.recordingMbid!! }.distinct()
-        val covers=if(missing.isEmpty()) emptyMap() else runCatching {
-            val meta=request("metadata/recording/?recording_mbids=${missing.joinToString(",")}&inc=release",null)
-            missing.associateWith { id -> meta.optJSONObject(id)?.optJSONObject("release")?.let { r -> coverUrl(r.optString("caa_release_mbid"),r.optLong("caa_id")) } }
-        }.getOrDefault(emptyMap())
-        val result=parsed.map { r -> if(r.artwork==null) r.copy(artwork=covers[r.recordingMbid]) else r }.toPersistentList()
-        DiscoverUiState(if(result.isEmpty()) Phase.Empty else Phase.Ready,playlist.optString("title","每週探索"),playlist.optString("date",selected.optString("date")),result)
+        return JSONObject().put("user",user).put("fetchedAt",System.currentTimeMillis()).put("lists",lists)
+    }
+    private fun recordingMbid(t: JSONObject): String? {
+        val ids=t.optJSONArray("identifier")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: listOf(t.optString("identifier"))
+        return ids.firstNotNullOfOrNull { Regex("recording/([0-9a-fA-F-]{36})").find(it)?.groupValues?.get(1) }
+    }
+    /** "2026-09-14T00:14:45…" → "9 月 14 日那週". */
+    private fun weekLabel(date: String)=runCatching { java.time.LocalDate.parse(date.take(10)).let { "${it.monthValue} 月 ${it.dayOfMonth} 日那週" } }.getOrNull()
+    private fun parse(data: JSONObject,tracks: List<Track>): DiscoverUiState {
+        val lists=data.optJSONArray("lists") ?: JSONArray()
+        val parsed=(0 until lists.length()).map { lists.getJSONObject(it) }.map { entry ->
+            val playlist=entry.getJSONObject("playlist"); val id=entry.optString("id"); val covers=entry.optJSONObject("covers") ?: JSONObject()
+            val songs=playlist.optJSONArray("track") ?: JSONArray()
+            val items=(0 until songs.length()).map { i ->
+                val t=songs.getJSONObject(i); val title=t.optString("title"); val artist=t.optString("creator")
+                val candidates=tracks.filter { normalize(it.title)==normalize(title) && normalize(it.artist)==normalize(artist) }
+                val mbid=recordingMbid(t)
+                val extra=t.optJSONObject("extension")?.optJSONObject("https://musicbrainz.org/doc/jspf#track")?.optJSONObject("additional_metadata")
+                Recommendation("$id:$i",title,artist,candidates.singleOrNull(),coverUrl(extra?.optString("caa_release_mbid"),extra?.optLong("caa_id")) ?: mbid?.let { covers.optString(it).ifBlank { null } },mbid)
+            }.toPersistentList()
+            RecommendationList(id,if(entry.optString("kind")=="weekly-jams") "每週精選" else "每週探索",weekLabel(playlist.optString("date")),items)
+        }.filter { it.tracks.isNotEmpty() }.toPersistentList()
+        if(parsed.isEmpty()) return DiscoverUiState(phase=Phase.Empty,error="此帳號未有每週推薦")
+        return DiscoverUiState(Phase.Ready,lists=parsed).showing(0)
+    }
+    /**
+     * The newest Weekly Jams and Weekly Exploration ListenBrainz made for the user. They are kept on the phone so 探索
+     * shows them at once (also offline) and fetched again when older than 12 hours, or when [force]d by 更新.
+     * The library is matched on every call, so songs added since play from the phone.
+     */
+    suspend fun recommendations(tracks: List<Track>,force: Boolean=true): DiscoverUiState = gate.withLock {
+        val user=secrets.get("lb-user") ?: return@withLock DiscoverUiState()
+        val cached=withContext(Dispatchers.IO) { runCatching { JSONObject(cacheFile.readText()) }.getOrNull() }?.takeIf { it.optString("user")==user }
+        val fresh=cached!=null && System.currentTimeMillis()-cached.optLong("fetchedAt")<12*3_600_000L
+        val data=if(!force && fresh) cached!! else try { fetchLists(user).also { d -> withContext(Dispatchers.IO) { cacheFile.writeText(d.toString()) } } }
+            catch(e: CancellationException) { throw e } catch(e: Exception) { cached ?: throw e }
+        parse(data,tracks)
     }
 }

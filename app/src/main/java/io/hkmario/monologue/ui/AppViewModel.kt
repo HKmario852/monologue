@@ -64,7 +64,7 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             mutable.update { it.copy(settings=settings, drive=it.drive.copy(sort=settings.text("driveSort","name")), listenBrainz=it.listenBrainz.copy(connection=if(settings.bool("lbAuthInvalid")) Connection.InvalidToken else it.listenBrainz.connection,syncEnabled=settings.bool("lbSync"),lastSuccess=settings.text("lbLastSuccess").toLongOrNull(),error=settings.text("lbError").ifBlank { null })) }
             updateSearch(false); updateRanks(); lastTrack?.let { loadLyrics(it) }
             // Off the main thread: the first call also starts WorkManager.
-            viewModelScope.launch(Dispatchers.IO) { WorkScheduler.periodicSync(app,settings.bool("lbSync")); WorkScheduler.incremental(app,settings) }
+            viewModelScope.launch(Dispatchers.IO) { WorkScheduler.periodicSync(app,settings.bool("lbSync")); WorkScheduler.cancelIncremental(app) }
         } }
         viewModelScope.launch { dao.observeTracks().collect { rows ->
             allTracks=rows.map { it.model() }.toPersistentList(); graph.playback.refreshTracks(allTracks)
@@ -155,7 +155,6 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
                 graph.settings.set(event.key,event.value)
                 if(event.key=="sort") { mutable.update { it.copy(library=it.library.copy(tracks=libraryTracks())) }; updateSearch(false) }
                 if(event.key=="lbSync" && event.value=="true") WorkScheduler.sync(getApplication())
-                if(event.key=="autoIncremental" || event.key=="wifiOnly") WorkScheduler.incremental(getApplication(),graph.settings.snapshot())
             }
             is UiEvent.Sleep -> graph.playback.setSleep(event.minutes,event.endOfTrack)
             is UiEvent.EqEnabled -> graph.playback.eqEnabled(event.value)
@@ -181,7 +180,9 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             is UiEvent.DisconnectListenBrainz -> launch { graph.listenBrainz.disconnect(event.discardPending); mutable.update { it.copy(listenBrainz=ListenBrainzUiState(),discover=DiscoverUiState()) } }
             UiEvent.SyncNow -> { WorkScheduler.sync(getApplication()) }
             is UiEvent.PlayRecommendation -> playRecommendation(event.item)
-            UiEvent.Recommendations -> launch { mutable.update { it.copy(discover=it.discover.copy(phase=Phase.Loading)) }; try { val d=graph.listenBrainz.recommendations(allTracks); mutable.update { it.copy(discover=d) } } catch(e: Exception) { mutable.update { it.copy(discover=it.discover.copy(phase=Phase.Error,error=e.message)) } } }
+            UiEvent.Recommendations -> loadRecommendations(force=true)
+            UiEvent.LoadRecommendations -> if(state.value.discover.phase==Phase.Unconfigured) loadRecommendations(force=false)
+            is UiEvent.ShowRecommendationList -> mutable.update { it.copy(discover=it.discover.showing(event.index)) }
             UiEvent.ClearStreamCache -> launch { val deferred=withContext(Dispatchers.IO) { graph.cache.clear() }; storage(); effectsChannel.send(UiEffect.Message(if(deferred) "已清理未使用快取；播放中的部分會在釋放後清理" else "已清除串流快取")) }
             UiEvent.RefreshStorage -> launch { storage() }
             is UiEvent.DeleteOffline -> launch {
@@ -287,6 +288,14 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
         }
     }
     /** Library match plays directly; otherwise the first YouTube result for "artist title" is streamed, labelled as YouTube audio. */
+    /** 每週推薦 from ListenBrainz (saved on the phone; [force] fetches again), keeping the playlist that was showing. */
+    private fun loadRecommendations(force: Boolean) = viewModelScope.launch {
+        val showing=state.value.discover.selected
+        mutable.update { it.copy(discover=it.discover.copy(phase=Phase.Loading)) }
+        try { val d=graph.listenBrainz.recommendations(allTracks,force); mutable.update { it.copy(discover=d.showing(showing.coerceAtMost(d.lists.lastIndex.coerceAtLeast(0)))) } }
+        catch(e: CancellationException) { throw e }
+        catch(e: Exception) { mutable.update { it.copy(discover=it.discover.copy(phase=Phase.Error,error="未能連線 ListenBrainz（${e.message ?: "網絡錯誤"}）")) } }
+    }
     private fun playRecommendation(item: Recommendation) {
         item.match?.let { play(listOf(it)); return }
         onlinePlayJob?.cancel()

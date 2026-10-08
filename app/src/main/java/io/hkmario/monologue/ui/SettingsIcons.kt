@@ -73,7 +73,7 @@ private val settingIcons: Map<String, ImageVector> = mapOf(
     "記錄搜尋歷史" to Icons.Outlined.History, "清空目前 Tab 搜尋紀錄" to Icons.Outlined.ClearAll,
     // Google Drive 與下載
     "連接／重新驗證" to Icons.Outlined.CloudSync, "斷開 Google Drive" to Icons.Outlined.CloudOff, "永久下載位置" to Icons.Outlined.Folder,
-    "只用 Wi-Fi 下載" to Icons.Outlined.Wifi, "每日檢查新歌曲" to Icons.Outlined.Schedule, "下載中心" to Icons.Outlined.Download,
+    "只用 Wi-Fi 下載" to Icons.Outlined.Wifi, "下載中心" to Icons.Outlined.Download,
     "管理離線下載" to Icons.Outlined.OfflinePin,
     // 儲存空間
     "清除播放暫存" to Icons.Outlined.Cached, "清除歌詞快取" to Icons.Outlined.Subtitles, "清除封面快取" to Icons.Outlined.Image,

@@ -218,6 +218,19 @@ class UiAcceptanceTest {
         screen=4; compose.waitForIdle(); screenshot("readme-5-settings")
         screen=5; compose.waitForIdle(); screenshot("readme-6-dark")
     }
+    @Test fun weeklyRecommendationsLoadOnOpenAndSwitchBetweenPlaylists() {
+        val events=mutableListOf<UiEvent>()
+        fun songs(prefix: String)=(1..3).map { Recommendation("$prefix:$it","$prefix 歌 $it","歌手") }.toPersistentList()
+        val state=DiscoverUiState(Phase.Ready,lists=persistentListOf(RecommendationList("a","每週精選","9 月 14 日那週",songs("精選")),RecommendationList("b","每週探索","9 月 14 日那週",songs("探索")))).showing(0)
+        compose.setContent { MonologueTheme { DiscoverScreen(ListenBrainzUiState(connection=Connection.Connected),state,{events+=it}) } }
+        compose.waitForIdle()
+        // Opening 探索 asks for the saved recommendations; both playlists can be picked; the week reads naturally.
+        Assert.assertTrue(UiEvent.LoadRecommendations in events)
+        compose.onNodeWithText("精選 歌 1").assertIsDisplayed()
+        compose.onNodeWithText("ListenBrainz · 9 月 14 日那週 · 3 首").assertIsDisplayed()
+        compose.onNodeWithText("每週探索").performClick()
+        Assert.assertEquals(UiEvent.ShowRecommendationList(1),events.last())
+    }
     @Test fun downloadWaitingDoesNotResumeOnToggle() {
         var last: UiEvent?=null
         val state=DownloadManagerUiState(DownloadPhase.Waiting,persistentListOf(DownloadItem("a","a","Example",DownloadStatus.Queued)),true)

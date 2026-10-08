@@ -317,3 +317,21 @@ on the label — deterministic, so every run looks the same.
 - Fix: downloads bound to the worker's network (sockets + DNS) and checked unmetered before every song (retry
   otherwise); 每日檢查新歌曲 now says it downloads every song not yet downloaded (all on the first run).
 - 78 unit + 47 device tests pass, no lint errors.
+
+---
+
+# 每週推薦 from ListenBrainz; no automatic downloads (requested 2026-10-08)
+
+## Plan (user chose: auto-load + both playlists; downloads only when the user asks)
+- [x] 探索 loads 每週推薦 on opening (saved on the phone, fetched again after 12 h or with 更新; shown offline).
+- [x] Both newest playlists: 每週精選 (Weekly Jams) and 每週探索 (Weekly Exploration), switched with chips; the week
+      reads "9 月 14 日那週" instead of the raw ISO timestamp.
+- [x] 每日檢查新歌曲 removed: Drive songs download only from 下載未儲存的… or a song's download button. Work scheduled
+      by older versions is cancelled at launch; IncrementalWorker does nothing if it still runs.
+
+## Review
+- Phone (release build): 探索 opened with 每週精選 already showing (50 songs, 9 月 14 日那週); 每週探索 switches to its
+  own 50 songs. The old daily download job is gone from the phone's job scheduler.
+- ListenBrainz has made no newer weekly playlists since 2026-09-14 although listens arrive (509, latest today):
+  that is on ListenBrainz's side.
+- 78 unit + 48 device tests pass, no lint errors.

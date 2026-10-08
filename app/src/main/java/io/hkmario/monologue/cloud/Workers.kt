@@ -130,22 +130,17 @@ class ListenSyncWorker(context: Context, parameters: WorkerParameters): Coroutin
         catch(e: Exception) { Result.retry() }
     }
 }
+/**
+ * Did the old 每日檢查新歌曲, which downloaded every song in the Drive music folder not yet on the phone. Songs are now
+ * downloaded only when the user asks (下載未儲存的… or a song's download button); this class stays only so work
+ * scheduled by an older version ends without doing anything, and that work is cancelled at launch.
+ */
 class IncrementalWorker(context: Context,parameters: WorkerParameters): CoroutineWorker(context,parameters) {
-    override suspend fun doWork(): Result {
-        val graph=(applicationContext as MonologueApp).graph
-        val settings=graph.settings.snapshot()
-        if(!settings.bool("autoIncremental")) return Result.success()
-        // "shared" is a virtual folder in the app's index, not a Drive ID; fall back to the whole drive.
-        return try {graph.downloads.enqueue(graph.drive.recursive(settings.text("driveRoot","root").takeUnless {it==SHARED_FOLDER || it==COMPUTERS_FOLDER} ?: "root"));Result.success()}
-        catch(e: CancellationException) {throw e} catch(e: AuthorizationNeeded) {Result.failure()} catch(e: Exception) {Result.retry()}
-    }
+    override suspend fun doWork(): Result = Result.success()
 }
 object WorkScheduler {
-    fun incremental(context: Context,settings: AppSettingsUiState) {
-        val wm=WorkManager.getInstance(context)
-        if(!settings.bool("autoIncremental")) {wm.cancelUniqueWork("monologue-incremental");return}
-        wm.enqueueUniquePeriodicWork("monologue-incremental",ExistingPeriodicWorkPolicy.KEEP,PeriodicWorkRequestBuilder<IncrementalWorker>(24,java.util.concurrent.TimeUnit.HOURS).setConstraints(Constraints.Builder().setRequiredNetworkType(if(settings.bool("wifiOnly",true)) NetworkType.UNMETERED else NetworkType.CONNECTED).setRequiresStorageNotLow(true).build()).build())
-    }
+    /** Cancels the daily download of older versions (see [IncrementalWorker]). */
+    fun cancelIncremental(context: Context) { WorkManager.getInstance(context).cancelUniqueWork("monologue-incremental") }
     fun download(context: Context, wifi: Boolean) {
         val request=OneTimeWorkRequestBuilder<DownloadWorker>().setConstraints(Constraints.Builder().setRequiredNetworkType(if(wifi) NetworkType.UNMETERED else NetworkType.CONNECTED).setRequiresStorageNotLow(true).build()).setBackoffCriteria(BackoffPolicy.EXPONENTIAL,30,java.util.concurrent.TimeUnit.SECONDS).build()
         WorkManager.getInstance(context).enqueueUniqueWork("monologue-downloads",ExistingWorkPolicy.APPEND_OR_REPLACE,request)
