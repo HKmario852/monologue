@@ -15,6 +15,7 @@ import io.hkmario.monologue.*
 import io.hkmario.monologue.domain.*
 import io.hkmario.monologue.data.*
 import io.hkmario.monologue.cloud.*
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.sync.withPermit
@@ -207,6 +208,7 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             is UiEvent.ClearStatistics -> launch { clearStatistics(event.start,event.end) }
             UiEvent.ResetSettings -> launch { graph.settings.reset() }
             is UiEvent.ImportLyrics -> importLyrics(event.uri,event.translation)
+            is UiEvent.TranslationLink -> translationFromLink(event.url)
             is UiEvent.Export -> launch { effectsChannel.send(UiEffect.Export(event.kind,export(event.kind))) }
             UiEvent.ImportSettings -> launch { effectsChannel.send(UiEffect.ImportSettings) }
             UiEvent.PickFolder -> launch { effectsChannel.send(UiEffect.PickFolder) }
@@ -558,14 +560,25 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             // No translation by a person yet (none, or only the device's machine translation): ask the sources that carry
             // Chinese translations once per session, before translating on the device.
             val byPerson=current.translationSource?.let { it.endsWith(language) && !it.startsWith("裝置上機器翻譯") } ?: false
-            if(lines.isNotEmpty() && settings.bool("translations") && settings.bool("onlineLyrics") && !byPerson && trackId !in translationSearched && graph.lyricsSources.canFindTranslation(settings)) {
+            // A translation taken from another source that covers only part of the lines (saved before 0.4.18): look
+            // once more, as that source's own lyrics may now be used instead.
+            val partial=byPerson && current.translationSource?.contains(" · 中文翻譯：")==true && "$trackId:full" !in translationSearched &&
+                current.translation?.let { translationCoverage(current.original,it)<0.85 }==true
+            val searchKey=if(partial) "$trackId:full" else trackId
+            if(lines.isNotEmpty() && settings.bool("translations") && settings.bool("onlineLyrics") && (!byPerson || partial) && searchKey !in translationSearched && graph.lyricsSources.canFindTranslation(settings)) {
                 val before=current
                 // Show the search only when there is no translation on screen yet.
                 if(before.translation==null) mutable.update { s -> if(s.lyrics.trackId==trackId) s.copy(lyrics=s.lyrics.copy(translationSource="正在搜尋網友翻譯…")) else s }
                 val found=try { allTracks.find { it.id==trackId }?.let { graph.lyricsSources.findTranslation(it,before.original,settings) } } catch(e: CancellationException) { throw e } catch(e: Exception) { null }
                 // Marked only once the search has run: a settings change cancels this job and starts it again.
-                translationSearched+=trackId
-                val updated=found?.let { (translation,label) -> before.copy(translation=translation,translationSource=label) }
+                translationSearched+=searchKey
+                // That source's own lyrics, translated line for line, replace the shown ones; load again to redo romaji.
+                found?.lyrics?.let { own ->
+                    dao.lyrics(before.copy(original=own.original,translation=found.translation,translationSource=found.label,source=own.source,romaji=own.romaji))
+                    loadLyrics(trackId); return@launch
+                }
+                val updated=found?.takeIf { !partial || translationCoverage(before.original,it.translation)>translationCoverage(before.original,before.translation ?: "") }
+                    ?.let { before.copy(translation=it.translation,translationSource=it.label) }
                 if(updated!=null) { dao.lyrics(updated); current=updated }
                 val shown=if(updated!=null) build(updated) else null
                 mutable.update { s -> if(s.lyrics.trackId!=trackId) s else s.copy(lyrics=s.lyrics.copy(lines=shown ?: s.lyrics.lines,translationSource=current.translationSource)) }
@@ -585,6 +598,24 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
                     mutable.update { it.copy(lyrics=it.lyrics.copy(translationSource="翻譯未完成：${e.message ?: "請檢查網絡後再試"}")) }
                 }
             }
+        }
+    }
+    /**
+     * A translation page the user found for the song playing now (巴哈姆特, Pixnet, a blog …): its translation is moved
+     * onto the shown lyrics by matching lines, or, when the song has no lyrics yet, the page's lyrics are used.
+     */
+    private fun translationFromLink(link: String) {
+        val id=state.value.player.entry?.track?.id ?: return
+        launch {
+            val page=graph.translationLinks.read(link)
+            val host=link.trim().toHttpUrlOrNull()?.host?.removePrefix("www.") ?: "網頁"
+            val label="$host · 使用者提供的連結 · 中文翻譯：繁體中文"
+            val row=dao.lyrics(id)
+            val saved=if(row==null) LyricsRow(id,page.original,toTraditional(page.translation!!),"$host · 使用者提供的連結",label)
+                else row.copy(translation=toTraditional(borrowTranslation(row.original,page.original,page.translation!!) ?: error("網頁上的歌詞和這首歌的歌詞對不上；請確認是同一首歌")),translationSource=label)
+            dao.lyrics(saved)
+            loadLyrics(id)
+            effectsChannel.send(UiEffect.Message("已加入翻譯：${(translationCoverage(saved.original,saved.translation!!)*100).toInt()}% 的歌詞有翻譯"))
         }
     }
     private fun importLyrics(uri: String, translation: Boolean) {

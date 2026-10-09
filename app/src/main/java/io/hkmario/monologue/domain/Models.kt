@@ -137,6 +137,8 @@ sealed interface UiEvent {
     data class ClearStatistics(val start: Long, val end: Long) : UiEvent
     data object ResetSettings : UiEvent
     data class ImportLyrics(val uri: String, val translation: Boolean = false) : UiEvent
+    /** A web page with this song's lyrics translation, pasted by the user. */
+    data class TranslationLink(val url: String) : UiEvent
     data class Export(val kind: String) : UiEvent
     data object ImportSettings : UiEvent
     data object PickFolder : UiEvent

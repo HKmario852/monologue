@@ -140,7 +140,18 @@ import kotlinx.coroutines.launch
             SettingAction(if(track.favorite) "取消收藏" else "收藏歌曲","") {onEvent(UiEvent.Favorite(track));sheet=null}
             SettingAction("加入播放清單","") {sheet="add-playlist"}
             if(track.source!=Source.Local) SettingAction("下載供離線播放","") {onEvent(UiEvent.DownloadTrack(track));sheet="downloads"}
+            // Only for the song playing now: its lyrics are what the translation is lined up with.
+            if(track.id==state.player.entry?.track?.id) SettingAction("貼上翻譯連結","巴哈姆特、Pixnet、網誌等有這首歌翻譯的網頁") {sheet="translation-link"}
         }}}
+        "translation-link" -> ModalBottomSheet(onDismissRequest={sheet=null}) {Column(Modifier.padding(24.dp).navigationBarsPadding().imePadding()) {
+            val clipboard=androidx.compose.ui.platform.LocalClipboardManager.current
+            // A link just copied from the browser is filled in.
+            var link by rememberSaveable {mutableStateOf(clipboard.getText()?.text?.trim()?.takeIf { it.startsWith("https://") } ?: "")}
+            Text("貼上翻譯連結",style=MaterialTheme.typography.titleLarge)
+            Text("在網上找到這首歌的中文翻譯？貼上網頁連結，翻譯會逐行配對到目前的歌詞。需要人機驗證的網頁（例如巴哈姆特哈啦區）無法讀取。",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(vertical=8.dp))
+            OutlinedTextField(link,{link=it},Modifier.fillMaxWidth(),placeholder={Text("https://")},singleLine=true)
+            Button(onClick={onEvent(UiEvent.TranslationLink(link));sheet=null},enabled=link.trim().startsWith("https://"),modifier=Modifier.fillMaxWidth().padding(top=12.dp)) {Text("讀取翻譯")}
+        }}
         "add-playlist" -> ModalBottomSheet(onDismissRequest={sheet=null}) {Column(Modifier.verticalScroll(rememberScrollState()).padding(24.dp).navigationBarsPadding()) {
             var name by rememberSaveable {mutableStateOf("")}
             Text("加入播放清單",style=MaterialTheme.typography.titleLarge)

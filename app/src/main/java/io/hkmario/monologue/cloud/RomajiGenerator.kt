@@ -34,12 +34,7 @@ class RomajiGenerator {
          * Chinese character forms that fan posts type in Japanese lyrics (奧 for 奥), mapped to the Japanese forms the
          * dictionary knows. Used only for reading; the lyrics keep their own characters.
          */
-        private val japaneseVariants=("奧奥 墮堕 屆届 裡裏 內内 眾衆 歲歳 關関 單単 戀恋 櫻桜 聲声 實実 樂楽 與与 應応 氣気 靜静 顏顔 淚涙 數数 " +
-            "覺覚 變変 邊辺 圓円 會会 來来 爭争 圖図 國国 學学 體体 燈灯 雙双 臺台 燒焼 絲糸 續続 據拠 擊撃 戰戦 鐵鉄 輕軽 經経 讀読 醉酔 " +
-            "壞壊 懷懐 兒児 亞亜 惡悪 壓圧 圍囲 爲為 價価 擔担 攝摂 瀨瀬 將将 從従 總総 聽聴 廳庁 廣広 黑黒 團団 傳伝 轉転 雜雑 顯顕 險険 驗験 鹽塩 " +
-            "譯訳 驛駅 濕湿 燈灯 營営 榮栄 螢蛍 覽覧 殘残 淺浅 錢銭 發発 廢廃 澀渋 釋釈 靈霊 嶽岳 擧挙 譽誉 彈弾 纖繊 齒歯 龍竜")
-            .split(' ').filter { it.length==2 }.associate { it[0] to it[1] }
-        private fun japaneseForms(text: String)=buildString { text.forEach { append(japaneseVariants[it] ?: it) } }
+        private fun japaneseForms(text: String)=japaneseKanjiForms(text)
         private val leadingTags=Regex("""^((?:\s*\[[^\]]*])*)(.*)$""")
         private val punctuation=mapOf("、" to ",", "。" to ".", "？" to "?", "！" to "!", "　" to " ", "「" to "\"", "」" to "\"", "『" to "\"", "』" to "\"", "（" to "(", "）" to ")")
 

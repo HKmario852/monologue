@@ -157,6 +157,35 @@ class FanTranslationTest {
         assertNull(parseThbLyrics("{{歌词信息}}"))
     }
 
+    @Test fun kanjiFormsDoNotStopLinesMatching() {
+        // One source types 觸/壞 (traditional forms), the other 触/壊 (Japanese forms).
+        val target = "[00:01.00]君に觸れていたいよ\n[00:05.00]何か壞れそうで\n[00:09.00]手のぬくもり\n[00:13.00]確かめてた"
+        val source = "君に触れていたいよ\n何か壊れそうで\n手のぬくもり\n確かめてた"
+        val borrowed = borrowTranslation(target, source, "想觸碰你\n好像會壞掉\n手的溫暖\n確認著")!!
+        assertEquals(1.0, translationCoverage(target, borrowed), 0.001)
+    }
+
+    @Test fun coverageCountsSungLinesThatGetATranslation() {
+        val original = "[00:01.00]一行目\n[00:02.00]二行目\n[00:03.00]\n[00:04.00]三行目\n[00:05.00]四行目"
+        assertEquals(0.5, translationCoverage(original, "[00:01.00]第一行\n[00:04.00]第三行"), 0.001)
+        assertEquals(0.0, translationCoverage(original, ""), 0.001)
+    }
+
+    @Test fun aPastedBlogPostGivesLyricsAndTranslation() {
+        // Laid out like a Pixnet post: a short teaser article first, then the post, one line of Japanese then its
+        // Chinese, and an English line the translator left as it is.
+        val html = """<html><body><article><p>関連記事：ほかの歌</p></article>
+            <div class="sidebar"><p>人気記事</p></div>
+            <div class="post"><p>作詞：誰か</p><p>歌：誰か</p>
+            <p>朝の光が窓を照らす</p><p>晨光照亮窗戶</p>
+            <p>I'm dreaming<br>君の声が聞こえる</p><p>聽得見你的聲音</p>
+            <p>遠くまで走ってゆく</p><p>向遠方奔跑而去</p>
+            <p>夢の中で待っている</p><p>在夢中等待著</p></div></body></html>"""
+        val lyrics = io.hkmario.monologue.cloud.bilingualFromHtml(html, "https://example.com/post")!!
+        assertEquals(listOf("朝の光が窓を照らす", "I'm dreaming", "君の声が聞こえる", "遠くまで走ってゆく", "夢の中で待っている"), lyrics.original.lines())
+        assertEquals(listOf("晨光照亮窗戶", "I'm dreaming", "聽得見你的聲音", "向遠方奔跑而去", "在夢中等待著"), lyrics.translation!!.lines())
+    }
+
     @Test fun plainLyricsNeedEveryLine() {
         val plain = "朝の光が窓を照らす\n君の声が聞こえる\n遠くまで走ってゆく\n夢の中で待っている"
         assertEquals("早晨的光\n你的聲音\n奔跑而去\n等待著", borrowTranslation(plain, plain, "早晨的光\n你的聲音\n奔跑而去\n等待著"))

@@ -62,12 +62,19 @@ class LyricsSources(private val lrclib: LyricsClient,private val netEase: NetEas
     fun canFindTranslation(settings: AppSettingsUiState)=settings.text("translationLanguage","繁體中文")=="繁體中文" &&
         lyricsProviders(settings).any { it.enabled && it.info.id in translationSources }
 
+    /** A person's Chinese translation; with [lyrics], that source's own lyrics should replace the ones shown. */
+    data class FoundTranslation(val translation: String,val label: String,val lyrics: FoundLyrics?=null)
+
     /**
      * A Chinese translation for lyrics that came without one: the first enabled source (in the user's order) whose
-     * translation lines up with [original] by the lines' text. Returns the translation and its label, or null.
+     * translation lines up with [original] by the lines' text. When lines are split or written differently (NetEase
+     * often joins two lines into one, LRCLIB may use 觸 where NetEase has 触) the translation would cover only part
+     * of the lines; then, if that source's own synced lyrics are translated line for line, those lyrics are used
+     * instead. A partial translation is the last resort.
      */
-    suspend fun findTranslation(track: Track,original: String,settings: AppSettingsUiState): Pair<String,String>? {
+    suspend fun findTranslation(track: Track,original: String,settings: AppSettingsUiState): FoundTranslation? {
         if(!canFindTranslation(settings)) return null
+        var partial: FoundTranslation?=null
         val artists=creditedArtists(track.artist)
         for(provider in lyricsProviders(settings).filter { it.enabled && it.info.id in translationSources }) {
             val result=try {
@@ -82,8 +89,12 @@ class LyricsSources(private val lrclib: LyricsClient,private val netEase: NetEas
             val translation=result?.translation ?: continue
             val borrowed=borrowTranslation(original,result.original,translation) ?: continue
             // The whole source, so a fan translation keeps its translator's name.
-            return toTraditional(borrowed) to "${result.source} · 中文翻譯：繁體中文"
+            val label="${result.source} · 中文翻譯：繁體中文"
+            if(translationCoverage(original,borrowed)>=0.85) return FoundTranslation(toTraditional(borrowed),label)
+            if(isSyncedLyrics(result.original) && translationCoverage(result.original,translation)>=0.85)
+                return FoundTranslation(toTraditional(translation),"${result.source.substringBefore(" · ")}中文翻譯：繁體中文",result)
+            if(partial==null) partial=FoundTranslation(toTraditional(borrowed),label)
         }
-        return null
+        return partial
     }
 }

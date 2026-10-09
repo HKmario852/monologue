@@ -84,6 +84,27 @@ class GapAndFocusDeviceTest {
         compose.runOnUiThread { graph.playback.toggle() }
     }
 
+    @Test fun carriesOnWhenAShortVideoKeepsTheAudioAfterItStops() {
+        val graph = app.graph
+        runBlocking { graph.settings.set("resumeInterruption", "true"); graph.settings.set("gapSeconds", "2") }
+        try {
+            compose.runOnUiThread { graph.playback.play(tracks(20)) }
+            compose.waitUntil(15000) { graph.playback.state.value.isPlaying }
+            // A reel with sound: takes the audio for a moment, plays, is scrolled away, never gives the audio back.
+            val giveBack = anotherAppPlays(3000, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT, keepsFocus = true) {
+                Assert.assertFalse("paused while the video plays", graph.playback.state.value.isPlaying)
+            }
+            try {
+                val stopped = SystemClock.elapsedRealtime()
+                compose.waitUntil(8000) { graph.playback.state.value.isPlaying }
+                val waited = SystemClock.elapsedRealtime() - stopped
+                // Right away: 歌曲之間的靜音 does not apply to carrying on.
+                Assert.assertTrue("carried on after $waited ms", waited < 1500)
+            } finally { giveBack() }
+            compose.runOnUiThread { graph.playback.toggle() }
+        } finally { runBlocking { graph.settings.set("gapSeconds", "0") } }
+    }
+
     @Test fun previousGoesToThePreviousSongEvenAfterThreeSeconds() {
         val graph = app.graph
         val songs = tracks(20)
@@ -112,11 +133,15 @@ class GapAndFocusDeviceTest {
         }
     }
 
-    /** Another "app": takes the audio away for good, plays a tone for [ms] (running [whilePlaying] near the end), then stops. */
-    private fun anotherAppPlays(ms: Long, whilePlaying: () -> Unit) {
+    /**
+     * Another "app": takes the audio ([focus]: for good, or for a moment like a short video), plays a tone for [ms]
+     * (running [whilePlaying] near the end), then stops — and gives the audio back unless [keepsFocus], as Facebook
+     * does when a reel is scrolled away.
+     */
+    private fun anotherAppPlays(ms: Long, focus: Int = AudioManager.AUDIOFOCUS_GAIN, keepsFocus: Boolean = false, whilePlaying: () -> Unit): () -> Unit {
         val audio = app.getSystemService(AudioManager::class.java)
         val attributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
-        val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).setAudioAttributes(attributes).setOnAudioFocusChangeListener { }.build()
+        val request = AudioFocusRequest.Builder(focus).setAudioAttributes(attributes).setOnAudioFocusChangeListener { }.build()
         Assert.assertEquals(AudioManager.AUDIOFOCUS_REQUEST_GRANTED, audio.requestAudioFocus(request))
         val rate = 44100
         val other = AudioTrack.Builder().setAudioAttributes(attributes)
@@ -127,6 +152,9 @@ class GapAndFocusDeviceTest {
         val until = SystemClock.elapsedRealtime() + ms
         while(SystemClock.elapsedRealtime() < until) other.write(tone, 0, tone.size)
         whilePlaying()
-        other.stop(); other.release(); audio.abandonAudioFocusRequest(request)
+        other.stop(); other.release()
+        val giveBack = { audio.abandonAudioFocusRequest(request); Unit }
+        if(!keepsFocus) giveBack()
+        return giveBack
     }
 }

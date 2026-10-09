@@ -75,7 +75,12 @@ class PlaybackRepository(private val graph: AppGraph) {
             if(otherMediaPlaying()) { otherSeenPlaying=true; otherQuietSince=0L }
             else if(otherSeenPlaying) {
                 if(otherQuietSince==0L) otherQuietSince=now
-                if(now-otherQuietSince>=300) { stopWatchingOtherMedia(); p.play(); return }
+                if(now-otherQuietSince>=300) {
+                    stopWatchingOtherMedia()
+                    // Still "playing" but held back by the other app's short claim: ask for the audio again.
+                    if(p.playWhenReady) p.pause()
+                    p.play(); return
+                }
                 handler.postDelayed(this,300-(now-otherQuietSince)); return
             }
             handler.postDelayed(this,1000)
@@ -197,7 +202,14 @@ class PlaybackRepository(private val graph: AppGraph) {
             }
         }
         override fun onPlaybackSuppressionReasonChanged(reason: Int) {
-            if(reason!=Player.PLAYBACK_SUPPRESSION_REASON_NONE && !preferences.bool("resumeInterruption",true)) player?.pause()
+            val p=player ?: return
+            when {
+                reason!=Player.PLAYBACK_SUPPRESSION_REASON_NONE && !preferences.bool("resumeInterruption",true) -> p.pause()
+                // A short video took the audio "for a moment": Media3 waits for that app to give it back, but apps such
+                // as Facebook keep it after the video is scrolled away, so watch that app as after a full loss.
+                reason==Player.PLAYBACK_SUPPRESSION_REASON_TRANSIENT_AUDIO_FOCUS_LOSS && p.playWhenReady -> startWatchingOtherMedia()
+                reason==Player.PLAYBACK_SUPPRESSION_REASON_NONE && p.playWhenReady -> stopWatchingOtherMedia()
+            }
         }
         override fun onAudioSessionIdChanged(audioSessionId: Int) { attachEq(audioSessionId) }
         override fun onPlayerError(error: PlaybackException) { state.value=state.value.copy(phase=Phase.Error,error="播放失敗：${error.errorCodeName}。請檢查檔案、授權及音訊格式。") }

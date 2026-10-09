@@ -348,3 +348,29 @@ on the label — deterministic, so every run looks the same.
   file; other URIs still go to Media3's DataSourceBitmapLoader. No database change needed.
 - ArtworkLoaderDeviceTest builds an MP3 with an ID3 cover: Media3's loader fails on it, the new loader returns it.
 - 78 unit + 49 device tests pass, no lint errors. Not yet checked on the phone (not connected).
+
+---
+
+# Reels resume, translation links, partial translations (reported 2026-10-09)
+
+## Findings
+- Resume after a reel: a short video takes the audio "for a moment" (transient focus). Media3 then holds playback
+  until that app gives the audio back, which Facebook does not do when the reel is scrolled away, so Monologue
+  stayed paused. Only the full-loss case was watched.
+- 明日がくるなら: NetEase joins two LRCLIB lines into one and LRCLIB types 觸/壞 where NetEase has 触/壊, so the
+  borrowed translation covered 60 % of the lines; NetEase's own synced lyrics are translated 100 %.
+- DAYS of DASH: the translations are on 巴哈姆特 哈啦區 (403 + captcha: not readable, not bypassed) and a Pixnet
+  blog (readable, but Pixnet search is disallowed by robots.txt and rendered by JavaScript): no automatic search.
+
+## Review
+- Transient focus loss is watched like a full loss; on quiet the player pauses and plays to take the audio back
+  (0.3 s, no 歌曲之間的靜音). New device test (other app keeps the audio after stopping): old code stays paused,
+  fix carries on within 1.5 s.
+- `findTranslation`: a borrowed translation must cover ≥ 85 % of lines; otherwise a source whose own synced lyrics
+  are translated ≥ 85 % replaces the shown lyrics; partial is the last resort. Saved partial translations are
+  looked up once more. Kanji forms unified for matching (`japaneseKanjiForms`, table moved from RomajiGenerator,
+  觸触 繫繋 added). Real data: 明日がくるなら 60 % borrowed → NetEase lyrics 100 %.
+- 貼上翻譯連結 (song menu ⋮, song playing now): reads the page (https), finds the post body, splits Japanese /
+  Chinese, lines it up with the lyrics. Untranslated English lines no longer void a whole post. Real pages: Pixnet
+  DAYS of DASH 45/45 → 41/43 LRCLIB lines; 巴哈姆特 agony 43/43, 君にふれて 27/27 and 16/16; Kanogoma 59/59.
+- 81 unit + 50 device tests pass, no lint errors. Facebook reels flow not yet checked on the phone.

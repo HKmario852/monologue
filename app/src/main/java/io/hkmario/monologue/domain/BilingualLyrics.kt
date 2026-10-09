@@ -124,14 +124,34 @@ fun splitBilingualLyrics(text: String): BilingualLyrics? {
         val next = runs.getOrNull(i + 1)?.takeIf { !it.first }?.second
         val isLast = i == originalRuns.last().index
         // The last Chinese run may carry the translator's notes after the lyrics.
-        if(next == null || next.size < run.size || next.size > run.size && !isLast) return BilingualLyrics(original.joinToString("\n"), null)
-        translation += next.take(run.size)
+        if(next != null && (next.size == run.size || next.size > run.size && isLast)) { translation += next.take(run.size); continue }
+        // A line left untranslated, such as an English phrase ("I'm dreaming"): pair the Japanese lines with the
+        // Chinese ones and let the English line stand for itself.
+        val sung = run.count { kanaCount(it) + hanCount(it) > 0 }
+        if(next == null || sung == run.size || sung == 0 || next.size < sung || next.size > sung && !isLast) return BilingualLyrics(original.joinToString("\n"), null)
+        var k = 0
+        translation += run.map { if(kanaCount(it) + hanCount(it) > 0) next[k++] else it }
     }
     return BilingualLyrics(original.joinToString("\n"), translation.joinToString("\n"))
 }
 
+/** Traditional Chinese forms of kanji and their Japanese forms (奧 → 奥, 觸 → 触), as lyrics are typed with either. */
+private val japaneseVariants=("奧奥 墮堕 屆届 裡裏 內内 眾衆 歲歳 關関 單単 戀恋 櫻桜 聲声 實実 樂楽 與与 應応 氣気 靜静 顏顔 淚涙 數数 " +
+    "覺覚 變変 邊辺 圓円 會会 來来 爭争 圖図 國国 學学 體体 燈灯 雙双 臺台 燒焼 絲糸 續続 據拠 擊撃 戰戦 鐵鉄 輕軽 經経 讀読 醉酔 " +
+    "壞壊 懷懐 兒児 亞亜 惡悪 壓圧 圍囲 爲為 價価 擔担 攝摂 瀨瀬 將将 從従 總総 聽聴 廳庁 廣広 黑黒 團団 傳伝 轉転 雜雑 顯顕 險険 驗験 鹽塩 " +
+    "觸触 繫繋 譯訳 驛駅 濕湿 燈灯 營営 榮栄 螢蛍 覽覧 殘残 淺浅 錢銭 發発 廢廃 澀渋 釋釈 靈霊 嶽岳 擧挙 譽誉 彈弾 纖繊 齒歯 龍竜")
+            .split(' ').filter { it.length==2 }.associate { it[0] to it[1] }
+/** [text] with Japanese kanji forms, so 君に觸れて and 君に触れて compare equal. */
+fun japaneseKanjiForms(text: String)=buildString { text.forEach { append(japaneseVariants[it] ?: it) } }
+
 /** A lyric line reduced to its letters and digits, to find the same line in another source's lyrics. */
-private fun lineKey(s: String) = normalize(s).filter { it.isLetterOrDigit() }.map(::hiragana).joinToString("")
+private fun lineKey(s: String) = japaneseKanjiForms(normalize(s)).filter { it.isLetterOrDigit() }.map(::hiragana).joinToString("")
+
+/** Share of [original]'s sung lines that get a line of [translation] when the two are lined up (0 to 1). */
+fun translationCoverage(original: String, translation: String): Double {
+    val sung = Lrc.align(Lrc.parse(original), Lrc.parse(translation)).filter { lineKey(it.text).isNotEmpty() }
+    return if(sung.isEmpty()) 0.0 else sung.count { it.translation != null }.toDouble() / sung.size
+}
 
 /** The translations of source lines that, joined, make up [key]; null when no run of lines does. */
 private fun joinedTranslation(pairs: List<Pair<String, String>>, key: String): String? {
