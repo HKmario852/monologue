@@ -28,3 +28,6 @@ Rules learned from the user's corrections in this project.
 - **A Wi-Fi-only constraint is not enough.** WorkManager checks the default network when work starts, but phones
   that move traffic to mobile data on weak Wi-Fi (Samsung) send sockets over mobile data anyway. Bind downloads to
   the worker's `network` and re-check NOT_METERED; and ask for the phone's `dumpsys netstats` before guessing.
+- **Custom image URIs must work everywhere they are passed.** An artwork URI scheme handled only by Coil broke the
+  media notification, which loads artwork through Media3's BitmapLoader; give the MediaSession a loader that
+  understands it.

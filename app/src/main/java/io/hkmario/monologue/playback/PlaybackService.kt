@@ -37,7 +37,9 @@ class PlaybackService: MediaSessionService() {
         player.setHandleAudioBecomingNoisy(true)
         player.setWakeMode(C.WAKE_MODE_NETWORK)
         exo=player
-        session=MediaSession.Builder(this,player).setSessionActivity(PendingIntent.getActivity(this,0,Intent(this,MainActivity::class.java),PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)).build()
+        // Covers kept inside downloaded or local audio files need their own loader (see EmbeddedArtworkBitmapLoader).
+        val artwork=androidx.media3.session.CacheBitmapLoader(EmbeddedArtworkBitmapLoader(this,androidx.media3.datasource.DataSourceBitmapLoader(this)))
+        session=MediaSession.Builder(this,player).setBitmapLoader(artwork).setSessionActivity(PendingIntent.getActivity(this,0,Intent(this,MainActivity::class.java),PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)).build()
         graph.playback.attach(player)
     }
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session

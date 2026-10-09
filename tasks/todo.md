@@ -335,3 +335,16 @@ on the label — deterministic, so every run looks the same.
 - ListenBrainz has made no newer weekly playlists since 2026-09-14 although listens arrive (509, latest today):
   that is on ListenBrainz's side.
 - 78 unit + 48 device tests pass, no lint errors.
+
+---
+
+# No cover in the media controls (reported 2026-10-09)
+
+## Review
+- Cause: a finished download sets the song's artwork to a "monologue-art://" URI (cover read from inside the file),
+  which only the app's Coil fetcher understands; Media3's notification loader could not load it, so the controls
+  showed a blank note. Every Drive song became like that after the 331-song download on 2026-10-08.
+- Fix: `EmbeddedArtworkBitmapLoader` for the MediaSession (wrapped in CacheBitmapLoader) reads those covers from the
+  file; other URIs still go to Media3's DataSourceBitmapLoader. No database change needed.
+- ArtworkLoaderDeviceTest builds an MP3 with an ID3 cover: Media3's loader fails on it, the new loader returns it.
+- 78 unit + 49 device tests pass, no lint errors. Not yet checked on the phone (not connected).
