@@ -14,7 +14,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
       # The key that signed every published release, stored by scripts/setup-release-signing.ps1.
       # Pull requests (and forks) have no secrets and only run tests and lint.
       - name: Release signing key
