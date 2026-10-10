@@ -14,7 +14,6 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
       # The key that signed every published release, stored by scripts/setup-release-signing.ps1.
       # Pull requests (and forks) have no secrets and only run tests and lint.
