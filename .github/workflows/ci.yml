@@ -42,12 +42,12 @@ jobs:
           "$ANDROID_HOME/build-tools/$tools/apksigner" verify --print-certs "$apk" | tee certs.txt
           actual=$(grep -m1 'certificate SHA-256 digest' certs.txt | awk '{print $NF}')
           [ "$actual" = "$expected" ] || { echo "::error::Release APK is signed with '$actual', expected $expected"; exit 1; }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: env.MONOLOGUE_KEYSTORE_FILE != ''
         with:
           name: monologue-release-apk
           path: app/build/outputs/apk/release/*.apk
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: lint-report
