@@ -76,7 +76,7 @@ You need JDK 17 and the Android SDK (platform 35).
 ./gradlew :app:testDebugUnitTest    # unit tests
 ```
 
-On Windows use `gradlew.bat`. The APKs are in `app/build/outputs/apk/`.
+On Windows use `gradlew.bat`. The APKs are in `app/build/outputs/apk/`. CI runs the unit tests and lint on every pull request; release signing is described in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 **Google Drive** needs your own Google Cloud project (Drive API and an Android OAuth client for `io.hkmario.monologue` with your signing key's SHA-1). The published app's Google sign-in is still in testing, so only accounts added as test users can connect. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) (in Chinese) for the full setup and architecture notes.
 
