@@ -36,12 +36,12 @@ jobs:
       - name: Check the signing certificate
         if: env.MONOLOGUE_KEYSTORE_FILE != ''
         run: |
-          expected=$(sed -n 's/^releaseCertSha256=//p' gradle.properties)
-          apk=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
-          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
-          actual=$("$apksigner" verify --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
-          echo "Signed with $actual"
-          [ "$actual" = "$expected" ] || { echo "::error::Release APK is signed with $actual, expected $expected"; exit 1; }
+          expected=$(grep '^releaseCertSha256=' gradle.properties | cut -d= -f2 | tr -cd '0-9a-f')
+          apk=app/build/outputs/apk/release/app-release.apk
+          tools=$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)
+          "$ANDROID_HOME/build-tools/$tools/apksigner" verify --print-certs "$apk" | tee certs.txt
+          actual=$(grep -m1 'certificate SHA-256 digest' certs.txt | awk '{print $NF}')
+          [ "$actual" = "$expected" ] || { echo "::error::Release APK is signed with '$actual', expected $expected"; exit 1; }
       - uses: actions/upload-artifact@v4
         if: env.MONOLOGUE_KEYSTORE_FILE != ''
         with:
