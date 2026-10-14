@@ -53,6 +53,14 @@ flowchart TD
 
 SDK／JDK 的機器特定路徑不屬於可攜來源封裝。GitHub Releases 上的 APK 以 `gradlew.bat :app:assembleRelease` 建置（不可除錯、不縮減程式碼），並以與先前版本相同的簽章簽署，讓 App 內更新可直接安裝。
 
+### 簽署金鑰
+
+所有已發佈版本都以發佈用電腦的 `%USERPROFILE%\.android\debug.keystore` 簽署（憑證 SHA-256 記錄在 `gradle.properties` 的 `releaseCertSha256`），Google 登入的 OAuth client 亦登記咗呢把金鑰。**請備份呢個檔案**：遺失後已安裝的 App 無法再更新，Google 登入亦要重新登記。
+
+- 本機：沒有 `keystore.properties` 時，release 建置沿用 debug 設定，即同一把金鑰。
+- CI：執行一次 `scripts/setup-release-signing.ps1`，會先核對憑證 SHA-256，再把金鑰放入 GitHub Secrets（`MONOLOGUE_KEYSTORE_*`）。之後 `main` 的 CI 會建置 release APK 並檢查簽署憑證；Pull Request 只跑單元測試及 lint。
+- 儀器測試（`connectedDebugAndroidTest`）需要實機或模擬器，只在本機執行。
+
 | 依賴 | 固定版本 |
 |---|---|
 | AGP／Gradle | 8.10.1／8.11.1 |
