@@ -186,6 +186,36 @@ class FanTranslationTest {
         assertEquals(listOf("晨光照亮窗戶", "I'm dreaming", "聽得見你的聲音", "向遠方奔跑而去", "在夢中等待著"), lyrics.translation!!.lines())
     }
 
+    @Test fun eachLineWithItsTranslationUnderItEvenWithGaps() {
+        // Like a 巴哈姆特 post: a translation under every line, an English line written twice, and one line untranslated.
+        val post = "歌：誰か\n翻譯：誰か\n朝の光が窓を照らす\n晨光照亮窗戶\n君の声が聞こえる\n聽得見你的聲音\nYeah!\nYeah!\n" +
+            "This is a song\n這是一首歌\n遠くまで走ってゆく\n向遠方奔跑而去\nん～ 1 2 3 4!\n夢の中で待っている\n在夢中等待著"
+        val lyrics = splitBilingualLyrics(post)!!
+        assertEquals(listOf("朝の光が窓を照らす", "君の声が聞こえる", "Yeah!", "This is a song", "遠くまで走ってゆく", "ん～ 1 2 3 4!", "夢の中で待っている"), lyrics.original.lines())
+        assertEquals(listOf("晨光照亮窗戶", "聽得見你的聲音", "Yeah!", "這是一首歌", "向遠方奔跑而去", "ん～ 1 2 3 4!", "在夢中等待著"), lyrics.translation!!.lines())
+    }
+
+    @Test fun linesSplitDifferentlyAreFilledByTime() {
+        // The target drops "でも", and joins two source lines into one; a later line from another part of the song
+        // (its text does not match) is not taken.
+        val target = "[00:10.00]朝の光が窓を照らす\n[00:15.00]人生は糸に操られて\n[00:20.00]遠くまで走る 夢の中で待つ\n[00:30.00]知らない言葉\n[00:40.00]君の声が聞こえる"
+        val source = "[00:10.10]朝の光が窓を照らす\n[00:15.05]でも人生は糸に操られて\n[00:20.10]遠くまで走る\n[00:24.00]夢の中で待つ\n[00:30.20]全然違う一行\n[00:40.00]君の声が聞こえる"
+        val translation = "[00:10.10]晨光照亮窗戶\n[00:15.05]但人生被線操縱\n[00:20.10]跑向遠方\n[00:24.00]在夢中等待\n[00:30.20]完全不同的一句\n[00:40.00]聽得見你的聲音"
+        val borrowed = Lrc.align(Lrc.parse(target), Lrc.parse(borrowTranslation(target, source, translation)!!))
+        assertEquals(listOf("晨光照亮窗戶", "但人生被線操縱", "跑向遠方 在夢中等待", null, "聽得見你的聲音"), borrowed.map { it.translation })
+    }
+
+    @Test fun lyricOffsetsReadAsEarlierOrLater() {
+        assertEquals("歌詞時間未調整", lyricOffsetLabel(0))
+        assertEquals("歌詞延後 1.5 秒", lyricOffsetLabel(1500))
+        assertEquals("歌詞提早 0.5 秒", lyricOffsetLabel(-500))
+    }
+
+    @Test fun creditsJoinedWithNApostropheAreSplit() {
+        assertEquals(listOf("鈴木このみ", "キバオブアキバ"), creditedArtists("鈴木このみ n' キバオブアキバ"))
+        assertEquals(listOf("Guns N' Roses"), creditedArtists("Guns N' Roses"))
+    }
+
     @Test fun plainLyricsNeedEveryLine() {
         val plain = "朝の光が窓を照らす\n君の声が聞こえる\n遠くまで走ってゆく\n夢の中で待っている"
         assertEquals("早晨的光\n你的聲音\n奔跑而去\n等待著", borrowTranslation(plain, plain, "早晨的光\n你的聲音\n奔跑而去\n等待著"))

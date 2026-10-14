@@ -20,7 +20,7 @@ import io.hkmario.monologue.domain.*
 val settingsGroups=listOf("外觀與導航","播放","媒體庫","Google Drive 與下載","儲存空間","歌詞","聆聽統計","ListenBrainz","通知與背景行為","關於、隱私及維護","音源外掛與音質","App 更新")
 /** What each group contains, so settings search finds items by name rather than only group titles. */
 val settingsKeywords=listOf(
-    "主題 深色 暖白 動態 導航 底部 側邊 bottom drawer banner 黑膠 旋轉 動態效果 語言",
+    "主題 深色 暖白 動態 導航 底部 側邊 bottom drawer banner 黑膠 唱片 專輯封面 正在播放 旋轉 動態效果 語言",
     "恢復 隊列 自動播放 中斷 耳機 速度 等化器 睡眠 淡出 下載優先 行動網絡 串流",
     "權限 資料夾 掃描 索引 隱藏 長度 tab 排序 搜尋歷史",
     "google drive 雲端 連接 授權 斷開 根資料夾 下載位置 wi-fi 暫停 下載中心",
@@ -57,7 +57,8 @@ val timeZones=listOf("Asia/Hong_Kong" to "香港","Asia/Taipei" to "台北","Asi
                 Choice("主題",s.text("theme","paper"),listOf("paper" to "品牌暖白","dark" to "深色","system" to "跟隨系統")) {setting("theme",it)}
                 Toggle("動態主題色","Android 12 或以上；保留黑膠結構與排版",s.bool("dynamic")) {setting("dynamic",it.toString())}
                 Choice("導航樣式",s.text("navigation","bottom"),listOf("bottom" to "底部導覽列","drawer" to "側邊選單")) {setting("navigation",it)}
-                Toggle("黑膠旋轉","24 秒一圈；暫停時定格",s.bool("vinyl",true)) {setting("vinyl",it.toString())}
+                Choice("正在播放畫面",s.text("nowPlayingArt","vinyl"),listOf("vinyl" to "黑膠唱片","cover" to "完整專輯封面")) {setting("nowPlayingArt",it)}
+                if(s.text("nowPlayingArt","vinyl")=="vinyl") Toggle("黑膠旋轉","24 秒一圈；暫停時定格",s.bool("vinyl",true)) {setting("vinyl",it.toString())}
                 Toggle("減少動態效果","關閉旋轉及開啟動畫；亦尊重系統動畫設定",s.bool("reduceMotion")) {setting("reduceMotion",it.toString())}
                 Toggle("開啟時播放動畫","每次開啟 App 播放 3 秒標誌動畫；輕按畫面可略過，聲音預設靜音",s.bool("introAnimation",true)) {setting("introAnimation",it.toString())}
                 Choice("顯示語言",s.text("language","zh-Hant"),listOf("zh-Hant" to "繁體中文","system" to "跟隨系統（未支援語言用繁體中文）")) {setting("language",it)}

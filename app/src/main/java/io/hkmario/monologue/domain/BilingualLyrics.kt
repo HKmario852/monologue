@@ -128,11 +128,39 @@ fun splitBilingualLyrics(text: String): BilingualLyrics? {
         // A line left untranslated, such as an English phrase ("I'm dreaming"): pair the Japanese lines with the
         // Chinese ones and let the English line stand for itself.
         val sung = run.count { kanaCount(it) + hanCount(it) > 0 }
-        if(next == null || sung == run.size || sung == 0 || next.size < sung || next.size > sung && !isLast) return BilingualLyrics(original.joinToString("\n"), null)
+        if(next == null || sung == run.size || sung == 0 || next.size < sung || next.size > sung && !isLast)
+            return lineByLine(lines) ?: BilingualLyrics(original.joinToString("\n"), null)
         var k = 0
         translation += run.map { if(kanaCount(it) + hanCount(it) > 0) next[k++] else it }
     }
     return BilingualLyrics(original.joinToString("\n"), translation.joinToString("\n"))
+}
+
+/**
+ * Posts that put each line's translation right under it, where runs do not pair because a few lines were left
+ * untranslated ("ん～ 1 2 3 4!") or an English line was written again as its own translation ("Yeah!" / "Yeah!").
+ * Untranslated lines stand for themselves. Null unless at least 80 % of the sung lines have a Chinese line under
+ * them and no Chinese line turns up away from a lyric line before the end (translator's notes may follow).
+ */
+private fun lineByLine(lines: List<String>): BilingualLyrics? {
+    val original = mutableListOf<String>(); val translation = mutableListOf<String>()
+    var i = 0; var paired = 0
+    while(i < lines.size) {
+        val line = lines[i]
+        if(!isOriginalLine(line)) {
+            if(isChineseLine(line) && lines.drop(i + 1).any(::isOriginalLine)) return null
+            i++; continue
+        }
+        val next = lines.getOrNull(i + 1)
+        original += line
+        when {
+            next != null && !isOriginalLine(next) && isChineseLine(next) -> { translation += next; if(kanaCount(line) + hanCount(line) > 0) paired++; i += 2 }
+            next == line && kanaCount(line) + hanCount(line) == 0 -> { translation += line; i += 2 }
+            else -> { translation += line; i++ }
+        }
+    }
+    val sung = original.count { kanaCount(it) + hanCount(it) > 0 }
+    return if(original.size >= 4 && sung > 0 && paired >= 0.8 * sung) BilingualLyrics(original.joinToString("\n"), translation.joinToString("\n")) else null
 }
 
 /** Traditional Chinese forms of kanji and their Japanese forms (奧 → 奥, 觸 → 触), as lyrics are typed with either. */
@@ -180,12 +208,13 @@ fun borrowTranslation(target: String, sourceOriginal: String, sourceTranslation:
     val lines = Lrc.parse(target)
     if(pairs.isEmpty() || lines.size < 4) return null
     val found = arrayOfNulls<String>(lines.size); var covered = 0
+    val carried = BooleanArray(lines.size)
     var rest = ""
     for((n, line) in lines.withIndex()) {
         val key = lineKey(line.text)
         when {
             key.isEmpty() -> covered++
-            rest.isNotEmpty() && rest.startsWith(key) -> { rest = rest.removePrefix(key); covered++ }
+            rest.isNotEmpty() && rest.startsWith(key) -> { rest = rest.removePrefix(key); covered++; carried[n] = true }
             else -> {
                 rest = ""
                 val whole = pairs.firstOrNull { it.first == key }?.second ?: joinedTranslation(pairs, key)
@@ -196,12 +225,41 @@ fun borrowTranslation(target: String, sourceOriginal: String, sourceTranslation:
             }
         }
     }
+    covered += fillByTime(lines, Lrc.align(Lrc.parse(sourceOriginal), Lrc.parse(sourceTranslation)), found, carried)
     if(covered < lines.size * 0.7) return null
     if(lines.any { it.timeMs == null }) return if(found.all { it != null }) found.joinToString("\n") else null
     return lines.indices.filter { found[it] != null }.joinToString("\n") { n ->
         val ms = lines[n].timeMs!!
         String.format(java.util.Locale.ROOT, "[%02d:%02d.%02d]%s", ms / 60000, ms / 1000 % 60, ms % 1000 / 10, found[n])
     }
+}
+
+/**
+ * Lines the text match left without a translation because the two sources split them differently ("でも人生は…"
+ * against "人生は…", or three source lines in one): the translations of the source lines that start while the line is
+ * sung, when most of each one's text is in the line. Both sides must be synced. Returns how many lines it filled.
+ */
+private fun fillByTime(lines: List<LyricLine>, source: List<LyricLine>, found: Array<String?>, carried: BooleanArray): Int {
+    if(lines.any { it.timeMs == null } || source.none { it.timeMs != null }) return 0
+    val sung = lines.indices.filter { lineKey(lines[it].text).isNotEmpty() }
+    var filled = 0
+    for((i, n) in sung.withIndex()) {
+        if(found[n] != null || carried[n]) continue
+        val key = lineKey(lines[n].text)
+        val start = lines[n].timeMs!! - 1000
+        val end = sung.getOrNull(i + 1)?.let { lines[it].timeMs!! - 300 } ?: (lines[n].timeMs!! + 10_000)
+        val parts = source.filter { s -> s.translation != null && s.timeMs != null && s.timeMs in start until end && sharedShare(lineKey(s.text), key) >= 0.6 }
+        if(parts.isEmpty()) continue
+        found[n] = parts.joinToString(" ") { it.translation!! }; filled++
+    }
+    return filled
+}
+
+/** Share of [a]'s character pairs that also appear in [b] (0 to 1). */
+private fun sharedShare(a: String, b: String): Double {
+    if(a.length < 2) return if(a.isNotEmpty() && b.contains(a)) 1.0 else 0.0
+    val pairs = (0 until a.length - 1).map { a.substring(it, it + 2) }
+    return pairs.count { b.contains(it) }.toDouble() / pairs.size
 }
 
 /** Title text reduced for comparison: case, spaces, punctuation and decorations such as ♡ removed. */

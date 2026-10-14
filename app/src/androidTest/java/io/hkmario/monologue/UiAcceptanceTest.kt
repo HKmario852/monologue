@@ -258,6 +258,33 @@ class UiAcceptanceTest {
         compose.onNodeWithText("隊列").assertIsDisplayed()
         screenshot("09-upright-lyrics")
     }
+    @Test fun tappingTheSungLineLinesTheLyricsUp() {
+        val lines=(1..6).map { LyricLine("$it",it*4000L,"歌詞の行 $it") }.toPersistentList()
+        val events=mutableListOf<UiEvent>()
+        var settings by mutableStateOf(AppSettingsUiState())
+        compose.setContent { MonologueTheme { Surface { LyricsPanel(LyricsUiState(Phase.Ready,"t",lines,"LRCLIB · 歌手 · 歌名"),remember {mutableStateOf(PlaybackProgress(positionMs=10500))},settings,{
+            events+=it; if(it is UiEvent.Setting) settings=AppSettingsUiState(persistentMapOf(it.key to it.value)) }) } } }
+        compose.onNodeWithContentDescription("調整歌詞時間").performClick()
+        compose.onNodeWithText("歌詞時間未調整").assertIsDisplayed()
+        // Line 2 starts at 8 s but is being sung at 10.5 s: tapping it shows every line 2.5 s later, without seeking.
+        compose.onNodeWithText("歌詞の行 2").performClick()
+        compose.onNodeWithText("歌詞延後 2.5 秒").assertIsDisplayed()
+        compose.onNodeWithText("提早 0.5 秒").performClick()
+        compose.onNodeWithText("歌詞延後 2.0 秒").assertIsDisplayed()
+        Assert.assertEquals(UiEvent.Setting(lyricOffsetKey("t"),"2000"),events.last())
+        Assert.assertTrue(events.none { it is UiEvent.CommitSeek })
+        screenshot("11-lyrics-sync")
+        compose.onNodeWithText("完成").performClick()
+        compose.onNodeWithText("歌詞の行 3").performClick()
+        Assert.assertTrue(events.last() is UiEvent.CommitSeek)
+    }
+    @Test fun playerCanShowTheWholeAlbumCover() {
+        val state=PreviewFixtures.app.copy(settings=AppSettingsUiState(persistentMapOf("nowPlayingArt" to "cover")))
+        compose.setContent {MonologueTheme {NowPlayingScreen(state,remember {mutableStateOf(PlaybackProgress())},remember {VinylClock()},false,{},{},{},{},{},{},{})}}
+        compose.onNodeWithContentDescription("專輯封面",substring=true).assertIsDisplayed()
+        compose.onNodeWithContentDescription("黑膠唱片",substring=true).assertDoesNotExist()
+        screenshot("12-album-cover")
+    }
     @Test fun aTranslationFoundElsewhereNamesItsTranslator() {
         val lines=(1..6).map { LyricLine("$it",it*4000L,"歌詞の行 $it",translation="歌詞第 $it 行") }.toPersistentList()
         val settings=AppSettingsUiState(persistentMapOf("translations" to "true"))

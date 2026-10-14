@@ -560,10 +560,10 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             // No translation by a person yet (none, or only the device's machine translation): ask the sources that carry
             // Chinese translations once per session, before translating on the device.
             val byPerson=current.translationSource?.let { it.endsWith(language) && !it.startsWith("裝置上機器翻譯") } ?: false
-            // A translation taken from another source that covers only part of the lines (saved before 0.4.18): look
-            // once more, as that source's own lyrics may now be used instead.
+            // A translation taken from another source that leaves some lines out: look once more per session, as lines
+            // split differently are now matched by time, or that source's own lyrics may be used instead.
             val partial=byPerson && current.translationSource?.contains(" · 中文翻譯：")==true && "$trackId:full" !in translationSearched &&
-                current.translation?.let { translationCoverage(current.original,it)<0.85 }==true
+                current.translation?.let { translationCoverage(current.original,it)<1.0 }==true
             val searchKey=if(partial) "$trackId:full" else trackId
             if(lines.isNotEmpty() && settings.bool("translations") && settings.bool("onlineLyrics") && (!byPerson || partial) && searchKey !in translationSearched && graph.lyricsSources.canFindTranslation(settings)) {
                 val before=current

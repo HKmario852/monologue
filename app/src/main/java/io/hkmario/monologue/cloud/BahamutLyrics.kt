@@ -92,13 +92,15 @@ class BahamutLyrics(private val romaji: RomajiGenerator) {
         // 2. The song title's tag, when the post also names one of the artists.
         for(title in titles) { ensureActive(); firstReadable(tagSearch(title,1),needArtist=true)?.let { return@withContext it } }
         // 3. Keyword search for posts not tagged with the artist: artist and title, artist and the title's Latin words
-        //    (kanji may be written in kana in the post), and all credited artists together.
+        //    (kanji may be written in kana in the post), all credited artists together, and the title with the words
+        //    translation posts use, for posts that name the artist only in their text.
         val song=titles.last()
         val latin=Regex("""[A-Za-z][A-Za-z']*(?:\s+[A-Za-z][A-Za-z']*)*""").findAll(song).map { it.value }.filter { it.length>=4 }.joinToString(" ")
         val queries=listOfNotNull(
             artists.firstOrNull()?.let { "$it $song" },
             artists.firstOrNull()?.takeIf { latin.isNotEmpty() }?.let { "$it $latin" },
             artists.takeIf { it.size>=2 }?.joinToString(" "),
+            "$song 翻譯",
         ).distinct()
         for(query in queries) { ensureActive(); firstReadable(keywordSearch(query),needArtist=true)?.let { return@withContext it } }
         null

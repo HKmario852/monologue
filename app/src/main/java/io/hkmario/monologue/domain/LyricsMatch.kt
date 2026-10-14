@@ -10,9 +10,10 @@ data class LyricsPick(val candidate: LyricsCandidate, val text: String, val offs
 /** Placeholder artist names written by taggers and Windows when the real artist is unknown. */
 fun isUnknownArtist(artist: String)=normalize(artist) in setOf("","未知歌手","未知的演出者","未知演出者","unknown","unknown artist","<unknown>","不明なアーティスト","various artists")
 
-private val creditSplit=Regex("""(?i)\s+(?:feat\.?|ft\.?|featuring|with|vs\.?|×|x)\s+|\s*(?:cv|vo)\s*[.:：]\s*|[・,，&、;；/()（）\[\]【】]""")
+private val creditSplit=Regex("""(?i)\s+(?:feat\.?|ft\.?|featuring|with|vs\.?|×|x)\s+|\s*(?:cv|vo)\s*[.:：]\s*|(?<=[^\x00-\x7F])\s+n['’]\s+|\s+n['’]\s+(?=[^\x00-\x7F])|[・,，&、;；/()（）\[\]【】]""")
 
-/** Every name credited in an artist field: "sumijun feat. ほたる" → [sumijun, ほたる]; "涼風青葉(CV:高田憂希)" → [涼風青葉, 高田憂希]. */
+/** Every name credited in an artist field: "sumijun feat. ほたる" → [sumijun, ほたる]; "涼風青葉(CV:高田憂希)" → [涼風青葉, 高田憂希];
+ *  "鈴木このみ n' キバオブアキバ" → [鈴木このみ, キバオブアキバ], while "Guns N' Roses" stays one name. */
 fun creditedArtists(artist: String): List<String> =
     artist.split(creditSplit).map { it.trim() }.filter { it.isNotEmpty() && !isUnknownArtist(it) }.distinct()
 

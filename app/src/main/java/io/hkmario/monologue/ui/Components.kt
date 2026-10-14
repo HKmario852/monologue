@@ -85,6 +85,15 @@ fun formatBytes(bytes: Long)="%.1f MB".format(bytes/1_000_000.0)
     else LinearProgressIndicator(progress={ if(player.durationMs>0) (progress.value.positionMs.toFloat()/player.durationMs).coerceIn(0f,1f) else 0f },modifier=Modifier.fillMaxWidth().height(2.dp),trackColor=MaterialTheme.colorScheme.surfaceContainer)
 }
 
+/** The whole album cover in place of the record (設定 › 外觀與導航 › 正在播放畫面). */
+@Composable fun AlbumCover(track: Track?, modifier: Modifier=Modifier) {
+    Box(modifier.aspectRatio(1f).padding(10.dp).shadow(12.dp,RoundedCornerShape(16.dp)).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainer)
+        .semantics { contentDescription="專輯封面，${track?.title ?: "沒有歌曲"}" },contentAlignment=Alignment.Center) {
+        Icon(Icons.Outlined.Album,null,tint=MaterialTheme.colorScheme.primary,modifier=Modifier.fillMaxSize(.3f))
+        if(track?.artwork!=null) AsyncImage(track.artwork,null,Modifier.fillMaxSize(),contentScale=androidx.compose.ui.layout.ContentScale.Crop)
+    }
+}
+
 @Composable fun Vinyl(clock: VinylClock, playing: Boolean, visible: Boolean, allowed: Boolean, track: Track?, modifier: Modifier=Modifier) {
     val angle=remember { mutableFloatStateOf(clock.angle(System.nanoTime()).toFloat()) }
     LaunchedEffect(playing,visible,allowed) {

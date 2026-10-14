@@ -31,3 +31,8 @@ Rules learned from the user's corrections in this project.
 - **Custom image URIs must work everywhere they are passed.** An artwork URI scheme handled only by Coil broke the
   media notification, which loads artwork through Media3's BitmapLoader; give the MediaSession a loader that
   understands it.
+- **Git Bash passes non-ASCII arguments to curl.exe mangled.** Japanese search queries "found nothing" on 巴哈姆特
+  only because of this; run web checks with non-ASCII text through Python `urllib` instead.
+- **Check what the app actually picks before theorising.** A throwaway device test calling the real `LyricsClient`
+  / `NetEaseLyrics` / `BahamutLyrics` for the user's tracks (durations from MuMu's synced library) showed the exact
+  lines missing; delete the test afterwards.

@@ -374,3 +374,16 @@ on the label — deterministic, so every run looks the same.
   Chinese, lines it up with the lyrics. Untranslated English lines no longer void a whole post. Real pages: Pixnet
   DAYS of DASH 45/45 → 41/43 LRCLIB lines; 巴哈姆特 agony 43/43, 君にふれて 27/27 and 16/16; Kanogoma 59/59.
 - 81 unit + 50 device tests pass, no lint errors. Facebook reels flow not yet checked on the phone.
+
+## 0.4.19: lyrics sync, album cover, translations (review)
+- 私がモテないのは…: "鈴木このみ n' キバオブアキバ" now splits into two artists (not "Guns N' Roses"), so the keyword
+  search finds the 巴哈姆特 post; posts with each translation under its line parse even with an untranslated line
+  ("ん～ 1 2 3 4!") or an English line written twice. Real data: 45/45 lines, 98 % onto LRCLIB.
+- Bull's Eye: NetEase translated 87 % of LRCLIB's lines (lines split differently); lines still missing are now filled
+  from the source lines sung during them when most of their text is in the line → 100 %. Saved translations with
+  any gap are looked up once more per session.
+- Colors (FLOW): LRCLIB has same-length uploads timed 8.3 s and 12.7 s apart (NetEase 10.5 s); nothing in the data
+  says which fits the file. New 調整歌詞時間 in the lyrics view: tap the line being sung, or 提早/延後 0.5 秒;
+  saved as the song's own offset.
+- 外觀與導航 › 正在播放畫面: 黑膠唱片 or 完整專輯封面.
+- 85 unit + 52 device tests pass, no lint errors.

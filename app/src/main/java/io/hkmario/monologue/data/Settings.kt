@@ -26,7 +26,7 @@ class SettingsRepository(private val context: Context) {
         context.settingsStore.edit { prefs -> safe.forEach { (k,v) -> prefs[stringPreferencesKey(k)] = v } }
     }
     companion object {
-        val allowedSettings = setOf("audioQuality","audioProvider","updateRepository","theme","dynamic","navigation","banner","vinyl","reduceMotion","language","restoreQueue","autoplay","resumeInterruption","noisyPause","speed","offlineFirst","mobileStreaming","autoScan","hiddenFolders","minDuration","defaultTab","sort","searchHistory","driveRoot","downloadLocation","driveSort","groupSort.Artists","groupSort.Albums","groupSort.Folders","wifiOnly","autoIncremental","pauseBetween","retryCount","downloadNotifications","lyricSize","translations","translationLanguage","onlineLyrics","lyricsBase","autoLyrics","lyricOffset","statistics","timezone","rankPeriod","rankTime","lbSync","sleepFade","eqEnabled")
+        val allowedSettings = setOf("audioQuality","audioProvider","updateRepository","theme","dynamic","navigation","banner","vinyl","nowPlayingArt","reduceMotion","language","restoreQueue","autoplay","resumeInterruption","noisyPause","speed","offlineFirst","mobileStreaming","autoScan","hiddenFolders","minDuration","defaultTab","sort","searchHistory","driveRoot","downloadLocation","driveSort","groupSort.Artists","groupSort.Albums","groupSort.Folders","wifiOnly","autoIncremental","pauseBetween","retryCount","downloadNotifications","lyricSize","translations","translationLanguage","onlineLyrics","lyricsBase","autoLyrics","lyricOffset","statistics","timezone","rankPeriod","rankTime","lbSync","sleepFade","eqEnabled")
     }
 }
 /** Credentials only live in encrypted app-private, no-backup storage. No token in DataStore. */

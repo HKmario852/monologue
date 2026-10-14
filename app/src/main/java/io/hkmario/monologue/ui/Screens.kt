@@ -80,7 +80,8 @@ import java.time.format.DateTimeFormatter
                     val discSide=minOf(maxWidth,maxHeight)
                     if(lyrics) LyricsPanel(state.lyrics,progress,state.settings,onEvent,modifier=Modifier.fillMaxSize(),onFullScreen={fullLyrics=true})
                     else Box(Modifier.size(discSide).then(dismissGesture).clickable { lyrics=true }.padding(vertical=8.dp)) {
-                        Vinyl(clock,player.isPlaying,visible && !lyrics,state.settings.bool("vinyl",true) && !state.settings.bool("reduceMotion"),track,Modifier.fillMaxWidth())
+                        if(state.settings.text("nowPlayingArt","vinyl")=="cover") AlbumCover(track,Modifier.fillMaxWidth())
+                        else Vinyl(clock,player.isPlaying,visible && !lyrics,state.settings.bool("vinyl",true) && !state.settings.bool("reduceMotion"),track,Modifier.fillMaxWidth())
                     }
                 }
             }
@@ -179,7 +180,11 @@ import java.time.format.DateTimeFormatter
 @Composable fun LyricsPanel(state: LyricsUiState, progress: State<PlaybackProgress>, settings: AppSettingsUiState, onEvent: (UiEvent)->Unit,
                              modifier: Modifier=Modifier.fillMaxWidth().height(338.dp), textScale: Float=1f, onFullScreen: (()->Unit)?=null) {
     val list=rememberLazyListState(); var manual by remember(state.trackId) { mutableStateOf(false) }; var autoScrolling by remember {mutableStateOf(false)}
-    val position=progress.value.positionMs-settings.number("lyricOffset",0f).toLong()-settings.number(lyricOffsetKey(state.trackId),0f).toLong()
+    val songOffset=settings.number(lyricOffsetKey(state.trackId),0f).toLong()
+    val position=progress.value.positionMs-settings.number("lyricOffset",0f).toLong()-songOffset
+    // 調整歌詞時間: tapping the line being sung lines the lyrics up with it; the result is this song's own offset.
+    var syncing by remember(state.trackId) { mutableStateOf(false) }
+    fun setSongOffset(ms: Long) = onEvent(UiEvent.Setting(lyricOffsetKey(state.trackId),"$ms"))
     // With 隱藏括號內的和聲 on, bracketed backing vocals such as "(In this night)" are left out, and lines that are only that disappear.
     val hideBracketed=settings.bool("hideBracketedVocals")
     val shownLines=remember(state.lines,hideBracketed) { if(!hideBracketed) state.lines else state.lines.mapNotNull { l -> withoutBracketedVocals(l.text).takeIf { it.isNotBlank() }?.let { l.copy(text=it,romaji=l.romaji?.let(::withoutBracketedVocals),translation=l.translation?.let(::withoutBracketedVocals)) } } }
@@ -214,12 +219,26 @@ import java.time.format.DateTimeFormatter
             }
             romajiNote?.let { Text(it,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.tertiary,modifier=Modifier.padding(top=6.dp)) }
         }
+        if(syncing) Column(Modifier.fillMaxWidth().padding(top=8.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceContainer).padding(horizontal=12.dp,vertical=8.dp)) {
+            Text("輕按正在唱的一句，歌詞即會對齊；亦可逐步微調。只套用於這首歌。",style=MaterialTheme.typography.bodySmall)
+            Text(lyricOffsetLabel(songOffset),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.primary,modifier=Modifier.padding(top=4.dp))
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),verticalAlignment=Alignment.CenterVertically) {
+                TextButton(onClick={setSongOffset(songOffset-500)}) {Text("提早 0.5 秒")}
+                TextButton(onClick={setSongOffset(songOffset+500)}) {Text("延後 0.5 秒")}
+                TextButton(onClick={setSongOffset(0)},enabled=songOffset!=0L) {Text("重設")}
+                TextButton(onClick={syncing=false}) {Text("完成")}
+            }
+        }
         state.translationSource?.takeIf { translations && (it.startsWith("正在翻譯") || it.startsWith("正在搜尋") || it.startsWith("翻譯未完成")) }?.let { Text(it,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.tertiary,modifier=Modifier.padding(top=6.dp)) }
         if(state.lines.isEmpty() && state.phase==Phase.Loading) EmptyPanel("正在搜尋歌詞…",state.source.removePrefix("正在查詢"))
         else if(state.lines.isEmpty()) EmptyPanel("未有歌詞",state.error ?: "這首歌沒有本機或已儲存的歌詞")
         else LazyColumn(state=list,modifier=Modifier.weight(1f),contentPadding=PaddingValues(vertical=24.dp),verticalArrangement=Arrangement.spacedBy(18.dp)) {
             itemsIndexed(shownLines,key={_,line->line.id}) { index,line ->
-                Column(Modifier.fillMaxWidth().clickable(enabled=line.timeMs!=null) { onEvent(UiEvent.PreviewSeek(line.timeMs));onEvent(UiEvent.CommitSeek) }.padding(vertical=6.dp)) {
+                Column(Modifier.fillMaxWidth().clickable(enabled=line.timeMs!=null) {
+                    // Syncing: the tapped line starts now. Otherwise the song jumps to the line.
+                    if(syncing) setSongOffset(position+songOffset-line.timeMs!!)
+                    else { onEvent(UiEvent.PreviewSeek(line.timeMs));onEvent(UiEvent.CommitSeek) }
+                }.padding(vertical=6.dp)) {
                     val size=settings.number("lyricSize",22f)*textScale
                     if(romajiAbove) line.romaji?.let { Text(it,fontSize=(size*.6f).sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(bottom=4.dp)) }
                     val main=if(mode=="translation") line.translation ?: line.text else line.text
@@ -230,9 +249,11 @@ import java.time.format.DateTimeFormatter
             }
         }
         val fullScreen=onFullScreen?.takeIf { state.lines.isNotEmpty() }
-        if(manual || fullScreen!=null) Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+        val canSync=state.lines.any { it.timeMs!=null }
+        if(manual || fullScreen!=null || canSync) Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
             if(manual) TextButton(onClick={manual=false}) {Text("返回目前歌詞")}
             Spacer(Modifier.weight(1f))
+            if(canSync) ActionIcon(Icons.Outlined.AccessTime,if(syncing) "完成調整歌詞時間" else "調整歌詞時間") { syncing=!syncing }
             fullScreen?.let { ActionIcon(Icons.Outlined.Fullscreen,"全螢幕歌詞",action=it) }
         }
         // The source line names where shown lyrics came from; with none shown the empty panel already says so.

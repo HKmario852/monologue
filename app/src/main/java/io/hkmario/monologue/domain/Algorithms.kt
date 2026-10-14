@@ -114,3 +114,9 @@ object DownloadMachine {
 }
 
 fun lyricOffsetKey(id: String?) = "lyricOffset." + java.security.MessageDigest.getInstance("SHA-256").digest((id ?: "").toByteArray()).take(12).joinToString("") {"%02x".format(it)}
+/** A song's lyric offset in words: a positive offset shows each line later. */
+fun lyricOffsetLabel(ms: Long) = when {
+    ms == 0L -> "歌詞時間未調整"
+    ms > 0 -> "歌詞延後 %.1f 秒".format(java.util.Locale.ROOT, ms / 1000.0)
+    else -> "歌詞提早 %.1f 秒".format(java.util.Locale.ROOT, -ms / 1000.0)
+}
