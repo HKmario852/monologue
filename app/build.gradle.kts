@@ -20,8 +20,8 @@ android {
         applicationId = "io.hkmario.monologue"
         minSdk = 26
         targetSdk = 35
-        versionCode = 25
-        versionName = "0.4.19"
+        versionCode = 26
+        versionName = "0.4.20"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // In-app updates read GitHub Releases of this repository unless the user sets another one.
         buildConfigField("String", "UPDATE_REPOSITORY", "\"" + providers.gradleProperty("updateRepository").orElse("HKmario852/monologue").get() + "\"")
