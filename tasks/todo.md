@@ -387,3 +387,11 @@ on the label — deterministic, so every run looks the same.
   saved as the song's own offset.
 - 外觀與導航 › 正在播放畫面: 黑膠唱片 or 完整專輯封面.
 - 85 unit + 52 device tests pass, no lint errors.
+
+## Next: lyrics search and the player's ⋮ (review)
+- 穢れなき薔薇十字 (Ariabl’eyeS): found on 巴哈姆特 by the title tag but rejected, as the post writes Ariabl'eyeS;
+  names now compare without apostrophes, and searches use a straight one. The post also failed to parse: Chinese
+  lines with a katakana name counted as Japanese, and the translator's notes after the lyrics (quoting の) voided
+  the pairing. Real post: 23/23 lines through the app's own search on MuMu.
+- 黑膠唱片 / 完整專輯封面 moved from 外觀與導航 to 正在播放 › ⋮.
+- 86 unit + 53 device tests pass, no lint errors.

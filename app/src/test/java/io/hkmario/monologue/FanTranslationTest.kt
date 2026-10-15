@@ -195,6 +195,18 @@ class FanTranslationTest {
         assertEquals(listOf("晨光照亮窗戶", "聽得見你的聲音", "Yeah!", "這是一首歌", "向遠方奔跑而去", "ん～ 1 2 3 4!", "在夢中等待著"), lyrics.translation!!.lines())
     }
 
+    @Test fun chineseLinesWithAKatakanaNameAndNotesAfterTheLyrics() {
+        // A translation keeping a name in katakana is still Chinese; the translator's notes after the lyrics (a source
+        // title with kana, a link, a note quoting の) are left out.
+        val lyrics = (1..8).joinToString("\n") { "君の声が聞こえる $it\n聽得見你的聲音 $it" } +
+            "\n幼い頃からマリアと一緒\n從小就和瑪莉亞ジュリーヌ在一起\n--\n翻譯來源：\n【歌詞】夜明けの歌\nhttps://example.com/post\n----\n" +
+            "這首歌很好聽\n我最喜歡の部分是副歌\n下次再見"
+        val parsed = splitBilingualLyrics(lyrics)!!
+        assertEquals(9, parsed.original.lines().size)
+        assertEquals("幼い頃からマリアと一緒", parsed.original.lines().last())
+        assertEquals("從小就和瑪莉亞ジュリーヌ在一起", parsed.translation!!.lines().last())
+    }
+
     @Test fun linesSplitDifferentlyAreFilledByTime() {
         // The target drops "でも", and joins two source lines into one; a later line from another part of the song
         // (its text does not match) is not taken.

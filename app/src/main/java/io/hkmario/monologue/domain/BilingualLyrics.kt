@@ -8,9 +8,14 @@ private fun hanCount(s: String) = s.count { it in '一'..'鿿' }
 
 private val endMarker = Regex("""^[\s\-—=~～*＊・.。]*(end|fin|the end|完|終|おわり|終わり)[\s\-—=~～*＊・.。]*$""")
 
+/**
+ * A Chinese line that keeps a name in katakana ("幼時便在一起的ジュリーヌ妹妹"): no hiragana, which Japanese lines
+ * nearly always have, and more Chinese characters than kana.
+ */
+private fun chineseWithKatakanaName(s: String) = s.none { it in 'ぁ'..'ゟ' } && hanCount(s) > 0 && hanCount(s) >= kanaCount(s)
 /** A lyric line in the song's language: Japanese (kana), or Latin letters without Chinese characters (English songs). */
-private fun isOriginalLine(s: String) = kanaCount(s) > 0 || hanCount(s) == 0 && s.count { it.isLetter() } >= 3
-private fun isChineseLine(s: String) = kanaCount(s) == 0 && hanCount(s) > 0
+private fun isOriginalLine(s: String) = kanaCount(s) > 0 && !chineseWithKatakanaName(s) || hanCount(s) == 0 && s.count { it.isLetter() } >= 3
+private fun isChineseLine(s: String) = hanCount(s) > 0 && (kanaCount(s) == 0 || chineseWithKatakanaName(s))
 
 private val lrcLine = Regex("""^((?:\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?])+)(.*)$""")
 private const val creditLabels = """original|circle|vocals?|vo|lyrics?|arrange(?:ment)?|music|composer?|translat(?:ion|or|ed by)|""" +
@@ -140,7 +145,9 @@ fun splitBilingualLyrics(text: String): BilingualLyrics? {
  * Posts that put each line's translation right under it, where runs do not pair because a few lines were left
  * untranslated ("ん～ 1 2 3 4!") or an English line was written again as its own translation ("Yeah!" / "Yeah!").
  * Untranslated lines stand for themselves. Null unless at least 80 % of the sung lines have a Chinese line under
- * them and no Chinese line turns up away from a lyric line before the end (translator's notes may follow).
+ * them. A Chinese line away from a lyric line ends the lyrics once most of them are paired (the translator's notes
+ * follow, and may quote kana); before that it means the post is laid out some other way. Untranslated lines left at
+ * the end (a source's title, a link) are not lyrics.
  */
 private fun lineByLine(lines: List<String>): BilingualLyrics? {
     val original = mutableListOf<String>(); val translation = mutableListOf<String>()
@@ -148,7 +155,10 @@ private fun lineByLine(lines: List<String>): BilingualLyrics? {
     while(i < lines.size) {
         val line = lines[i]
         if(!isOriginalLine(line)) {
-            if(isChineseLine(line) && lines.drop(i + 1).any(::isOriginalLine)) return null
+            if(isChineseLine(line) && lines.drop(i + 1).any(::isOriginalLine)) {
+                val sungSoFar = original.count { kanaCount(it) + hanCount(it) > 0 }
+                if(paired >= 8 && paired >= 0.8 * sungSoFar) break else return null
+            }
             i++; continue
         }
         val next = lines.getOrNull(i + 1)
@@ -159,6 +169,7 @@ private fun lineByLine(lines: List<String>): BilingualLyrics? {
             else -> { translation += line; i++ }
         }
     }
+    while(original.isNotEmpty() && translation.last() == original.last()) { original.removeAt(original.lastIndex); translation.removeAt(translation.lastIndex) }
     val sung = original.count { kanaCount(it) + hanCount(it) > 0 }
     return if(original.size >= 4 && sung > 0 && paired >= 0.8 * sung) BilingualLyrics(original.joinToString("\n"), translation.joinToString("\n")) else null
 }

@@ -36,3 +36,7 @@ Rules learned from the user's corrections in this project.
 - **Check what the app actually picks before theorising.** A throwaway device test calling the real `LyricsClient`
   / `NetEaseLyrics` / `BahamutLyrics` for the user's tracks (durations from MuMu's synced library) showed the exact
   lines missing; delete the test afterwards.
+- **Artist names differ in punctuation between sources.** Ariabl’eyeS (curly) on the phone, Ariabl'eyeS / AriableyeS
+  on 巴哈姆特: compare names without case, spaces or apostrophes, and search with the straight apostrophe.
+- KKBOX song pages answer 403 to non-browser requests, animelyrics.com sits behind a Cloudflare challenge, and
+  Google search results may not be scraped: none of them can be a lyrics source.

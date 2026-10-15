@@ -67,7 +67,9 @@ import kotlinx.coroutines.launch
     fun onTab(tab: String)=navigate(tab)
     /** Links that lead into another tab switch to it first, so the page lands on that tab's own stack. */
     fun openIn(tab: String,route: String) { if(!inTab(tab)) navigate(tab); nav.navigate(route) {launchSingleTop=true} }
-    fun more(track: Track) {selected=track;sheet="more"}
+    // Opened from 正在播放's ⋮, the sheet also switches what that screen shows.
+    var fromPlayer by remember {mutableStateOf(false)}
+    fun more(track: Track,player: Boolean=false) {selected=track;fromPlayer=player;sheet="more"}
     fun searchFor(query: String) { if(query.isNotBlank()) onEvent(UiEvent.Online(OnlineAction.SearchFor(query))); navigate("search") }
     LaunchedEffect(message) {
         when(val m=message) {
@@ -124,7 +126,7 @@ import kotlinx.coroutines.launch
                     composable("settings/{group}") {backStack->SettingsDetail(backStack.arguments?.getString("group")?.toIntOrNull() ?: 0,state,onEvent,{sheet="equalizer"},{sheet="sleep"},{sheet="downloads"},{if(backStack.arguments?.getString("group")=="10") nav.navigate("settings/7") else navigate("discover")},{nav.navigate("offline")},systemSettings,importLyrics,openDrive={navigate("drive")})}
                     composable("offline") {OfflineScreen(state.library.tracks.filter {it.offlinePath!=null}.toPersistentList(),onEvent)}
                 }
-                composable("playing") {NowPlayingScreen(state,progress,clock,foreground,onEvent,{nav.popBackStack()},{sheet="queue"},{sheet="equalizer"},{sheet="sleep"},{state.player.entry?.track?.let(::more)},importLyrics)}
+                composable("playing") {NowPlayingScreen(state,progress,clock,foreground,onEvent,{nav.popBackStack()},{sheet="queue"},{sheet="equalizer"},{sheet="sleep"},{state.player.entry?.track?.let { more(it,true) }},importLyrics)}
             }
         }
     }
@@ -142,6 +144,10 @@ import kotlinx.coroutines.launch
             if(track.source!=Source.Local) SettingAction("下載供離線播放","") {onEvent(UiEvent.DownloadTrack(track));sheet="downloads"}
             // Only for the song playing now: its lyrics are what the translation is lined up with.
             if(track.id==state.player.entry?.track?.id) SettingAction("貼上翻譯連結","巴哈姆特、Pixnet、網誌等有這首歌翻譯的網頁") {sheet="translation-link"}
+            if(fromPlayer) {
+                val cover=state.settings.text("nowPlayingArt","vinyl")=="cover"
+                SettingAction(if(cover) "顯示黑膠唱片" else "顯示完整專輯封面","正在播放畫面") {onEvent(UiEvent.Setting("nowPlayingArt",if(cover) "vinyl" else "cover"));sheet=null}
+            }
         }}}
         "translation-link" -> ModalBottomSheet(onDismissRequest={sheet=null}) {Column(Modifier.padding(24.dp).navigationBarsPadding().imePadding()) {
             val clipboard=androidx.compose.ui.platform.LocalClipboardManager.current

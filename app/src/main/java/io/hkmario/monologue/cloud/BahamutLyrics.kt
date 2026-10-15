@@ -24,6 +24,12 @@ class BahamutLyrics(private val romaji: RomajiGenerator) {
 
     private data class Post(val url: String,val title: String,val author: String)
 
+    /** A name compared without case, spaces or apostrophes: tags write Ariabl’eyeS as Ariabl'eyeS or AriableyeS. */
+    private fun looseName(s: String)=normalize(s).replace(Regex("""[\s'’‘`´＇]"""),"")
+    private fun mentions(text: String,name: String)=looseName(name).let { it.isNotEmpty() && looseName(text).contains(it) }
+    /** The name as the site's search expects it: a curly apostrophe finds nothing, a straight one does. */
+    private fun searchName(s: String)=s.replace('’','\'').replace('‘','\'')
+
     private fun tagSearch(tag: String,page: Int): List<Post> {
         val doc=page("https://home.gamer.com.tw/search.php".toHttpUrl().newBuilder().addQueryParameter("keyword",tag).addQueryParameter("o","tag").addQueryParameter("page","$page").build())
         return doc.select("a.TS1[href*=creationDetail.php]").map { a ->
@@ -46,7 +52,7 @@ class BahamutLyrics(private val romaji: RomajiGenerator) {
         val body=doc.selectFirst("#article_content") ?: return null
         if(artists!=null) {
             val tags=doc.select("a[href*=o=tag]").joinToString(" ") { it.text() }
-            if(artists.none { body.text().contains(it,ignoreCase=true) || tags.contains(it,ignoreCase=true) }) return null
+            if(artists.none { mentions(body.text(),it) || mentions(tags,it) }) return null
         }
         body.select("script, style").remove()
         body.select("br").forEach { it.after("\n") }
@@ -68,7 +74,7 @@ class BahamutLyrics(private val romaji: RomajiGenerator) {
             // Kanji in one title and kana in the other: compare how they read.
             return readings.isNotEmpty() && postTitleParts(post.title).any { readingKey(it) in readings }
         }
-        fun namesArtist(post: Post)=artists.isEmpty() || artists.any { post.title.contains(it,ignoreCase=true) }
+        fun namesArtist(post: Post)=artists.isEmpty() || artists.any { mentions(post.title,it) }
         val tried=mutableSetOf<String>()
         suspend fun firstReadable(posts: List<Post>,needArtist: Boolean): FoundLyrics? {
             for(post in posts) {
@@ -82,9 +88,9 @@ class BahamutLyrics(private val romaji: RomajiGenerator) {
         }
         // 1. The main artist's tag, newest first; a few pages cover most artists' translated songs.
         artists.firstOrNull()?.let { artist ->
-            for(page in 1..5) {
+            for(tag in listOf(searchName(artist),artist.filterNot { it in "'’‘" }).distinct()) for(page in 1..5) {
                 ensureActive()
-                val posts=tagSearch(artist,page)
+                val posts=tagSearch(tag,page)
                 if(posts.isEmpty()) break
                 firstReadable(posts,needArtist=false)?.let { return@withContext it }
             }
@@ -94,12 +100,12 @@ class BahamutLyrics(private val romaji: RomajiGenerator) {
         // 3. Keyword search for posts not tagged with the artist: artist and title, artist and the title's Latin words
         //    (kanji may be written in kana in the post), all credited artists together, and the title with the words
         //    translation posts use, for posts that name the artist only in their text.
-        val song=titles.last()
+        val song=titles.last(); val artist=artists.firstOrNull()?.let(::searchName)
         val latin=Regex("""[A-Za-z][A-Za-z']*(?:\s+[A-Za-z][A-Za-z']*)*""").findAll(song).map { it.value }.filter { it.length>=4 }.joinToString(" ")
         val queries=listOfNotNull(
-            artists.firstOrNull()?.let { "$it $song" },
-            artists.firstOrNull()?.takeIf { latin.isNotEmpty() }?.let { "$it $latin" },
-            artists.takeIf { it.size>=2 }?.joinToString(" "),
+            artist?.let { "$it $song" },
+            artist?.takeIf { latin.isNotEmpty() }?.let { "$it $latin" },
+            artists.takeIf { it.size>=2 }?.joinToString(" ") { searchName(it) },
             "$song 翻譯",
         ).distinct()
         for(query in queries) { ensureActive(); firstReadable(keywordSearch(query),needArtist=true)?.let { return@withContext it } }

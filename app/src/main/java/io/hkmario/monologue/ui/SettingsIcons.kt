@@ -57,7 +57,7 @@ val settingsGroupInfo = listOf(
 private val settingIcons: Map<String, ImageVector> = mapOf(
     // 外觀與導航
     "主題" to Icons.Outlined.Palette, "動態主題色" to Icons.Outlined.AutoAwesome, "導航樣式" to Icons.Outlined.Dashboard,
-    "正在播放畫面" to Icons.Outlined.Image, "黑膠旋轉" to Icons.Outlined.Album, "減少動態效果" to Icons.Outlined.MotionPhotosOff, "開啟時播放動畫" to Icons.Outlined.Animation,
+    "黑膠旋轉" to Icons.Outlined.Album, "減少動態效果" to Icons.Outlined.MotionPhotosOff, "開啟時播放動畫" to Icons.Outlined.Animation,
     "顯示語言" to Icons.Outlined.Language,
     // 播放
     "恢復上次播放隊列" to Icons.Outlined.Restore, "啟動時自動播放" to Icons.Outlined.PlayCircle, "中斷後恢復播放" to Icons.Outlined.Replay,

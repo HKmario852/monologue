@@ -285,6 +285,18 @@ class UiAcceptanceTest {
         compose.onNodeWithContentDescription("黑膠唱片",substring=true).assertDoesNotExist()
         screenshot("12-album-cover")
     }
+    @Test fun playerMenuSwitchesBetweenRecordAndCover() {
+        var state by mutableStateOf(PreviewFixtures.app)
+        compose.setContent {MonologueTheme {AppHost(state,remember {mutableStateOf(PlaybackProgress())},remember {VinylClock()},false,{
+            if(it is UiEvent.Setting) state=state.copy(settings=AppSettingsUiState(state.settings.values.put(it.key,it.value))) },null,{},{_,_->},{},{})}}
+        compose.onAllNodesWithContentDescription("${PreviewFixtures.app.player.entry!!.track.title}，",substring=true).onFirst().performClick()
+        compose.onNodeWithContentDescription("歌曲更多操作").performClick()
+        compose.onNodeWithText("顯示完整專輯封面").performClick()
+        compose.onNodeWithContentDescription("專輯封面",substring=true).assertIsDisplayed()
+        compose.onNodeWithContentDescription("歌曲更多操作").performClick()
+        compose.onNodeWithText("顯示黑膠唱片").performClick()
+        compose.onNodeWithContentDescription("黑膠唱片",substring=true).assertIsDisplayed()
+    }
     @Test fun aTranslationFoundElsewhereNamesItsTranslator() {
         val lines=(1..6).map { LyricLine("$it",it*4000L,"歌詞の行 $it",translation="歌詞第 $it 行") }.toPersistentList()
         val settings=AppSettingsUiState(persistentMapOf("translations" to "true"))
