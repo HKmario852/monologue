@@ -410,3 +410,6 @@ on the label — deterministic, so every run looks the same.
   fallback; at most 15 posts read. Readings written as sung are left out. Live on MuMu, 9 songs from the library:
   8 find a translated post (DAYS of DASH and Bull's Eye newly: 45/45 and 58/58 lines); Colors finds none (9 s).
 - 89 unit + 53 device tests pass, no lint errors.
+- Colors (FLOW): the user's 巴哈姆特 post is titled with the anime, not FLOW, and was buried in 70 pages of "Colors"
+  results. Added "title 中文翻譯" (2 pages); short titles read only posts titled as lyrics/translations; Latin
+  singer names match whole words. Live: all 9 library songs find the right translated post (Colors 22/22).

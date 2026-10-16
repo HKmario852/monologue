@@ -53,3 +53,8 @@ Rules learned from the user's corrections in this project.
   never stop at a post without a translation (pronunciation guides) while a translated one may follow.
 - Translators write readings as sung (レール → れうぇえる, "rwe e ru"): the line / kana / romaji shape is evidence
   enough; exact-reading checks drop such posts.
+- **A Latin singer name must match as a word.** "FLOW" inside "overflow"/"flowers" let a 東方 "Floral Colors" post
+  pass as FLOW's Colors. Short titles also burn the read cap on unrelated posts (figure reviews called COLORS): read
+  those only when the post title says lyrics/translation.
+- Many translation posts name the anime, not the singer ("【歌詞中文翻譯】反逆のルルーシュ Colors"); the site searches
+  titles, so "title 中文翻譯" finds them. artwork.php?sn=N and creationDetail.php?sn=N are the same post.

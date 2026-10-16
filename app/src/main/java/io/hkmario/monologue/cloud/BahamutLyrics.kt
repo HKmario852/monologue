@@ -26,7 +26,15 @@ class BahamutLyrics(private val romaji: RomajiGenerator) {
 
     /** A name compared without case, spaces or apostrophes: tags write Ariabl’eyeS as Ariabl'eyeS or AriableyeS. */
     private fun looseName(s: String)=normalize(s).replace(Regex("""[\s'’‘`´＇]"""),"")
-    private fun mentions(text: String,name: String)=looseName(name).let { it.isNotEmpty() && looseName(text).contains(it) }
+    private fun mentions(text: String,name: String): Boolean {
+        val loose=looseName(name)
+        if(loose.isEmpty()) return false
+        if(loose.any { it.code>0x7F }) return looseName(text).contains(loose)
+        // A name in Latin letters must stand as words: FLOW is not in "overflow" or "flowers".
+        val words=normalize(name).replace(apostrophes,"").split(' ').filter { it.isNotEmpty() }.joinToString("""\s*""") { Regex.escape(it) }
+        return Regex("""(?<![a-z0-9])$words(?![a-z0-9])""").containsMatchIn(normalize(text).replace(apostrophes,""))
+    }
+    private val apostrophes=Regex("""['’‘`´＇]""")
     /** The name as the site's search expects it: a curly apostrophe finds nothing, a straight one does. */
     private fun searchName(s: String)=s.replace('’','\'').replace('‘','\'')
 
@@ -75,6 +83,10 @@ class BahamutLyrics(private val romaji: RomajiGenerator) {
             return readings.isNotEmpty() && postTitleParts(post.title).any { readingKey(it) in readings }
         }
         fun namesArtist(post: Post)=artists.isEmpty() || artists.any { mentions(post.title,it) }
+        val song=titles.last().trimEnd('。','.','！','!','？','?')
+        // A long title in Japanese or Chinese names one song, so a post titled with it needs no singer in its text,
+        // and searching the title alone is worth it; a short one ("Colors") matches many songs' posts.
+        val distinctive=looseTitleKey(song).let { key -> key.count { it.code>0x2E80 }>=6 || key.length>=16 }
         val tried=mutableSetOf<String>()
         // A post with the lyrics but no translation (a pronunciation guide, say) is kept only in case no post
         // translates the song. Reading stops after a few posts, as each one is a page load.
@@ -85,6 +97,9 @@ class BahamutLyrics(private val romaji: RomajiGenerator) {
                 ensureActive()
                 if(done()) return null
                 if(post.url in tried || !aboutSong(post)) continue
+                // For a short title, a post not naming the singer in its title is read only when the title says it
+                // carries lyrics or a translation; figure reviews and comics called "Colors" are not.
+                if(needArtist && !distinctive && !namesArtist(post) && !lyricsPostTitle.containsMatchIn(post.title)) continue
                 tried+=post.url
                 // A post titled with the song alone ("agony（神無月巫女）") counts when its text or tags name the artist.
                 val found=read(post,if(needArtist && !namesArtist(post)) artists else null) ?: continue
@@ -109,17 +124,16 @@ class BahamutLyrics(private val romaji: RomajiGenerator) {
             if(done()) return@withContext untranslated
             firstTranslated(tagSearch(title,1),needArtist=true)?.let { return@withContext it }
         }
-        // 3. Keyword search, as a person would search the site: title and singer, then the title alone over a few
+        // 3. Keyword search, as a person would search the site: title and singer, title and 中文翻譯, then the title alone over a few
         //    pages. Translators in Taiwan type 黃泉 and 皇國 where the title has 黄泉 and 皇国, and the site matches
         //    only the form written, so both are tried. Then the singer with the title's Latin words (kanji may be
         //    written in kana in the post) and all credited singers together.
-        val song=titles.last().trimEnd('。','.','！','!','？','?'); val artist=artists.firstOrNull()?.let(::searchName)
+        val artist=artists.firstOrNull()?.let(::searchName)
         val forms=listOf(song,toTraditional(song)).distinct()
         val latin=Regex("""[A-Za-z][A-Za-z']*(?:\s+[A-Za-z][A-Za-z']*)*""").findAll(song).map { it.value }.filter { it.length>=4 }.joinToString(" ")
-        // A long title in Japanese or Chinese names one song, so a post titled with it needs no singer in its text,
-        // and searching the title alone is worth it; a short one ("Colors") matches many songs' posts.
-        val distinctive=looseTitleKey(song).let { key -> key.count { it.code>0x2E80 }>=6 || key.length>=16 }
-        val queries=forms.mapNotNull { form -> artist?.let { "$form $it" to 2 } } +
+        // Many posts name the anime rather than the singer in their title ("【歌詞中文翻譯】反逆のルルーシュ Colors"),
+        // and the site searches titles: the title with 中文翻譯 finds those even for a short title.
+        val queries=forms.mapNotNull { form -> artist?.let { "$form $it" to 2 } } + forms.map { "$it 中文翻譯" to 2 } +
             (if(distinctive || artist==null) forms.map { it to 3 } else emptyList()) + listOfNotNull(
             artist?.takeIf { latin.isNotEmpty() }?.let { "$it $latin" to 1 },
             artists.takeIf { it.size>=2 }?.joinToString(" ") { searchName(it) }?.let { it to 1 },
@@ -134,5 +148,8 @@ class BahamutLyrics(private val romaji: RomajiGenerator) {
         untranslated
     }
 
-    private companion object { const val MAX_READS=15 }
+    private companion object {
+        const val MAX_READS=15
+        val lyricsPostTitle=Regex("""(?i)歌詞|歌词|翻譯|翻译|中譯|中日|日中|lyrics""")
+    }
 }
