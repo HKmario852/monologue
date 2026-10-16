@@ -40,3 +40,11 @@ Rules learned from the user's corrections in this project.
   on 巴哈姆特: compare names without case, spaces or apostrophes, and search with the straight apostrophe.
 - KKBOX song pages answer 403 to non-browser requests, animelyrics.com sits behind a Cloudflare challenge, and
   Google search results may not be scraped: none of them can be a lyrics source.
+- **Fan posts put the translation before or after each line.** Reading a Chinese-first post the usual way shifts
+  every translation by one line yet still "covers" every line, so nothing flags it. Try both orders and keep the
+  one whose pairs share more kanji; check real posts by counting pairs that share kanji.
+- **A rule for one post can break another.** "Kanji + katakana, no hiragana = Chinese with a name" also caught
+  lyrics written with katakana endings (救イノ無イ); re-run every saved real post after changing line classing.
+- **Taiwanese posts write 黃泉/皇國, and 巴哈姆特 search matches only the written form**: also search the title
+  through Simplified→Traditional (it changes 黄/国 but keeps 聴), and compare titles in Japanese kanji forms.
+- Python heredocs turned "\n" inside Kotlin strings into real newlines again: edit Kotlin with the Edit tool.

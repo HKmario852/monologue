@@ -564,8 +564,11 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
             // split differently are now matched by time, or that source's own lyrics may be used instead.
             val partial=byPerson && current.translationSource?.contains(" · 中文翻譯：")==true && "$trackId:full" !in translationSearched &&
                 current.translation?.let { translationCoverage(current.original,it)<1.0 }==true
-            val searchKey=if(partial) "$trackId:full" else trackId
-            if(lines.isNotEmpty() && settings.bool("translations") && settings.bool("onlineLyrics") && (!byPerson || partial) && searchKey !in translationSearched && graph.lyricsSources.canFindTranslation(settings)) {
+            // A 巴哈姆特 translation saved before posts giving the Chinese first were read the right way round (0.4.21)
+            // may be one line off: look once more, and take the new one even when it covers no more lines.
+            val reorder=byPerson && !partial && current.translationSource?.startsWith("巴哈姆特")==true && "$trackId:order" !in translationSearched
+            val searchKey=when { partial -> "$trackId:full"; reorder -> "$trackId:order"; else -> trackId }
+            if(lines.isNotEmpty() && settings.bool("translations") && settings.bool("onlineLyrics") && (!byPerson || partial || reorder) && searchKey !in translationSearched && graph.lyricsSources.canFindTranslation(settings)) {
                 val before=current
                 // Show the search only when there is no translation on screen yet.
                 if(before.translation==null) mutable.update { s -> if(s.lyrics.trackId==trackId) s.copy(lyrics=s.lyrics.copy(translationSource="正在搜尋網友翻譯…")) else s }
@@ -577,7 +580,12 @@ class AppViewModel(app: Application): AndroidViewModel(app) {
                     dao.lyrics(before.copy(original=own.original,translation=found.translation,translationSource=found.label,source=own.source,romaji=own.romaji))
                     loadLyrics(trackId); return@launch
                 }
-                val updated=found?.takeIf { !partial || translationCoverage(before.original,it.translation)>translationCoverage(before.original,before.translation ?: "") }
+                val oldCoverage=translationCoverage(before.original,before.translation ?: "")
+                val updated=found?.takeIf { when {
+                    partial -> translationCoverage(before.original,it.translation)>oldCoverage
+                    reorder -> it.translation!=before.translation && translationCoverage(before.original,it.translation)>=minOf(0.85,oldCoverage)
+                    else -> true
+                } }
                     ?.let { before.copy(translation=it.translation,translationSource=it.label) }
                 if(updated!=null) { dao.lyrics(updated); current=updated }
                 val shown=if(updated!=null) build(updated) else null

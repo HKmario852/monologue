@@ -395,3 +395,13 @@ on the label — deterministic, so every run looks the same.
   the pairing. Real post: 23/23 lines through the app's own search on MuMu.
 - 黑膠唱片 / 完整專輯封面 moved from 外觀與導航 to 正在播放 › ⋮.
 - 86 unit + 53 device tests pass, no lint errors.
+
+## Next: translation order and Taiwanese kanji forms (review)
+- 新時代 (Ado): the 巴哈姆特 post gives each line's Chinese first; it was read Japanese-first, so every line showed
+  the next line's translation. Both orders are now tried, and the one whose pairs share more kanji wins. Saved
+  巴哈姆特 translations are looked up once more. Real data: 44 lines, onto LRCLIB 88 %, 24/29 pairs share kanji.
+- 黄泉より聴こゆ、皇国の燈と焔の少女。(ICDD): the post (Chinese, romaji, then Japanese per verse) is titled with
+  黃泉/皇國 and only tagged #歌詞翻譯; now found by a Traditional-form title search and parsed (49 lines, ending
+  before the translator's notes). Lyrics with katakana endings stay Japanese. On LRCLIB's lines 60 % (rest are
+  lines the post does not have); 33/35 pairs share kanji. Kanji variants 黃黄 虛虚 處処 遙遥 著着 added.
+- 88 unit + 53 device tests pass, no lint errors.

@@ -207,6 +207,34 @@ class FanTranslationTest {
         assertEquals("從小就和瑪莉亞ジュリーヌ在一起", parsed.translation!!.lines().last())
     }
 
+    @Test fun postsGivingTheChineseFirstAreNotReadOneLineOff() {
+        // A Chinese heading, then each line's translation above it: read the other way round, every line would get
+        // the next line's translation.
+        val post = "這是一首關於夢想的歌\n歌手的新曲\n翻譯可能有誤\n" +
+            "夢想的音樂傳到遠方\n夢の音楽が遠くへ届く\n相信我的聲音\n私の声を信じて\n新的時代來了\n新しい時代が来た\n" +
+            "世界在改變\n世界が変わっていく\n明天見\nまた明日ね"
+        val lyrics = splitBilingualLyrics(post)!!
+        assertEquals(listOf("夢の音楽が遠くへ届く", "私の声を信じて", "新しい時代が来た", "世界が変わっていく", "また明日ね"), lyrics.original.lines())
+        assertEquals(listOf("夢想的音樂傳到遠方", "相信我的聲音", "新的時代來了", "世界在改變", "明天見"), lyrics.translation!!.lines())
+    }
+
+    @Test fun chineseThenRomajiThenLyricsWithKatakanaEndings() {
+        // Each verse in Chinese, its romaji, then the lyrics (some written with katakana endings, 救イノ無イ); notes
+        // quoting Japanese without romaji come after the lyrics.
+        val verses = listOf(
+            listOf("晨光照亮窗戶", "聽得見你的聲音") to listOf("Asa no hikari ga mado wo terasu", "Kimi no koe ga kikoeru") to listOf("朝の光が窓を照らす", "君の声が聞こえる"),
+            listOf("毫無救贖的世界") to listOf("Sukui no nai sekai") to listOf("救イノ無イ世界"),
+            listOf("向遠方奔跑", "在夢中等待") to listOf("Tooku made hashiru", "Yume no naka de matsu") to listOf("遠くまで走る", "夢の中で待つ"),
+            listOf("再無後續的世界") to listOf("Tsugi no nai sekai") to listOf("次ノ無イ世界"),
+            listOf("花開了", "又謝了") to listOf("Hana ga saita", "Mata chitta") to listOf("花が咲いた", "また散った"),
+        )
+        val post = "遙遠的歌\nTooi uta\n" + verses.joinToString("\n") { (zhRomaji, ja) -> (zhRomaji.first + zhRomaji.second + ja).joinToString("\n") } +
+            "\n括號裏的是舊版的翻譯\n這兩句很難翻\n貴方の想いを\n私の想いを"
+        val lyrics = splitBilingualLyrics(post)!!
+        assertEquals(verses.flatMap { it.second }, lyrics.original.lines())
+        assertEquals(verses.flatMap { it.first.first }, lyrics.translation!!.lines())
+    }
+
     @Test fun linesSplitDifferentlyAreFilledByTime() {
         // The target drops "でも", and joins two source lines into one; a later line from another part of the song
         // (its text does not match) is not taken.

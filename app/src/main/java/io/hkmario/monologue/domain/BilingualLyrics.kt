@@ -10,9 +10,12 @@ private val endMarker = Regex("""^[\s\-—=~～*＊・.。]*(end|fin|the end|完
 
 /**
  * A Chinese line that keeps a name in katakana ("幼時便在一起的ジュリーヌ妹妹"): no hiragana, which Japanese lines
- * nearly always have, and more Chinese characters than kana.
+ * nearly always have, more Chinese characters than kana, and the katakana in one stretch of two or more. Lyrics
+ * written with katakana endings ("救イノ無イ世界") have them scattered between the kanji, so they stay Japanese.
  */
-private fun chineseWithKatakanaName(s: String) = s.none { it in 'ぁ'..'ゟ' } && hanCount(s) > 0 && hanCount(s) >= kanaCount(s)
+private fun chineseWithKatakanaName(s: String) = s.none { it in 'ぁ'..'ゟ' } && hanCount(s) > 0 && hanCount(s) >= kanaCount(s) &&
+    katakanaStretch.findAll(s).toList().let { it.size == 1 && it[0].value.count { c -> c != 'ー' && c != '・' } >= 2 }
+private val katakanaStretch = Regex("""[ァ-ヺ][ァ-ヿ]*""")
 /** A lyric line in the song's language: Japanese (kana), or Latin letters without Chinese characters (English songs). */
 private fun isOriginalLine(s: String) = kanaCount(s) > 0 && !chineseWithKatakanaName(s) || hanCount(s) == 0 && s.count { it.isLetter() } >= 3
 private fun isChineseLine(s: String) = hanCount(s) > 0 && (kanaCount(s) == 0 || chineseWithKatakanaName(s))
@@ -107,9 +110,18 @@ fun splitBilingualLyrics(text: String): BilingualLyrics? {
     val all = text.lines().map { it.trim() }.filter { it.isNotEmpty() && !endMarker.matches(normalize(it)) }
     splitTimedBilingual(all)?.let { return it }
     val heading = all.indexOfFirst { it.trimEnd('：', ':', ' ') == "歌詞" }
-    val lines = all.drop(if(heading >= 0) heading + 1 else afterCredits(all)).filterNot { creditLine.containsMatchIn(it) }
-        .map { it.replace(inlineFurigana, "$1") }.dropWhile { !isOriginalLine(it) }
-    // Runs of original (true) or Chinese (false) lines; symbols and similar lines stay in the run they are in.
+    val body = all.drop(if(heading >= 0) heading + 1 else afterCredits(all)).filterNot { creditLine.containsMatchIn(it) }
+        .map { it.replace(inlineFurigana, "$1") }
+    // Most posts put the translation under each line; some put it first. When both readings pair, the one whose
+    // pairs share more kanji (夢 and 夢, 信じて and 相信) is the right one.
+    val under = translationUnder(body.dropWhile { !isOriginalLine(it) })
+    val first = translationFirst(body) ?: return under
+    if(under?.translation == null) return first
+    return if(kanjiAgreement(first) > kanjiAgreement(under)) first else under
+}
+
+/** Runs of original (true) or Chinese (false) lines; symbols and similar lines stay in the run they are in. */
+private fun runsOf(lines: List<String>): List<Pair<Boolean, MutableList<String>>> {
     val runs = mutableListOf<Pair<Boolean, MutableList<String>>>()
     for(line in lines) {
         val kind = when { isOriginalLine(line) -> true; isChineseLine(line) -> false; else -> null }
@@ -117,6 +129,51 @@ fun splitBilingualLyrics(text: String): BilingualLyrics? {
         if(last != null && (kind == null || kind == last.first)) last.second += line
         else if(kind != null) runs += kind to mutableListOf(line)
     }
+    return runs
+}
+
+/** Chinese characters a line and its translation share, per line, with kanji in their Japanese forms. */
+private fun kanjiAgreement(lyrics: BilingualLyrics): Double {
+    val original = lyrics.original.lines(); val translation = lyrics.translation?.lines() ?: return 0.0
+    fun han(s: String) = japaneseKanjiForms(s).filter { it in '一'..'鿿' }.toSet()
+    return original.zip(translation).sumOf { (o, t) -> (han(o) intersect han(t)).size }.toDouble() / original.size.coerceAtLeast(1)
+}
+
+/**
+ * Posts that give each line or verse in Chinese first, then (optionally) its romaji, then the lyrics. Chinese lines
+ * before the first lyrics are a heading, and a title given only in Chinese and romaji is not a lyric line. Verses
+ * that do not pair are skipped; two in a row after the lyrics mean the translator's notes have begun, as does a verse
+ * without romaji in a post that gives it for nearly every verse (notes quoting Japanese). Null unless at least 80 %
+ * of the sung lines are paired.
+ */
+private fun translationFirst(lines: List<String>): BilingualLyrics? {
+    val runs = runsOf(lines)
+    val original = mutableListOf<String>(); val translation = mutableListOf<String>()
+    var paired = 0; var sung = 0; var misses = 0; var verses = 0; var withRomaji = 0
+    for(i in runs.indices) {
+        val (isOriginal, chinese) = runs[i]
+        if(isOriginal) continue
+        val next = runs.getOrNull(i + 1)?.second ?: break
+        // Romaji written above the lyrics is left out; a verse of Latin lines only is English lyrics.
+        val lyrics = next.dropWhile { kanaCount(it) + hanCount(it) == 0 }.ifEmpty { next }
+        val japanese = lyrics.count { kanaCount(it) + hanCount(it) > 0 }
+        val romaji = lyrics.size < next.size
+        when {
+            japanese == 0 && paired == 0 -> continue
+            japanese > 0 && !romaji && paired >= 8 && verses >= 3 && withRomaji >= 0.8 * verses -> break
+            lyrics.size == chinese.size || lyrics.size < chinese.size && paired == 0 -> {
+                original += lyrics; translation += chinese.takeLast(lyrics.size); paired += japanese; sung += japanese; misses = 0
+                verses++; if(romaji) withRomaji++
+            }
+            else -> { if(paired >= 8 && ++misses >= 2) break; sung += japanese }
+        }
+    }
+    return if(original.size >= 4 && sung > 0 && paired >= 0.8 * sung) BilingualLyrics(original.joinToString("\n"), translation.joinToString("\n")) else null
+}
+
+/** Posts that put the translation under each line or verse. */
+private fun translationUnder(lines: List<String>): BilingualLyrics? {
+    val runs = runsOf(lines)
     val originalRuns = runs.withIndex().filter { it.value.first }.map { (i, run) ->
         // Readings are left out only when that is what lets the run pair with its translation.
         val chinese = runs.getOrNull(i + 1)?.takeIf { !it.first }?.second?.size ?: 0
@@ -178,7 +235,7 @@ private fun lineByLine(lines: List<String>): BilingualLyrics? {
 private val japaneseVariants=("奧奥 墮堕 屆届 裡裏 內内 眾衆 歲歳 關関 單単 戀恋 櫻桜 聲声 實実 樂楽 與与 應応 氣気 靜静 顏顔 淚涙 數数 " +
     "覺覚 變変 邊辺 圓円 會会 來来 爭争 圖図 國国 學学 體体 燈灯 雙双 臺台 燒焼 絲糸 續続 據拠 擊撃 戰戦 鐵鉄 輕軽 經経 讀読 醉酔 " +
     "壞壊 懷懐 兒児 亞亜 惡悪 壓圧 圍囲 爲為 價価 擔担 攝摂 瀨瀬 將将 從従 總総 聽聴 廳庁 廣広 黑黒 團団 傳伝 轉転 雜雑 顯顕 險険 驗験 鹽塩 " +
-    "觸触 繫繋 譯訳 驛駅 濕湿 燈灯 營営 榮栄 螢蛍 覽覧 殘残 淺浅 錢銭 發発 廢廃 澀渋 釋釈 靈霊 嶽岳 擧挙 譽誉 彈弾 纖繊 齒歯 龍竜")
+    "觸触 繫繋 黃黄 虛虚 處処 遙遥 著着 譯訳 驛駅 濕湿 燈灯 營営 榮栄 螢蛍 覽覧 殘残 淺浅 錢銭 發発 廢廃 澀渋 釋釈 靈霊 嶽岳 擧挙 譽誉 彈弾 纖繊 齒歯 龍竜")
             .split(' ').filter { it.length==2 }.associate { it[0] to it[1] }
 /** [text] with Japanese kanji forms, so 君に觸れて and 君に触れて compare equal. */
 fun japaneseKanjiForms(text: String)=buildString { text.forEach { append(japaneseVariants[it] ?: it) } }
@@ -274,7 +331,7 @@ private fun sharedShare(a: String, b: String): Double {
 }
 
 /** Title text reduced for comparison: case, spaces, punctuation and decorations such as ♡ removed. */
-fun looseTitleKey(s: String) = normalize(s).replace(Regex("""[\s\p{Punct}。、！？「」『』♪☆★・♡♥❤]"""), "")
+fun looseTitleKey(s: String) = japaneseKanjiForms(normalize(s)).replace(Regex("""[\s\p{Punct}。、！？「」『』♪☆★・♡♥❤]"""), "")
 private val translationWords = Regex("""(中文|中日|日中|中英|英中)?(歌詞)?(翻譯|翻译|中譯|歌詞)$""")
 
 /** The pieces of a post title that may be the song title: "【東方Vocal】FELT｜Time and again (中文翻譯)" → FELT, Time and again, … */

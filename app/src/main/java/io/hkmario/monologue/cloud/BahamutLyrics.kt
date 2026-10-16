@@ -107,6 +107,9 @@ class BahamutLyrics(private val romaji: RomajiGenerator) {
             artist?.takeIf { latin.isNotEmpty() }?.let { "$it $latin" },
             artists.takeIf { it.size>=2 }?.joinToString(" ") { searchName(it) },
             "$song 翻譯",
+            // Translators in Taiwan type 黃泉 and 皇國 where the title has 黄泉 and 皇国, and the site's search
+            // matches only the form written.
+            toTraditional(song.trimEnd('。','.','！','!','？','?')).takeIf { it!=song },
         ).distinct()
         for(query in queries) { ensureActive(); firstReadable(keywordSearch(query),needArtist=true)?.let { return@withContext it } }
         null
