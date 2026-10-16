@@ -207,6 +207,19 @@ class FanTranslationTest {
         assertEquals("從小就和瑪莉亞ジュリーヌ在一起", parsed.translation!!.lines().last())
     }
 
+    @Test fun readingsWrittenAsSungAreLeftOut() {
+        // Line, its kana and romaji as sung (not as read: レール as れうぇえる, "rwe e ru"), then the Chinese.
+        val post = "作詞：誰か\n" + listOf(
+            listOf("敷かれたレールを進む", "しかれとぅれうぇえるをすすむ", "shi ka re tu rwe e ru wo su su mu", "沿著鋪好的軌道前進"),
+            listOf("君の声が聞こえる", "きみのこえがきこえる", "ki mi no ko e ga ki ko e ru", "聽得見你的聲音"),
+            listOf("夢の中で待っている", "ゆめのなかでまってぃる", "yu me no na ka de ma tti ru", "在夢中等待著"),
+            listOf("遠くまで走ってゆく", "とおくまではしってゆく", "to o ku ma de ha shi tte yu ku", "向遠方奔跑而去"),
+        ).joinToString("\n") { it.joinToString("\n") }
+        val lyrics = splitBilingualLyrics(post)!!
+        assertEquals(listOf("敷かれたレールを進む", "君の声が聞こえる", "夢の中で待っている", "遠くまで走ってゆく"), lyrics.original.lines())
+        assertEquals(listOf("沿著鋪好的軌道前進", "聽得見你的聲音", "在夢中等待著", "向遠方奔跑而去"), lyrics.translation!!.lines())
+    }
+
     @Test fun postsGivingTheChineseFirstAreNotReadOneLineOff() {
         // A Chinese heading, then each line's translation above it: read the other way round, every line would get
         // the next line's translation.

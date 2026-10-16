@@ -39,8 +39,8 @@ class BahamutLyrics(private val romaji: RomajiGenerator) {
     }
 
     /** The site's keyword search, which matches every word of [query] in post titles and text. */
-    private fun keywordSearch(query: String): List<Post> {
-        val doc=page("https://home.gamer.com.tw/search.php".toHttpUrl().newBuilder().addQueryParameter("keyword",query).build())
+    private fun keywordSearch(query: String,page: Int=1): List<Post> {
+        val doc=page("https://home.gamer.com.tw/search.php".toHttpUrl().newBuilder().addQueryParameter("keyword",query).addQueryParameter("page","$page").build())
         return doc.select("a.TS1[href*=creationDetail.php]").map { a ->
             Post(a.absUrl("href"),a.text(),a.closest(".HOME-mainbox1b")?.selectFirst(".ST1 a")?.text() ?: "")
         }
@@ -76,13 +76,20 @@ class BahamutLyrics(private val romaji: RomajiGenerator) {
         }
         fun namesArtist(post: Post)=artists.isEmpty() || artists.any { mentions(post.title,it) }
         val tried=mutableSetOf<String>()
-        suspend fun firstReadable(posts: List<Post>,needArtist: Boolean): FoundLyrics? {
+        // A post with the lyrics but no translation (a pronunciation guide, say) is kept only in case no post
+        // translates the song. Reading stops after a few posts, as each one is a page load.
+        var untranslated: FoundLyrics?=null
+        fun done()=tried.size>=MAX_READS
+        suspend fun firstTranslated(posts: List<Post>,needArtist: Boolean): FoundLyrics? {
             for(post in posts) {
                 ensureActive()
+                if(done()) return null
                 if(post.url in tried || !aboutSong(post)) continue
                 tried+=post.url
                 // A post titled with the song alone ("agony（神無月巫女）") counts when its text or tags name the artist.
-                read(post,if(needArtist && !namesArtist(post)) artists else null)?.let { return it }
+                val found=read(post,if(needArtist && !namesArtist(post)) artists else null) ?: continue
+                if(found.translation!=null) return found
+                if(untranslated==null) untranslated=found
             }
             return null
         }
@@ -90,28 +97,42 @@ class BahamutLyrics(private val romaji: RomajiGenerator) {
         artists.firstOrNull()?.let { artist ->
             for(tag in listOf(searchName(artist),artist.filterNot { it in "'’‘" }).distinct()) for(page in 1..5) {
                 ensureActive()
+                if(done()) return@withContext untranslated
                 val posts=tagSearch(tag,page)
                 if(posts.isEmpty()) break
-                firstReadable(posts,needArtist=false)?.let { return@withContext it }
+                firstTranslated(posts,needArtist=false)?.let { return@withContext it }
             }
         }
         // 2. The song title's tag, when the post also names one of the artists.
-        for(title in titles) { ensureActive(); firstReadable(tagSearch(title,1),needArtist=true)?.let { return@withContext it } }
-        // 3. Keyword search for posts not tagged with the artist: artist and title, artist and the title's Latin words
-        //    (kanji may be written in kana in the post), all credited artists together, and the title with the words
-        //    translation posts use, for posts that name the artist only in their text.
-        val song=titles.last(); val artist=artists.firstOrNull()?.let(::searchName)
+        for(title in (titles+titles.map(::toTraditional)).distinct()) {
+            ensureActive()
+            if(done()) return@withContext untranslated
+            firstTranslated(tagSearch(title,1),needArtist=true)?.let { return@withContext it }
+        }
+        // 3. Keyword search, as a person would search the site: title and singer, then the title alone over a few
+        //    pages. Translators in Taiwan type 黃泉 and 皇國 where the title has 黄泉 and 皇国, and the site matches
+        //    only the form written, so both are tried. Then the singer with the title's Latin words (kanji may be
+        //    written in kana in the post) and all credited singers together.
+        val song=titles.last().trimEnd('。','.','！','!','？','?'); val artist=artists.firstOrNull()?.let(::searchName)
+        val forms=listOf(song,toTraditional(song)).distinct()
         val latin=Regex("""[A-Za-z][A-Za-z']*(?:\s+[A-Za-z][A-Za-z']*)*""").findAll(song).map { it.value }.filter { it.length>=4 }.joinToString(" ")
-        val queries=listOfNotNull(
-            artist?.let { "$it $song" },
-            artist?.takeIf { latin.isNotEmpty() }?.let { "$it $latin" },
-            artists.takeIf { it.size>=2 }?.joinToString(" ") { searchName(it) },
-            "$song 翻譯",
-            // Translators in Taiwan type 黃泉 and 皇國 where the title has 黄泉 and 皇国, and the site's search
-            // matches only the form written.
-            toTraditional(song.trimEnd('。','.','！','!','？','?')).takeIf { it!=song },
-        ).distinct()
-        for(query in queries) { ensureActive(); firstReadable(keywordSearch(query),needArtist=true)?.let { return@withContext it } }
-        null
+        // A long title in Japanese or Chinese names one song, so a post titled with it needs no singer in its text,
+        // and searching the title alone is worth it; a short one ("Colors") matches many songs' posts.
+        val distinctive=looseTitleKey(song).let { key -> key.count { it.code>0x2E80 }>=6 || key.length>=16 }
+        val queries=forms.mapNotNull { form -> artist?.let { "$form $it" to 2 } } +
+            (if(distinctive || artist==null) forms.map { it to 3 } else emptyList()) + listOfNotNull(
+            artist?.takeIf { latin.isNotEmpty() }?.let { "$it $latin" to 1 },
+            artists.takeIf { it.size>=2 }?.joinToString(" ") { searchName(it) }?.let { it to 1 },
+        )
+        for((query,pages) in queries.distinctBy { it.first }) for(page in 1..pages) {
+            ensureActive()
+            if(done()) return@withContext untranslated
+            val posts=keywordSearch(query,page)
+            if(posts.isEmpty()) break
+            firstTranslated(posts,needArtist=!distinctive)?.let { return@withContext it }
+        }
+        untranslated
     }
+
+    private companion object { const val MAX_READS=15 }
 }

@@ -405,3 +405,8 @@ on the label — deterministic, so every run looks the same.
   before the translator's notes). Lyrics with katakana endings stay Japanese. On LRCLIB's lines 60 % (rest are
   lines the post does not have); 33/35 pairs share kanji. Kanji variants 黃黄 虛虚 處処 遙遥 著着 added.
 - 88 unit + 53 device tests pass, no lint errors.
+- Broader 巴哈姆特 search: title + singer (2 pages) and, for distinctive titles, the title alone (3 pages), both in
+  Japanese and Traditional forms; title tags in both forms; posts without a translation are kept only as a
+  fallback; at most 15 posts read. Readings written as sung are left out. Live on MuMu, 9 songs from the library:
+  8 find a translated post (DAYS of DASH and Bull's Eye newly: 45/45 and 58/58 lines); Colors finds none (9 s).
+- 89 unit + 53 device tests pass, no lint errors.

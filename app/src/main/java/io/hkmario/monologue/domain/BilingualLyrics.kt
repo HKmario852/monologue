@@ -82,12 +82,21 @@ private fun isReadingOf(lyric: String, reading: String): Boolean {
  * The lyric lines of a run of original lines that also gives each line's kana reading and/or romaji, as some posts
  * write "日本語 / reading / romaji / 中文" per line (or a stanza, then its readings). Null when it is not laid out so.
  */
+/** Romaji written syllable by syllable ("shi ka re tu rwe e o"): Latin letters only, nearly every word 1 to 3 letters. */
+private fun spacedSyllables(line: String): Boolean {
+    if(kanaCount(line) + hanCount(line) > 0) return false
+    val words = Regex("""[A-Za-z]+""").findAll(line).map { it.value }.toList()
+    return words.size >= 3 && words.count { it.length <= 3 } >= 0.8 * words.size
+}
 private fun withoutReadings(run: List<String>): List<String>? {
     for(k in listOf(3, 2)) {
         if(run.size % k != 0) continue
         val size = run.size / k
         val groups = run.chunked(k)
-        if(groups.all { g -> g.drop(1).all { isReadingOf(g[0], it) } }) return groups.map { it[0] }
+        // Line, kana, romaji: the kana and romaji may be how it is sung rather than read (レール as れうぇえお, rwe e o).
+        fun sungReading(g: List<String>) = k == 3 && kanaCount(g[0]) + hanCount(g[0]) > 0 && hanCount(g[1]) == 0 && kanaCount(g[1]) > 0 &&
+            (isRomajiLine(g[2]) || spacedSyllables(g[2]))
+        if(groups.all { g -> sungReading(g) || g.drop(1).all { isReadingOf(g[0], it) } }) return groups.map { it[0] }
         val lyric = run.take(size)
         if((1 until k).all { b -> lyric.indices.all { isReadingOf(lyric[it], run[b * size + it]) } }) return lyric
     }
@@ -154,8 +163,10 @@ private fun translationFirst(lines: List<String>): BilingualLyrics? {
         val (isOriginal, chinese) = runs[i]
         if(isOriginal) continue
         val next = runs.getOrNull(i + 1)?.second ?: break
-        // Romaji written above the lyrics is left out; a verse of Latin lines only is English lyrics.
-        val lyrics = next.dropWhile { kanaCount(it) + hanCount(it) == 0 }.ifEmpty { next }
+        // Romaji written above the lyrics is left out; a verse of Latin lines only is English lyrics. Kana readings
+        // and romaji written under each line are left out when that is what lets the verse pair.
+        val stripped = next.dropWhile { kanaCount(it) + hanCount(it) == 0 }.ifEmpty { next }
+        val lyrics = stripped.takeIf { it.size == chinese.size } ?: withoutReadings(stripped)?.takeIf { it.size == chinese.size } ?: stripped
         val japanese = lyrics.count { kanaCount(it) + hanCount(it) > 0 }
         val romaji = lyrics.size < next.size
         when {

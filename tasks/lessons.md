@@ -48,3 +48,8 @@ Rules learned from the user's corrections in this project.
 - **Taiwanese posts write 黃泉/皇國, and 巴哈姆特 search matches only the written form**: also search the title
   through Simplified→Traditional (it changes 黄/国 but keeps 聴), and compare titles in Japanese kanji forms.
 - Python heredocs turned "\n" inside Kotlin strings into real newlines again: edit Kotlin with the Edit tool.
+- **Search 巴哈姆特 the way a person does**: title + singer, then the title alone over a few pages, in both kanji
+  forms. Skip the title-alone search for short titles ("Colors": 29 s for nothing), cap posts read per song, and
+  never stop at a post without a translation (pronunciation guides) while a translated one may follow.
+- Translators write readings as sung (レール → れうぇえる, "rwe e ru"): the line / kana / romaji shape is evidence
+  enough; exact-reading checks drop such posts.
